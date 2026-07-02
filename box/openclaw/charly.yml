@@ -1,0 +1,9 @@
+openclaw:
+    candy:
+        enabled: true
+        base: cachyos
+    openclaw-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/openclaw:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'

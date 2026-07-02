@@ -1,0 +1,23 @@
+immich-ml:
+    candy:
+        # CachyOS GPU base already carries cuda. pgvector is AUR-only on Arch, so
+        # this image opts into build:[pac, aur] — the arch-builder's yay compiles
+        # it (the postgresql layer declares the AUR package).
+        base: nvidia
+        build:
+            - pac
+            - aur
+        platform:
+            - linux/amd64
+    immich-ml-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/python-ml:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/supervisord:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/postgresql:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/vectorchord:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/redis:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/immich:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/immich-ml:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'

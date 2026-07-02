@@ -1,0 +1,213 @@
+cachyos-kde-settings:
+    candy:
+        version: 2026.151.0543
+        description: |
+            CachyOS desktop look-and-feel — settings, theming, SDDM theme, wallpapers, Plymouth
+            Installs the cachyos-* settings, theming, SDDM theme, wallpapers,
+            Plymouth boot theme and shell configs the CachyOS netinstall ships,
+            plus SDDM autologin and an all-monitors Plasma panel autostart. Pairs
+            with the generic kde-desktop layer to reproduce a stock CachyOS KDE
+            workstation. Verifiable: the cachyos settings/theme/wallpaper packages
+            install and (at deploy scope) SDDM autologin is configured.
+    cachyos-kde-settings-distro:
+        distro:
+            arch:
+                package:
+                    # Settings / integration
+                    - cachyos-settings
+                    - cachyos-kde-settings
+                    - cachyos-micro-settings
+                    - cachyos-hello
+                    - cachyos-packageinstaller
+                    - cachyos-fish-config
+                    - cachyos-zsh-config
+                    # Theming
+                    - cachyos-emerald-kde-theme-git
+                    - cachyos-iridescent-kde
+                    - cachyos-nord-kde-theme-git
+                    - cachyos-themes-sddm
+                    - cachyos-wallpapers
+                    - char-white
+                    # Plymouth boot splash
+                    - cachyos-plymouth-theme
+                    - cachyos-plymouth-bootanimation
+                    - plymouth-kcm
+                    # qt6-tools provides qdbus6 — the Plasma scripting CLI driven by
+                    # the all-monitors panel autostart below (R9 explicit dep).
+                    - qt6-tools
+    cachyos-kde-settings-service:
+        service:
+            # Headless always-on policy (part 2 of 2): inhibit powerdevil's idle
+            # screen-OFF / dim / suspend (and the screensaver) for the session lifetime.
+            # This is the root-cause fix for "no output on the monitors": on a headless
+            # GPU-passthrough seat the physical RTX heads DPMS-off after idle and, with
+            # no local input to wake them, stay dark forever. kde-inhibit holds an
+            # org.freedesktop.ScreenSaver + PowerManagement inhibit while it runs;
+            # restart:always re-holds it. User scope: needs the Plasma session bus.
+            - name: charly-display-keepalive
+              exec: kde-inhibit --power --screenSaver sleep infinity
+              restart: always
+              enable: true
+              scope: user
+              after: [graphical-session.target]
+    cachyos-kde-settings-step-0:
+        run: |
+            command=u="$(getent passwd 1000 | cut -d: -f1)"
+            mkdir -p /etc/sddm.conf.d
+            printf '[Autologin]\nUser=%s\nSession=plasma.desktop\n' "$u" > /etc/sddm.conf.d/10-charly-autologin.conf
+        run_as: root
+        plugin: command
+        plugin_input:
+            command: |
+                u="$(getent passwd 1000 | cut -d: -f1)"
+                mkdir -p /etc/sddm.conf.d
+                printf '[Autologin]\nUser=%s\nSession=plasma.desktop\n' "$u" > /etc/sddm.conf.d/10-charly-autologin.conf
+    cachyos-kde-settings-step-1:
+        run: copy=charly-kde-panels-all-screens.sh
+        copy: charly-kde-panels-all-screens.sh
+        to: /usr/local/bin/charly-kde-panels-all-screens.sh
+        mode: "0755"
+        run_as: root
+    cachyos-kde-settings-step-2:
+        run: copy=charly-kde-panels-all-screens.desktop
+        copy: charly-kde-panels-all-screens.desktop
+        to: /etc/xdg/autostart/charly-kde-panels-all-screens.desktop
+        mode: "0644"
+        run_as: root
+    cachyos-kde-settings-step-3:
+        run: write=/etc/xdg/kscreenlockerrc
+        write: /etc/xdg/kscreenlockerrc
+        run_as: root
+        mode: "0644"
+        content: |
+            [Daemon]
+            Autolock=false
+            LockOnResume=false
+    cachyos-kde-settings-step-4:
+        check: the cachyos-settings package is installed
+        plugin: package
+        plugin_input:
+            package: cachyos-settings
+            installed: true
+    cachyos-kde-settings-step-5:
+        check: the cachyos-kde-settings package is installed
+        plugin: package
+        plugin_input:
+            package: cachyos-kde-settings
+            installed: true
+    cachyos-kde-settings-step-6:
+        check: SDDM is configured to auto-login into the Plasma Wayland session
+        context:
+            - runtime
+        plugin: file
+        plugin_input:
+            file: /etc/sddm.conf.d/10-charly-autologin.conf
+            contains: "Session=plasma.desktop"
+    sddm-autologin-configured:
+        check: file=/etc/sddm.conf.d/10-charly-autologin.conf
+        id: sddm-autologin-configured
+        context:
+            - runtime
+        plugin: file
+        plugin_input:
+            file: /etc/sddm.conf.d/10-charly-autologin.conf
+            contains: "Session=plasma.desktop"
+    kde-panel-autostart-installed:
+        check: |
+            command=test -x /usr/local/bin/charly-kde-panels-all-screens.sh || { echo "FAIL: panel ensure-script missing or not executable"; exit 1; }
+            test -f /etc/xdg/autostart/charly-kde-panels-all-screens.desktop || { echo "FAIL: panel autostart .desktop missing"; exit 1; }
+            echo PANEL-AUTOSTART-INSTALLED
+        id: kde-panel-autostart-installed
+        stdout:
+            contains: PANEL-AUTOSTART-INSTALLED
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                test -x /usr/local/bin/charly-kde-panels-all-screens.sh || { echo "FAIL: panel ensure-script missing or not executable"; exit 1; }
+                test -f /etc/xdg/autostart/charly-kde-panels-all-screens.desktop || { echo "FAIL: panel autostart .desktop missing"; exit 1; }
+                echo PANEL-AUTOSTART-INSTALLED
+    kde-panel-on-every-screen:
+        check: |
+            command=export XDG_RUNTIME_DIR=/run/user/$(id -u)
+            export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+            QDBUS=qdbus6; command -v qdbus6 >/dev/null 2>&1 || QDBUS=qdbus
+            # Drive the deployed ensure-script (idempotent), then assert that no
+            # screen is left without a Plasma panel.
+            [ -x /usr/local/bin/charly-kde-panels-all-screens.sh ] && /usr/local/bin/charly-kde-panels-all-screens.sh >/dev/null 2>&1
+            out=$("$QDBUS" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'var have={}; panels().forEach(function(p){have[p.screen]=true;}); var missing=[]; for(var s=0;s<screenCount;s++){ if(!have[s]) missing.push(s); } print("screens="+screenCount+" panels="+panels().length+" missing=["+missing.join(",")+"]");' 2>/dev/null)
+            echo "$out"
+            case "$out" in
+              *"missing=[]"*) echo PANEL-ON-EVERY-SCREEN ;;
+              *) echo "FAIL: some screens have no Plasma panel"; exit 1 ;;
+            esac
+        id: kde-panel-on-every-screen
+        stdout:
+            contains: PANEL-ON-EVERY-SCREEN
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                export XDG_RUNTIME_DIR=/run/user/$(id -u)
+                export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+                QDBUS=qdbus6; command -v qdbus6 >/dev/null 2>&1 || QDBUS=qdbus
+                # Drive the deployed ensure-script (idempotent), then assert that no
+                # screen is left without a Plasma panel.
+                [ -x /usr/local/bin/charly-kde-panels-all-screens.sh ] && /usr/local/bin/charly-kde-panels-all-screens.sh >/dev/null 2>&1
+                out=$("$QDBUS" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'var have={}; panels().forEach(function(p){have[p.screen]=true;}); var missing=[]; for(var s=0;s<screenCount;s++){ if(!have[s]) missing.push(s); } print("screens="+screenCount+" panels="+panels().length+" missing=["+missing.join(",")+"]");' 2>/dev/null)
+                echo "$out"
+                case "$out" in
+                  *"missing=[]"*) echo PANEL-ON-EVERY-SCREEN ;;
+                  *) echo "FAIL: some screens have no Plasma panel"; exit 1 ;;
+                esac
+    cachyos-settings-installed:
+        check: package=cachyos-settings
+        id: cachyos-settings-installed
+        plugin: package
+        plugin_input:
+            package: cachyos-settings
+            installed: true
+    cachyos-kde-settings-installed:
+        check: package=cachyos-kde-settings
+        id: cachyos-kde-settings-installed
+        plugin: package
+        plugin_input:
+            package: cachyos-kde-settings
+            installed: true
+    cachyos-wallpapers-installed:
+        check: package=cachyos-wallpapers
+        id: cachyos-wallpapers-installed
+        plugin: package
+        plugin_input:
+            package: cachyos-wallpapers
+            installed: true
+    cachyos-themes-sddm-installed:
+        check: package=cachyos-themes-sddm
+        id: cachyos-themes-sddm-installed
+        plugin: package
+        plugin_input:
+            package: cachyos-themes-sddm
+            installed: true
+    kscreenlocker-autolock-disabled:
+        check: file=/etc/xdg/kscreenlockerrc
+        id: kscreenlocker-autolock-disabled
+        context:
+            - runtime
+        plugin: file
+        plugin_input:
+            file: /etc/xdg/kscreenlockerrc
+            contains: "Autolock=false"
+    display-keepalive-active:
+        check: |
+            command=pgrep -f 'kde-inhibit .*screenSaver' >/dev/null 2>&1 && echo KEEPALIVE-OK || { echo "FAIL: charly-display-keepalive (kde-inhibit) not running — idle screen-off not inhibited"; exit 1; }
+        id: display-keepalive-active
+        stdout:
+            contains: KEEPALIVE-OK
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                pgrep -f 'kde-inhibit .*screenSaver' >/dev/null 2>&1 && echo KEEPALIVE-OK || { echo "FAIL: charly-display-keepalive (kde-inhibit) not running — idle screen-off not inhibited"; exit 1; }

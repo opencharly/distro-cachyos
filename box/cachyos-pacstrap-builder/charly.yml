@@ -1,0 +1,17 @@
+cachyos-pacstrap-builder:
+    candy:
+        # base: arch.arch — the `arch` base from the opencharly/distro-arch submodule, via
+        # the `arch` import namespace. Its only layer (pacstrap-builder) is pulled by
+        # github reference (a main-repo candy, shared with arch-pacstrap-builder).
+        base: arch.arch
+        build:
+            - pac
+    cachyos-pacstrap-builder-distro:
+        distro:
+            - arch
+    cachyos-pacstrap-builder-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/pacstrap-builder:v2026.183.1359'
+        # No box-level check: the pacstrap/arch-install-scripts/grub/parted toolchain
+        # checks live on the pacstrap-builder candy, so ONE check covers this box AND
+        # arch-pacstrap-builder.

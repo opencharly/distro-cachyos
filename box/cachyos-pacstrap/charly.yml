@@ -1,0 +1,16 @@
+cachyos-pacstrap:
+    candy:
+        # Bootstrap-from-scratch CachyOS rootfs via pacstrap inside a privileged
+        # builder container. Retained for offline / air-gapped builds; the
+        # Docker-Hub `cachyos` base is the faster default.
+        # Layerless bootstrap on an external (pacstrap) base — per per-kind
+        # versioning, a layerless external-base image needs a dedicated version:.
+        version: 2026.144.1443
+        from: builder:pacstrap
+        bootstrap_builder_image: cachyos-pacstrap-builder
+        build:
+            - pac
+    cachyos-pacstrap-distro:
+        distro:
+            - cachyos
+            - arch

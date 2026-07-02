@@ -1,0 +1,19 @@
+selkies-kde:
+    candy:
+        # Full KDE Plasma selkies flavor on the plain CachyOS base — run as a
+        # headless pod (de-SDDM startplasma-wayland nested in pixelflux). Encoder
+        # auto-selected at runtime: VAAPI on an AMD/Intel renderD (the selkies layer
+        # ships libva-mesa-driver), software x264 otherwise; the -nvidia sibling adds
+        # NVENC. Relocated from main's test vehicle (selkies-kde's canonical home).
+        # chrome + wlrctl from the AUR → build:[pac, aur].
+        base: cachyos
+        build:
+            - pac
+            - aur
+        platform:
+            - linux/amd64
+    selkies-kde-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/selkies-kde-desktop:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'

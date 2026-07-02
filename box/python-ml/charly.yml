@@ -1,0 +1,9 @@
+python-ml:
+    candy:
+        base: nvidia
+        platform:
+            - linux/amd64
+    python-ml-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/python-ml:v2026.183.1359'

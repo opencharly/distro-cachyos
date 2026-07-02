@@ -1,0 +1,23 @@
+selkies-labwc:
+    candy:
+        # CPU streaming desktop on the CachyOS (Arch) base — pixi build of selkies
+        # (pixelflux Rust) + AUR google-chrome/wlrctl + labwc/waybar/swaync/etc.
+        base: cachyos
+        builder:
+            pixi: arch.arch-builder
+            npm: arch.arch-builder
+            cargo: arch.arch-builder
+            aur: arch.arch-builder
+        build:
+            - pac
+            - aur
+        platform:
+            - linux/amd64
+    selkies-labwc-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/selkies-desktop:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'
+        # No box-level check: the labwc/chrome/traefik/sshd binaries belong to their
+        # candies (labwc, chrome, selkies, sshd) and the chrome-devtools-mcp port to
+        # candy/chrome-devtools-mcp — one candy check covers every box composing them.

@@ -1,0 +1,10 @@
+comfyui:
+    candy:
+        base: nvidia
+        platform:
+            - linux/amd64
+    comfyui-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/comfyui:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'

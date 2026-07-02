@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Charly — Plasma panel on every monitor
+Comment=Add a Plasma panel (menu bar) to every screen, not just the virtio/SPICE head
+Exec=/usr/local/bin/charly-kde-panels-all-screens.sh
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2
+NoDisplay=true

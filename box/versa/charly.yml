@@ -1,0 +1,256 @@
+versa:
+    candy:
+        enabled: true
+        base: cachyos
+        build:
+            - pac
+        platform:
+            - linux/amd64
+    versa-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359' # GPU runtime (nvidia-utils + nvidia-container-toolkit) — formerly via base: nvidia
+            - '@github.com/opencharly/charly/candy/cuda:v2026.183.1359' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
+            - '@github.com/opencharly/charly/candy/marimo:v2026.183.1359' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
+            - '@github.com/opencharly/charly/candy/airflow:v2026.183.1359' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
+            - '@github.com/opencharly/charly/candy/osm-tools:v2026.183.1359' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI
+            - '@github.com/opencharly/charly/candy/maputnik:v2026.183.1359' # MapLibre style editor (built from npm source, served by python -m http.server)
+            - '@github.com/opencharly/charly/candy/pmtiles-viewer:v2026.183.1359' # protomaps/PMTiles /app SPA — visual inspector for PMTiles archives (port 8001)
+            - '@github.com/opencharly/charly/candy/shortbread:v2026.183.1359' # systemed/tilemaker + shortbread-tilemaker Lua config — generates shortbread-schema vector tiles from OSM PBF
+            - '@github.com/opencharly/charly/candy/versatiles-style:v2026.183.1359' # @versatiles/style MapLibre style generator (bundled to /opt/versatiles-style/, re-exported via versatiles-frontend's http.server at /style/)
+            - '@github.com/opencharly/charly/candy/versatiles-fonts:v2026.183.1359' # SDF font glyphs (Noto Sans + 9 others) bundled to /opt/versatiles-fonts/, re-exported at /fonts/
+            - '@github.com/opencharly/charly/candy/maplibre-versatiles-styler:v2026.183.1359' # interactive MapLibre control widget bundled to /opt/maplibre-versatiles-styler/, re-exported at /styler/
+            - '@github.com/opencharly/charly/candy/versatiles:v2026.183.1359' # versatiles-rs CLI + `versatiles serve` supervisord service on port 8090 (host-mapped 28090) — convert/serve for .versatiles/.pmtiles/.mbtiles
+            - '@github.com/opencharly/charly/candy/versatiles-frontend:v2026.183.1359' # versatiles-org/versatiles-frontend SPA (port 8002) — visual tile-content explorer; also re-exports versatiles-style/fonts/styler at /style/, /fonts/, /styler/
+            - '@github.com/opencharly/charly/candy/notebook-osm:v2026.183.1359' # data layer: seeds /workspace/notebooks/osm-monaco-viz.py (notebook self-authors its DAG at runtime)
+            - '@github.com/opencharly/charly/candy/notebook-graph:v2026.183.1359' # data layer: seeds /workspace/notebooks/gpu-libraries-demo.py — cuGraph/cuML/PyG/graphistry demo
+            - '@github.com/opencharly/charly/candy/debug-tools:v2026.183.1359' # network/process/file inspection toolkit for debugging the deployed services in this image
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'
+    versa-notebook-export:
+        check: |
+            command=${HOME}/.pixi/envs/default/bin/marimo export ipynb \
+              /workspace/notebooks/osm-monaco-viz.py \
+              --include-outputs --sort topological \
+              -o /tmp/notebook-run.ipynb -f
+        id: versa-notebook-export
+        exit_status: 0
+        timeout: 600s
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                ${HOME}/.pixi/envs/default/bin/marimo export ipynb \
+                  /workspace/notebooks/osm-monaco-viz.py \
+                  --include-outputs --sort topological \
+                  -o /tmp/notebook-run.ipynb -f
+            in_container: true
+    versa-notebook-size:
+        check: command=wc -c < /tmp/notebook-run.ipynb
+        id: versa-notebook-size
+        stdout:
+            - matches: "[1-9][0-9]{5,}" # >=100KB rendered ipynb (no anchors per /charly-check:check gotcha #6)
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: wc -c < /tmp/notebook-run.ipynb
+            in_container: true
+    versa-martin-monaco:
+        check: http=http://127.0.0.1:${HOST_PORT:3000}/monaco
+        id: versa-martin-monaco
+        context:
+            - runtime
+        plugin: http
+        plugin_input:
+            http: "http://127.0.0.1:${HOST_PORT:3000}/monaco"
+            status: 200
+            body:
+                - contains: "tilejson"
+                - contains: "vector_layers"
+    versa-martin-monaco-gpqtiles:
+        check: http=http://127.0.0.1:${HOST_PORT:3000}/monaco-gpqtiles
+        id: versa-martin-monaco-gpqtiles
+        context:
+            - runtime
+        plugin: http
+        plugin_input:
+            http: "http://127.0.0.1:${HOST_PORT:3000}/monaco-gpqtiles"
+            status: 200
+            body:
+                - contains: "tilejson"
+    versa-martin-monaco-duckdb-mvt:
+        check: http=http://127.0.0.1:${HOST_PORT:3000}/monaco-duckdb-mvt
+        id: versa-martin-monaco-duckdb-mvt
+        context:
+            - runtime
+        plugin: http
+        plugin_input:
+            http: "http://127.0.0.1:${HOST_PORT:3000}/monaco-duckdb-mvt"
+            status: 200
+            body:
+                - contains: "tilejson"
+    versa-martin-monaco-duckdb-freestiler:
+        check: http=http://127.0.0.1:${HOST_PORT:3000}/monaco-duckdb-freestiler
+        id: versa-martin-monaco-duckdb-freestiler
+        context:
+            - runtime
+        plugin: http
+        plugin_input:
+            http: "http://127.0.0.1:${HOST_PORT:3000}/monaco-duckdb-freestiler"
+            status: 200
+            body:
+                - contains: "tilejson"
+    versa-versatiles-shortbread-tile:
+        check: |
+            command=curl -fsSI "http://127.0.0.1:${HOST_PORT:8090}/tiles/monaco-shortbread/0/0/0.pbf" \
+              | awk 'BEGIN{IGNORECASE=1} /^content-length:/ {gsub("\r",""); print $2}'
+        id: versa-versatiles-shortbread-tile
+        stdout:
+            - matches: "[1-9][0-9]+" # any positive byte count (PBF non-empty)
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                curl -fsSI "http://127.0.0.1:${HOST_PORT:8090}/tiles/monaco-shortbread/0/0/0.pbf" \
+                  | awk 'BEGIN{IGNORECASE=1} /^content-length:/ {gsub("\r",""); print $2}'
+            in_container: false
+    versa-artifact-parquet:
+        check: command=wc -c < /workspace/tiles/work/monaco.parquet
+        id: versa-artifact-parquet
+        stdout:
+            - matches: "[1-9][0-9]{5,}" # >=100KB
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: wc -c < /workspace/tiles/work/monaco.parquet
+            in_container: true
+    versa-artifact-pmtiles:
+        check: command=wc -c < /workspace/tiles/pmtiles/monaco.pmtiles
+        id: versa-artifact-pmtiles
+        stdout:
+            - matches: "[1-9][0-9]{5,}" # >=100KB
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: wc -c < /workspace/tiles/pmtiles/monaco.pmtiles
+            in_container: true
+    versa-artifact-gtfs:
+        check: command=wc -c < /workspace/gtfs/raw/monaco.gtfs.zip
+        id: versa-artifact-gtfs
+        stdout:
+            - matches: "[1-9][0-9]{5,}" # >=100KB
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: wc -c < /workspace/gtfs/raw/monaco.gtfs.zip
+            in_container: true
+    versa-artifact-shortbread:
+        check: command=wc -c < /workspace/tiles/shortbread/monaco-shortbread.pmtiles
+        id: versa-artifact-shortbread
+        stdout:
+            - matches: "[1-9][0-9]{5,}" # >=100KB
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: wc -c < /workspace/tiles/shortbread/monaco-shortbread.pmtiles
+            in_container: true
+    versa-graph-imports:
+        check: |
+            command=${HOME}/.pixi/envs/default/bin/python -c '
+            import cugraph, cuml, nx_cugraph, pylibcugraph
+            import torch_geometric, torch_scatter, torch_sparse, torch_cluster
+            import graphistry, torch
+            print(f"cugraph={cugraph.__version__}")
+            print(f"cuml={cuml.__version__}")
+            print(f"pyg={torch_geometric.__version__}")
+            print(f"torch_scatter={torch_scatter.__version__}")
+            print(f"graphistry={graphistry.__version__}")
+            print(f"cuda_devices={torch.cuda.device_count()}")
+            '
+        id: versa-graph-imports
+        stdout:
+            - matches: "cugraph=[0-9]+"
+            - matches: "cuml=[0-9]+"
+            - matches: "pyg=[0-9]+"
+            - matches: "torch_scatter=[0-9]+"
+            - matches: "graphistry=[0-9]+"
+            - matches: "cuda_devices=[1-9]"
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                ${HOME}/.pixi/envs/default/bin/python -c '
+                import cugraph, cuml, nx_cugraph, pylibcugraph
+                import torch_geometric, torch_scatter, torch_sparse, torch_cluster
+                import graphistry, torch
+                print(f"cugraph={cugraph.__version__}")
+                print(f"cuml={cuml.__version__}")
+                print(f"pyg={torch_geometric.__version__}")
+                print(f"torch_scatter={torch_scatter.__version__}")
+                print(f"graphistry={graphistry.__version__}")
+                print(f"cuda_devices={torch.cuda.device_count()}")
+                '
+            in_container: true
+    versa-graph-cugraph-pagerank:
+        check: |
+            command=${HOME}/.pixi/envs/default/bin/python -c '
+            import networkx as nx
+            G = nx.karate_club_graph()
+            pr = nx.pagerank(G, backend="cugraph")
+            print(f"pr_rows={len(pr)}")
+            print(f"pr_top_node={max(pr, key=pr.get)}")
+            '
+        id: versa-graph-cugraph-pagerank
+        stdout:
+            - matches: "pr_rows=[1-9][0-9]+"
+            - matches: "pr_top_node=[0-9]+"
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                ${HOME}/.pixi/envs/default/bin/python -c '
+                import networkx as nx
+                G = nx.karate_club_graph()
+                pr = nx.pagerank(G, backend="cugraph")
+                print(f"pr_rows={len(pr)}")
+                print(f"pr_top_node={max(pr, key=pr.get)}")
+                '
+            in_container: true
+    versa-graph-notebook-export:
+        check: |
+            command=${HOME}/.pixi/envs/default/bin/marimo export ipynb \
+              /workspace/notebooks/gpu-libraries-demo.py \
+              --include-outputs --sort topological \
+              -o /tmp/gpu-demo.ipynb -f
+        id: versa-graph-notebook-export
+        exit_status: 0
+        timeout: 600s
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                ${HOME}/.pixi/envs/default/bin/marimo export ipynb \
+                  /workspace/notebooks/gpu-libraries-demo.py \
+                  --include-outputs --sort topological \
+                  -o /tmp/gpu-demo.ipynb -f
+            in_container: true
+    versa-graph-notebook-size:
+        check: command=wc -c < /tmp/gpu-demo.ipynb
+        id: versa-graph-notebook-size
+        stdout:
+            - matches: "[1-9][0-9]{4,}" # >=10KB rendered ipynb (matches the 18KB observed live)
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: wc -c < /tmp/gpu-demo.ipynb
+            in_container: true

@@ -1,0 +1,38 @@
+podman:
+    candy:
+        version: 2026.148.1730
+        description: |
+            Rootful podman container engine for a VM guest
+            Installs podman + crun + netavark so a VM guest can run containers
+            (e.g. a CUDA container via CDI with `--device nvidia.com/gpu=all`).
+            Minimal on purpose — unlike container-nesting (rootless nested podman),
+            a VM guest runs podman as root directly. Verifiable: the podman binary
+            lands at /usr/bin/podman and reports its version.
+    podman-distro:
+        distro:
+            arch:
+                package:
+                    - podman
+                    - crun
+                    - netavark
+    podman-step-0:
+        check: the podman binary is installed at /usr/bin/podman
+        plugin: file
+        plugin_input:
+            file: /usr/bin/podman
+            exists: true
+    podman-step-1:
+        check: podman reports its version
+        exit_status: 0
+        stdout:
+            - matches: "podman version"
+        plugin: command
+        plugin_input:
+            command: /usr/bin/podman --version
+    podman-binary:
+        check: file=/usr/bin/podman
+        id: podman-binary
+        plugin: file
+        plugin_input:
+            file: /usr/bin/podman
+            exists: true

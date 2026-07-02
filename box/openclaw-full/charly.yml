@@ -1,0 +1,8 @@
+openclaw-full:
+    candy:
+        enabled: true
+        base: cachyos
+    openclaw-full-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/openclaw-full:v2026.183.1359'

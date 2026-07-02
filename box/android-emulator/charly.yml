@@ -1,0 +1,38 @@
+android-emulator:
+    candy:
+        base: selkies-labwc
+        platform:
+            - linux/amd64
+        description: |
+            Android 16 (API 36, Google Play x86_64) emulator on pixel_9a on top
+            of the selkies-desktop streaming chain. The google_apis_playstore
+            image ships Play Store + Google Play services (GMS) + Google Chrome
+            PREINSTALLED. Browser UI on https://localhost:3000 (Selkies WebRTC),
+            Appium WebDriver on :4723, ADB server on :5037 (set
+            ANDROID_ADB_SERVER_SOCKET=tcp:localhost:5037 to drive from host).
+            Install apps either declaratively — a `kind: android` device + a
+            `target: android` deploy applies layers' `apk:` packages onto the
+            running emulator (apkeep in-pod) — or imperatively via the generic
+            `charly check adb install-app` verb (both share one installer). apk
+            sources: apk-pure default, google-play via an AAS-token secret.
+            CPU/RAM auto-size from the host at runtime.
+            Requires /dev/kvm + kvm-group passthrough for hardware acceleration;
+            the layer declares this via security.devices so the quadlet
+            auto-emits AddDevice=/dev/kvm.
+        # No box-level check: the emulator/adb/appium/java binaries and the
+        # start-emulator service each belong to their providing candy's baked check
+        # (android-sdk emulator-binary/adb-binary, appium-server appium-binary,
+        # java-openjdk java-binary, android-emulator-layer start-emulator-script +
+        # emulator-service-running), so one check covers every box composing them.
+    android-emulator-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/java-openjdk:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/android-sdk:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/appium-server:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/android-emulator-layer:v2026.183.1359'
+    android-emulator-env:
+        env:
+            - EMULATOR_NAME=charly_avd_36
+            - EMULATOR_API_LEVEL=36
+            - EMULATOR_DEVICE=pixel_9a

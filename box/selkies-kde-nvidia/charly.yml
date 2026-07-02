@@ -1,0 +1,29 @@
+selkies-kde-nvidia:
+    candy:
+        # Full KDE Plasma selkies flavor on the CachyOS GPU base (cachyos.nvidia) with
+        # REAL NVENC (builder.pixi → arch.cuda-arch-builder, same as selkies-labwc-nvidia).
+        # Headless de-SDDM Plasma nested in pixelflux. chrome + wlrctl from the AUR.
+        base: nvidia
+        build:
+            - pac
+            - aur
+        builder:
+            pixi: arch.cuda-arch-builder
+        platform:
+            - linux/amd64
+    selkies-kde-nvidia-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/selkies-kde-desktop:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'
+    pixelflux-nvenc-compiled:
+        check: command=strings ${HOME}/.pixi/envs/default/lib/python3.*/site-packages/pixelflux/pixelflux_wayland*.so | grep -q NvEncodeAPICreateInstance && echo NVENC-COMPILED
+        id: pixelflux-nvenc-compiled
+        exit_status: 0
+        stdout:
+            - contains: "NVENC-COMPILED"
+        context:
+            - build
+        plugin: command
+        plugin_input:
+            command: strings ${HOME}/.pixi/envs/default/lib/python3.*/site-packages/pixelflux/pixelflux_wayland*.so | grep -q NvEncodeAPICreateInstance && echo NVENC-COMPILED

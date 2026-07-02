@@ -1,0 +1,13 @@
+cuda-check:
+    candy:
+        # GPU compute-smoke image for the VFIO-passthrough check: cachyos.nvidia
+        # (driver libs + nvidia-container-toolkit + CUDA) plus the locally-vendored
+        # cuda-smoke layer (a baked nvcc-compiled vector-add that prints CUDA-OK).
+        # The check-cachyos-gpu-vm bed loads this into the GPU VM guest and runs it
+        # as a `--device nvidia.com/gpu=all` container to prove real device compute.
+        base: nvidia
+        platform:
+            - linux/amd64
+    cuda-check-candy:
+        candy:
+            - cuda-smoke

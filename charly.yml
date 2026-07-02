@@ -1,0 +1,1396 @@
+#  opencharly/distro-cachyos — the CachyOS image family, split out of the main
+#  opencharly repo (2026-05). Mounted as a git submodule at box/cachyos.
+#
+#  SINGLE-FILE config: every entity (the cachyos base + pacstrap family + the 7
+#  relocated app/fixture boxes under box/, the cachyos VMs, the disposable check
+#  beds, the charly-cachyos operator profile + its kind:local template) is inlined
+#  here or discovered under box/. This repo VENDORS its cachyos-exclusive layers
+#  locally under candy/ (resolved via the discover: block); every shared layer is
+#  an `@github.com/opencharly/charly/candy/...` ref into the main repo. The
+#  Arch base/builder stack lives in the opencharly/distro-arch submodule (2026-06 box
+#  inversion).
+#
+#  import: a single namespaced entry — `arch: <ref>` mounts opencharly/distro-arch under
+#  the `arch` namespace, so `arch.arch` (cachyos-pacstrap-builder's base),
+#  `arch.arch-builder` (the cachyos base's builder), and `arch.cuda-arch-builder`
+#  (the selkies-*-nvidia GPU builder) resolve. One-directional — arch imports
+#  nothing back; the former main↔cachyos mutual cycle is dissolved.
+#
+#  Directly buildable: `charly box build cachyos` (from the parent repo:
+#  `charly -C box/cachyos box build cachyos`; anywhere:
+#  `charly --repo opencharly/distro-cachyos box build cachyos`).
+version: 2026.174.1100
+defaults:
+    platform:
+        - linux/amd64
+    tag: auto
+    registry: ghcr.io/opencharly
+    build:
+        - pac
+    merge:
+        auto: false
+        max_mb: 128
+import:
+    # The Arch base/builder stack lives in the opencharly/distro-arch submodule (2026-06
+    # box inversion). cachyos-pacstrap-builder bases on arch.arch; the cachyos base
+    # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
+    # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
+    # namespace). One-directional import — arch imports nothing back.
+    - arch: '@github.com/opencharly/distro-arch:v2026.183.1359'
+discover:
+    - path: box
+      recursive: true
+    - path: candy
+      recursive: true
+# Disposable R10 test bed for the cachyos bootstrap VM (kind:check — the
+# 2026-05 deploy→check unification moved repo-shipped disposable beds out of
+# deploy.yml). disposable: true is the sole authorization for the unattended
+# destroy+rebuild driven by `charly check run check-cachyos-vm`.
+check-cachyos-vm:
+    vm:
+        from: cachyos-vm
+        disposable: true
+        lifecycle: dev
+        description: Sole proof of the CachyOS pacstrap-from-scratch bootstrap VM booting AND the charly toolchain installing as a native pac package (opencharly-git via makepkg + pacman -U), distinct from the Arch cloud-VM pac witness. Pacstrap-builds a CachyOS rootfs, boots it under UEFI, deploys the charly + dev-tools layers over SSH (the charly localpkg builds opencharly-git from the superproject pkg/arch), then runs the baked charly-binary/version + dev-tools command/file/package checks.
+    check-cachyos-vm-add_candy:
+        # The cachyos bootstrap-VM R10 canary: pacstrap builds the cachyos rootfs
+        # from scratch, the guest boots, the charly candy deploys onto it (its
+        # localpkg: builds opencharly-git from the superproject pkg/arch via makepkg
+        # and `pacman -U`s it in — a failed install fails THIS bed at the deploy
+        # step), and the baked charly-binary/charly-version checks run on the guest.
+        # The explicit pac localpkg AUTO-RESOLVE assertion (pacman -U pulling the
+        # mandatory repo deps podman/libvirt/tailscale/gocryptfs) lives ONCE, on
+        # main's purpose-built `check-charly-vm` pac witness — the dedicated home for
+        # that assertion, so it is not duplicated across beds.
+        # dev-tools is composed here so this canary also validates the cachyos
+        # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
+        add_candy:
+            - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dev-tools:v2026.183.1359'
+    check-cachyos-vm-install_opts:
+        install_opts:
+            allow_repo_changes: true
+            allow_root_tasks: true
+# Disposable R10 bed mirroring the cachyos-gpu WORKSTATION's exact dual-desktop
+# config — the acceptance gate for the live Part C migration:
+#   host (IOMMU on) → cachyos-gpu-vm (VFIO GPU passthrough, nvidia-open kernel
+#   module) running BOTH (a) the full in-guest KDE Plasma SDDM seat (the
+#   bare-metal desktop on the virtual head) AND (b) a nested selkies-kde-nvidia
+#   POD (the headless WebRTC streaming desktop, real NVENC).
+# The bed applies the nvidia toolkit + nvidia-driver kernel layer to the guest
+# (the driver layer reboots the guest, via the RebootStep), then runVM deploys
+# the nested `selkies-kde` pod as a PERSISTENT in-guest quadlet
+# (deployNestedPodsInGuest: host-build selkies-kde-nvidia → cp-box into the
+# guest → the guest's own project-free `charly bundle from-box`, lingering on so
+# it survives a guest reboot). This is the nested-pod-in-VM capability under
+# test. The deploy-scope checks below run inside the guest over SSH.
+#
+# PORTABLE: every GPU/NVENC check gates on an active in-guest NVIDIA driver and
+# passes with an explanatory N/A when none is present — so the bed runs
+# anywhere. On a host with the cachyos-gpu-vm hostdev block added locally, the
+# same checks assert real GPU encode. See cachyos-gpu-vm in vm.yml.
+check-cachyos-gpu-vm:
+    vm:
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: Sole proof of the operator's dual-desktop GPU workstation config — a VFIO GPU-passthrough VM running BOTH a bare-metal KDE/SDDM seat AND a nested selkies-kde-nvidia streaming pod with real NVENC; the only bed exercising spice+wl+mcp + gpu-passthrough + preempt + nested + localpkg + multistage together. Pacstrap GPU-passthrough VM (preempts the preemptible nvidia-gpu holder) installs the KDE seat + nvidia driver/CDI + charly localpkg + npm AI CLIs, deploys a nested selkies-kde-nvidia quadlet, then over SSH runs ~14 command checks plus the inherited cachyos-gpu-desktop-check spice probes; GPU/NVENC checks N/A cleanly without a VFIO host.
+    selkies-kde:
+        pod:
+            image: selkies-kde-nvidia
+    check-cachyos-gpu-vm-requires_exclusive:
+        # Claims the single physical NVIDIA GPU. The resource arbiter
+        # (charly/preempt.go) gracefully preempts any RUNNING preemptible holder of
+        # the `nvidia-gpu` token — e.g. the operator's vm:cachyos-gpu workstation
+        # when its PER-HOST `~/.config/charly/deploy.yml` overlay marks it
+        # `preemptible: {holds: [nvidia-gpu]}` — before this bed brings up its VM,
+        # and restores it after teardown. The
+        # token is portable (a name); on a host with no preemptible nvidia-gpu
+        # holder the arbiter finds nothing to preempt (no-op), so the bed still
+        # runs anywhere. See /charly-internals:disposable "The resource-arbitration
+        # axis", /charly-core:deploy.
+        requires_exclusive: [nvidia-gpu]
+    check-cachyos-gpu-vm-add_candy:
+        add_candy:
+            # Order matters: everything before nvidia-driver, whose reboot: true
+            # emits a trailing RebootStep — so the guest reboots ONCE after the
+            # whole stack is installed and the enabled workspace.mount + guest
+            # agent come back clean on the fresh boot. All packages arrive via
+            # these layers (never the VM bootstrap package list).
+            - podman
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.183.1359'
+            # nodejs + claude-code exercise the cross-host npm builder on a VM:
+            # the npm builder runs on the host and the ~/.npm-global artifacts are
+            # tarred into the guest home. Proves the AI-CLI stack installs on a VM
+            # (the bug that made claude/codex/etc. silently absent) plus the
+            # deploy-time {{.Home}} env.d resolution + env.d-sourcing managed block.
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.183.1359'
+            # Full bare-metal KDE Plasma SEAT — the in-guest half of the workstation
+            # (Plasma + SDDM + graphical .target on the virtual head), CachyOS
+            # theming, fonts/codecs/dev-gap. The WebRTC STREAMING desktop is NOT an
+            # in-guest layer here — it runs as the nested selkies-kde pod below
+            # (kde-selkies moved into the selkies-kde-nvidia image). This mirrors the
+            # workstation's dual-desktop split: bare-metal seat + headless stream.
+            - '@github.com/opencharly/charly/candy/kde-desktop:v2026.183.1359'
+            - cachyos-kde-settings
+            # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
+            # checks (+ ydotool test tool). charly check live collects this layer's
+            # deploy-scope checks for BOTH the bed and the operator VM (R3).
+            - cachyos-gpu-desktop-check
+            - '@github.com/opencharly/charly/candy/fonts-extended:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/desktop-media:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/cachyos-extras:v2026.183.1359'
+            # charly (→ charly layer) exercises the charly-layer-on-VM-deploy path: on
+            # this Arch/CachyOS guest the charly layer's localpkg: builds opencharly-git
+            # from the repo's pkg/arch PKGBUILD on the host (makepkg) + pacman -U's
+            # it into the guest at /usr/bin/charly — proving the proper-package install
+            # (not the stale curl-a-binary fallback). Matches the operator
+            # cachyos-gpu workstation, which lists charly. Placed before
+            # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
+            - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
+            - nvidia-driver
+    check-cachyos-gpu-vm-install_opts:
+        install_opts:
+            # with_service gates the systemd unit enable for sddm (the bare-metal
+            # KDE seat). The persistent cachyos-gpu deploy sets it; the bed must
+            # too, or the desktop services install but never enable (the R10
+            # failure). The selkies STREAM is now in the nested pod, not these
+            # in-guest layers.
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+            verify: true
+            # The guest add_layers' only builder need is the npm builder for
+            # nodejs/claude-code; cuda-arch-builder is a node-capable superset (the
+            # NVENC pixi build of pixelflux now lives in the selkies-kde-nvidia image
+            # built on the host, not these guest layers).
+            builder_image: arch.cuda-arch-builder
+    gpu-guest-cachyos-kernel:
+        check: command=pacman -Q linux-cachyos 2>/dev/null && echo CACHYOS-KERNEL
+        id: gpu-guest-cachyos-kernel
+        stdout:
+            contains: CACHYOS-KERNEL
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: pacman -Q linux-cachyos 2>/dev/null && echo CACHYOS-KERNEL
+    gpu-podman-present:
+        check: command=command -v podman
+        id: gpu-podman-present
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: command -v podman
+    gpu-nvidia-ctk-present:
+        check: command=command -v nvidia-ctk
+        id: gpu-nvidia-ctk-present
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: command -v nvidia-ctk
+    gpu-nouveau-blacklisted:
+        check: |
+            command=if lsmod | grep -q nouveau; then echo NOUVEAU-LOADED; else echo nouveau-blacklisted; fi
+        id: gpu-nouveau-blacklisted
+        stdout:
+            contains: nouveau-blacklisted
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                if lsmod | grep -q nouveau; then echo NOUVEAU-LOADED; else echo nouveau-blacklisted; fi
+    gpu-driver-active:
+        check: |
+            command=if ! grep -ql 0x10de /sys/bus/pci/devices/*/vendor 2>/dev/null; then
+              echo "GPU driver N/A: no NVIDIA GPU passed through to this guest"
+            else
+              for i in $(seq 1 30); do { [ -e /dev/nvidia0 ] || nvidia-smi >/dev/null 2>&1; } && break; sleep 2; done
+              nvidia-smi -L
+            fi
+        id: gpu-driver-active
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                if ! grep -ql 0x10de /sys/bus/pci/devices/*/vendor 2>/dev/null; then
+                  echo "GPU driver N/A: no NVIDIA GPU passed through to this guest"
+                else
+                  for i in $(seq 1 30); do { [ -e /dev/nvidia0 ] || nvidia-smi >/dev/null 2>&1; } && break; sleep 2; done
+                  nvidia-smi -L
+                fi
+    gpu-charly-proper-package:
+        check: |
+            command=pacman -Q opencharly-git >/dev/null 2>&1 &&
+            test "$(command -v charly)" -ef /usr/bin/charly &&
+            charly bundle from-box --help >/dev/null 2>&1 &&
+            echo CHARLY-PROPER-PACKAGE
+        id: gpu-charly-proper-package
+        stdout:
+            - contains: CHARLY-PROPER-PACKAGE
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                pacman -Q opencharly-git >/dev/null 2>&1 &&
+                test "$(command -v charly)" -ef /usr/bin/charly &&
+                charly bundle from-box --help >/dev/null 2>&1 &&
+                echo CHARLY-PROPER-PACKAGE
+    nested-selkies-kde-quadlet:
+        check: |
+            command=export XDG_RUNTIME_DIR=/run/user/$(id -u)
+            for i in $(seq 1 30); do systemctl --user is-active charly-selkies-kde >/dev/null 2>&1 && break; sleep 2; done
+            printf 'active=%s linger=%s\n' \
+              "$(systemctl --user is-active charly-selkies-kde 2>/dev/null)" \
+              "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)"
+        id: nested-selkies-kde-quadlet
+        stdout:
+            - contains: active=active
+            - contains: linger=yes
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                export XDG_RUNTIME_DIR=/run/user/$(id -u)
+                for i in $(seq 1 30); do systemctl --user is-active charly-selkies-kde >/dev/null 2>&1 && break; sleep 2; done
+                printf 'active=%s linger=%s\n' \
+                  "$(systemctl --user is-active charly-selkies-kde 2>/dev/null)" \
+                  "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)"
+    nested-selkies-kde-stream:
+        check: |
+            command=for i in $(seq 1 60); do
+              code=$(curl -kso /dev/null -w '%{http_code}' https://localhost:3000/ 2>/dev/null)
+              [ "$code" = "200" ] && { echo "STREAM-UP ($code)"; exit 0; }
+              sleep 2
+            done
+            echo "STREAM-DOWN (last=${code:-none})"; exit 1
+        id: nested-selkies-kde-stream
+        stdout:
+            contains: STREAM-UP
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                for i in $(seq 1 60); do
+                  code=$(curl -kso /dev/null -w '%{http_code}' https://localhost:3000/ 2>/dev/null)
+                  [ "$code" = "200" ] && { echo "STREAM-UP ($code)"; exit 0; }
+                  sleep 2
+                done
+                echo "STREAM-DOWN (last=${code:-none})"; exit 1
+    workspace-virtiofs-idmap-rw:
+        check: |
+            command=# The virtiofs /workspace share is OPERATOR-PROVISIONED (a host-path
+            # filesystems: block the operator adds locally), exactly like the GPU
+            # hostdevs: above — NOT committed on the disposable bed. So this check
+            # N/As (like gpu-driver-active) when no virtiofs /workspace is present,
+            # and exercises the guest-user idmap (D4) only on an operator host that
+            # mounted the share. Never a silent pass where the share WAS provisioned:
+            # there fstype IS virtiofs and the full idmap + RW assertion runs.
+            fstype=$(findmnt -n -o FSTYPE /workspace 2>/dev/null || echo MISSING)
+            if [ "$fstype" != "virtiofs" ]; then
+              echo "WORKSPACE-IDMAP-RW (N/A: no operator-provisioned virtiofs /workspace share on this bed, fstype=$fstype)"
+            else
+              owner=$(stat -c %U /workspace 2>/dev/null)
+              [ "$owner" = "$(id -un)" ] || { echo "FAIL: /workspace owned by '$owner', not the guest user '$(id -un)' — guest-user idmap not applied (libvirt default maps guest-root)"; exit 1; }
+              touch /workspace/.charly-probe 2>/dev/null && rm -f /workspace/.charly-probe && echo WORKSPACE-IDMAP-RW
+            fi
+        id: workspace-virtiofs-idmap-rw
+        exit_status: 0
+        stdout:
+            contains: WORKSPACE-IDMAP-RW
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                # The virtiofs /workspace share is OPERATOR-PROVISIONED (a host-path
+                # filesystems: block the operator adds locally), exactly like the GPU
+                # hostdevs: above — NOT committed on the disposable bed. So this check
+                # N/As (like gpu-driver-active) when no virtiofs /workspace is present,
+                # and exercises the guest-user idmap (D4) only on an operator host that
+                # mounted the share. Never a silent pass where the share WAS provisioned:
+                # there fstype IS virtiofs and the full idmap + RW assertion runs.
+                fstype=$(findmnt -n -o FSTYPE /workspace 2>/dev/null || echo MISSING)
+                if [ "$fstype" != "virtiofs" ]; then
+                  echo "WORKSPACE-IDMAP-RW (N/A: no operator-provisioned virtiofs /workspace share on this bed, fstype=$fstype)"
+                else
+                  owner=$(stat -c %U /workspace 2>/dev/null)
+                  [ "$owner" = "$(id -un)" ] || { echo "FAIL: /workspace owned by '$owner', not the guest user '$(id -un)' — guest-user idmap not applied (libvirt default maps guest-root)"; exit 1; }
+                  touch /workspace/.charly-probe 2>/dev/null && rm -f /workspace/.charly-probe && echo WORKSPACE-IDMAP-RW
+                fi
+    ai-cli-claude-installed:
+        check: |
+            command=test -x "$HOME/.npm-global/bin/claude" || { echo "FAIL: ~/.npm-global/bin/claude missing — cross-host npm builder did not install it"; exit 1; }
+            "$HOME/.npm-global/bin/claude" --version >/dev/null 2>&1 && echo CLAUDE-INSTALLED
+        id: ai-cli-claude-installed
+        stdout:
+            contains: CLAUDE-INSTALLED
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                test -x "$HOME/.npm-global/bin/claude" || { echo "FAIL: ~/.npm-global/bin/claude missing — cross-host npm builder did not install it"; exit 1; }
+                "$HOME/.npm-global/bin/claude" --version >/dev/null 2>&1 && echo CLAUDE-INSTALLED
+    envd-guest-home:
+        check: |
+            command=f="$HOME/.config/opencharly/env.d/nodejs.env"
+            test -f "$f" || { echo "FAIL: $f missing"; exit 1; }
+            grep -q "$HOME/.npm-global" "$f" || { echo "FAIL: env.d NPM prefix not the guest home"; cat "$f"; exit 1; }
+            foreign=$(grep -oE '/home/[^/[:space:]"]+' "$f" | sort -u | grep -vxF "$HOME")
+            [ -z "$foreign" ] || { echo "FAIL: env.d baked a foreign home path (the \$HOME bug): $foreign"; cat "$f"; exit 1; }
+            echo ENVD-GUEST-HOME
+        id: envd-guest-home
+        stdout:
+            contains: ENVD-GUEST-HOME
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                f="$HOME/.config/opencharly/env.d/nodejs.env"
+                test -f "$f" || { echo "FAIL: $f missing"; exit 1; }
+                grep -q "$HOME/.npm-global" "$f" || { echo "FAIL: env.d NPM prefix not the guest home"; cat "$f"; exit 1; }
+                foreign=$(grep -oE '/home/[^/[:space:]"]+' "$f" | sort -u | grep -vxF "$HOME")
+                [ -z "$foreign" ] || { echo "FAIL: env.d baked a foreign home path (the \$HOME bug): $foreign"; cat "$f"; exit 1; }
+                echo ENVD-GUEST-HOME
+    envd-on-login-path:
+        check: |
+            command=bash -lic 'command -v claude >/dev/null 2>&1' && echo CLAUDE-ON-LOGIN-PATH || { echo "FAIL: claude not on the interactive-login PATH — env.d aggregator not sourced by the login shell"; exit 1; }
+        id: envd-on-login-path
+        stdout:
+            contains: CLAUDE-ON-LOGIN-PATH
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                bash -lic 'command -v claude >/dev/null 2>&1' && echo CLAUDE-ON-LOGIN-PATH || { echo "FAIL: claude not on the interactive-login PATH — env.d aggregator not sourced by the login shell"; exit 1; }
+    qemu-ga-active:
+        check: |
+            command=test -f /etc/qemu/qemu-ga.conf && systemctl is-active --quiet qemu-guest-agent && echo QGA-ACTIVE
+        id: qemu-ga-active
+        stdout:
+            contains: QGA-ACTIVE
+            # Shared desktop / monitor / SPICE / selkies checks now
+            # live in the cachyos-gpu-desktop-check layer (added via add_layer above);
+            # charly check live collects an applied layer's deploy-scope checks, so the SAME
+            # set runs on BOTH this bed and the persistent cachyos-gpu deploy (R3).
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                test -f /etc/qemu/qemu-ga.conf && systemctl is-active --quiet qemu-guest-agent && echo QGA-ACTIVE
+# Disposable R10 pod beds for the CachyOS GPU image family. Each drives the
+# full `charly check run` sequence (build → check box → deploy → check live →
+# fresh update → tear down) on the cachyos-namespace image of the same name.
+# Host ports are remapped into a dedicated 45xxx range so the beds never
+# collide with an operator's production services on the canonical ports.
+# Deploy- and build-scope check coverage is inherited from the composed
+# layers (the "lowest level" principle) — the beds carry no check: of their
+# own. The GPU base (nvidia) and python-ml carry no service, so they are
+# proved by `charly check box` alone and need no pod bed.
+check-cachyos-jupyter-ml-pod:
+    pod:
+        image: jupyter-ml
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the CachyOS GPU jupyter-ml image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml pod (cachyos.nvidia base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
+    check-cachyos-jupyter-ml-pod-requires_shared:
+        requires_shared: [nvidia-gpu]
+check-cachyos-ollama-pod:
+    pod:
+        image: ollama
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the CachyOS GPU ollama LLM-server image composes and serves on the Arch CUDA base. Builds and deploys the ollama pod and runs the inherited ollama + dbus baked checks — server HTTP/API liveness plus binary/service/port/file probes; GPU via CDI when present, portable otherwise.
+check-cachyos-comfyui-pod:
+    pod:
+        image: comfyui
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the CachyOS GPU comfyui image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui pod and runs the inherited comfyui + dbus baked checks — ComfyUI HTTP UI liveness plus service/port/file/command probes.
+    check-cachyos-comfyui-pod-requires_shared:
+        requires_shared: [nvidia-gpu]
+check-cachyos-unsloth-studio-pod:
+    pod:
+        image: unsloth-studio
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the CachyOS GPU unsloth-studio fine-tuning notebook + API composes on the Arch CUDA base (no MCP candy, unlike jupyter-ml). Builds and deploys the unsloth-studio pod and runs the inherited unsloth-studio + notebook-finetuning + dbus baked checks — notebook/API HTTP liveness plus file/service/port/command probes.
+    check-cachyos-unsloth-studio-pod-requires_shared:
+        requires_shared: [nvidia-gpu]
+check-cachyos-immich-ml-pod:
+    pod:
+        image: immich-ml
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the full 9-candy Immich photo stack (Immich + PostgreSQL + VectorChord + Redis + CUDA ML) composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the immich-ml pod (nodejs + python-ml + supervisord + postgresql + vectorchord + redis + immich + immich-ml) via the build [pac, aur] + npm multistage, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks.
+    check-cachyos-immich-ml-pod-requires_shared:
+        requires_shared: [nvidia-gpu]
+check-selkies-kde-pod:
+    pod:
+        image: selkies-kde
+        disposable: true
+        lifecycle: dev
+        description: Sole proof of the full KDE Plasma selkies streaming desktop (de-SDDM startplasma-wayland nested in pixelflux, VAAPI/x264 HW-encode) on the plain CachyOS base — the wl-probe-bearing compositor variant. Builds (pixi pixelflux Rust + AUR chrome/wlrctl multistage) and deploys the selkies-kde pod, then runs the inherited kde-selkies wl probes (compositor=kwin, toplevel, clipboard, type), the selkies HTTPS :3000 stream check, chrome-devtools-mcp probes, and the VAAPI H264 encode probe (HW-encodes on the AMD iGPU host).
+# check-selkies-labwc-pod deploys the CPU streaming desktop on the CachyOS
+# (Arch) base. Exercises the cachyos→arch-builder pixi build of selkies
+# (pixelflux Rust compile) AND the AUR build of google-chrome + wlrctl, plus
+# the labwc/waybar/swaync/pipewire/traefik/sshd layer stack. Ports are
+# remapped off the canonical 3000/9222/9224/2222 to avoid host clashes with a
+# running selkies-labwc or the other desktop beds. The deploy-scope probes
+# assert the AUR-built binaries actually landed on the running container; the
+# baked layer/image checks (incl. the Selkies HTTPS 200 UI probe) cover the
+# rest of the deploy surface. selkies-labwc's canonical home (relocated from
+# the retired opencharly/selkies submodule, alongside its GPU sibling).
+check-selkies-labwc-pod:
+    pod:
+        image: selkies-labwc
+        disposable: true
+        lifecycle: dev
+        description: Sole proof of the CPU labwc selkies streaming desktop building from the cachyos→arch-builder pixi path — the labwc compositor variant (no wl probe) and the base box for android-emulator. Builds (pixi pixelflux + AUR chrome/wlrctl multistage) and deploys the selkies-labwc pod, then runs the inherited selkies-desktop baked checks — labwc/waybar/swaync/pavucontrol/chrome package+service probes, the selkies HTTPS :3000 UI probe, and chrome-devtools-mcp probes.
+check-selkies-labwc-nvidia-vm:
+    vm:
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the labwc selkies desktop reaches REAL NVENC frame production inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod (cuda-arch-builder NVENC pixelflux build). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested --device nvidia.com/gpu=all selkies-labwc-nvidia pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC session probe plus chrome-devtools-mcp; the NVENC check N/As without a GPU.
+    selkies-labwc-nvidia-pod:
+        pod:
+            image: selkies-labwc-nvidia
+    check-selkies-labwc-nvidia-vm-requires_exclusive:
+        requires_exclusive: [nvidia-gpu]
+    check-selkies-labwc-nvidia-vm-add_candy:
+        # Guest GPU stack so the passed-through RTX 4080 has a loaded driver +
+        # nvidia-container-toolkit (CDI) + podman — the prerequisites for the nested
+        # `--device nvidia.com/gpu=all` selkies pod to reach the GPU and for the
+        # in-guest nvidia-smi NVENC probe to exist. Mirrors check-cachyos-gpu-vm's GPU
+        # setup (the proven GPU-VM bed) minus its KDE-workstation extras; the
+        # nvidia-driver layer's reboot: true reloads the open module on a clean boot.
+        add_candy:
+            - podman
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
+            - nvidia-driver
+    check-selkies-labwc-nvidia-vm-install_opts:
+        install_opts:
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+            verify: true
+    selkies-nvidia-stream-https:
+        check: http=https://127.0.0.1:3000/
+        id: selkies-nvidia-stream-https
+        timeout: 30s
+        context:
+            - runtime
+        plugin: http
+        plugin_input:
+            http: https://127.0.0.1:3000/
+            status: 200
+            allow_insecure: true
+    selkies-nvidia-encoder:
+        check: |
+            command=if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+        id: selkies-nvidia-encoder
+        exit_status: 0
+        stdout:
+            - matches: "NVENC-SESSION-ACTIVE|NVENC-N/A"
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+check-selkies-kde-nvidia-vm:
+    vm:
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the full KDE Plasma selkies desktop reaches REAL NVENC inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod — the KDE compositor variant of the labwc-nvidia bed (adds wl). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested selkies-kde-nvidia pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC probe plus the nested pod's kde-selkies wl and chrome-devtools-mcp probes; NVENC N/As without a GPU.
+    selkies-kde-nvidia-pod:
+        pod:
+            image: selkies-kde-nvidia
+    check-selkies-kde-nvidia-vm-requires_exclusive:
+        requires_exclusive: [nvidia-gpu]
+    check-selkies-kde-nvidia-vm-add_candy:
+        # Guest GPU stack (see check-selkies-labwc-nvidia-vm) — driver + CDI + podman
+        # so the nested --device nvidia.com/gpu=all selkies-kde pod reaches the GPU.
+        add_candy:
+            - podman
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
+            - nvidia-driver
+    check-selkies-kde-nvidia-vm-install_opts:
+        install_opts:
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+            verify: true
+    selkies-nvidia-stream-https:
+        check: http=https://127.0.0.1:3000/
+        id: selkies-nvidia-stream-https
+        timeout: 30s
+        context:
+            - runtime
+        plugin: http
+        plugin_input:
+            http: https://127.0.0.1:3000/
+            status: 200
+            allow_insecure: true
+    selkies-nvidia-encoder:
+        check: |
+            command=if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+        id: selkies-nvidia-encoder
+        exit_status: 0
+        stdout:
+            - matches: "NVENC-SESSION-ACTIVE|NVENC-N/A"
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+check-charly-selftest-pod:
+    pod:
+        image: charly-selftest
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the in-development charly toolchain (--dev-local-pkg) exposes and runs every command group correctly in-container on the full CachyOS toolchain image, plus the charly-mcp Kong MCP surface. Builds and deploys the charly-selftest pod (charly-mcp + container-nesting + claude-code) and runs ~13 in-container command checks across every charly command group (version/doctor/settings/secrets/vm/status/box/deploy/check/clean/migrate/feature/config) plus charly-mcp's mcp list-tools/call (box.build/box.list live).
+    charly-cli-version:
+        check: command=charly version
+        id: charly-cli-version
+        exit_status: 0
+        stdout:
+            - matches: "[0-9]{4}\\.[0-9]+"
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly version
+            in_container: true
+    charly-cli-doctor:
+        check: command=charly doctor
+        id: charly-cli-doctor
+        exit_status: 0
+        stdout:
+            - contains: "charly doctor"
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly doctor
+            in_container: true
+    charly-cli-settings:
+        check: command=charly settings list
+        id: charly-cli-settings
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly settings list
+            in_container: true
+    charly-cli-secrets:
+        check: command=charly secrets list
+        id: charly-cli-secrets
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly secrets list
+            in_container: true
+    charly-cli-vm:
+        check: command=charly vm list
+        id: charly-cli-vm
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly vm list
+            in_container: true
+    charly-cli-status:
+        check: command=charly status --json
+        id: charly-cli-status
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly status --json
+            in_container: true
+    charly-cli-box-group:
+        check: command=charly box --help
+        id: charly-cli-box-group
+        exit_status: 0
+        stdout:
+            - contains: build
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly box --help
+            in_container: true
+    charly-cli-deploy-group:
+        check: command=charly bundle --help
+        id: charly-cli-deploy-group
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly bundle --help
+            in_container: true
+    charly-cli-check-group:
+        check: command=charly check --help
+        id: charly-cli-check-group
+        exit_status: 0
+        stdout:
+            - contains: live
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly check --help
+            in_container: true
+    charly-cli-clean-group:
+        check: command=charly clean --help
+        id: charly-cli-clean-group
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly clean --help
+            in_container: true
+    charly-cli-migrate-group:
+        check: command=charly migrate --help
+        id: charly-cli-migrate-group
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly migrate --help
+            in_container: true
+    charly-cli-feature-group:
+        check: command=charly feature --help
+        id: charly-cli-feature-group
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly feature --help
+            in_container: true
+    charly-cli-config-group:
+        check: command=charly config --help
+        id: charly-cli-config-group
+        exit_status: 0
+        # NB: the WHOLE Kong command surface exposed via `charly mcp serve` is
+        # proven by the charly-mcp layer's own deploy-scope mcp checks
+        # (mcp-charly-list-tools + mcp-charly-call-* assert box.build / box.list.boxes
+        # are live tools), which run here as part of this bed's check-live — no
+        # duplicate surface check needed (R3).
+
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly config --help
+            in_container: true
+# Cross-deployment probing (pod→pod): a Chrome DRIVER pod (sibling member)
+# CDP-probes this web-server SUBJECT pod over the shared `charly` network.
+# Proves cross-member addressing via ${HOST:<subject>} plus tree-position
+# placement end-to-end — the canonical "a different kind of deployment tests
+# another" case. The chrome member is brought up ALONGSIDE the root by
+# bringUpMembers (the shared deploy+check lifecycle, R3); it is an instrument,
+# never check-live'd itself.
+check-versa-pod:
+    pod:
+        image: versa
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the full OSM analytics + vector-tile pipeline (quackosm/tippecanoe/martin/maputnik + GPU geospatial extensions) plus the marimo MCP notebook surface composes and runs end-to-end on CachyOS. Builds (pixi/npm/cargo source builds — tippecanoe-from-source, martin Rust musl multistage) and deploys the versa pod, then runs notebook-render byte checks, martin /monaco tilejson HTTP probes, pipeline-artifact byte checks, GPU-extension import checks, and the marimo MCP read-only notebook-inspection tools.
+    check-versa-pod-requires_shared:
+        requires_shared: [nvidia-gpu]
+check-githubrunner-pod:
+    pod:
+        image: githubrunner
+        disposable: true
+        lifecycle: dev
+        # No port: — the runner has no listening service (host net, outbound only).
+        # No RUNNER_TOKEN/RUNNER_ORG → the guarded post_enable no-ops, so the bed
+        # proves the rootless CachyOS composition WITHOUT GitHub registration.
+        # Inherits the github-runner + container-nesting baked check: checks
+        # (functional binary runs + the rootless nested-podman proof).
+        description: Sole proof of the rootless CachyOS GitHub Actions runner composition — actions-runner config.sh + cosign/skopeo/buildah/go + rootless nested podman at uid 1000 — WITHOUT GitHub registration. Builds and deploys the githubrunner pod (no token → guarded hooks no-op) and runs the inherited github-runner + container-nesting + charly + dbus baked checks — functional binary runs plus the rootless nested-podman proof (unmask=/proc/*, zero caps, newuidmap file-caps).
+check-android-emulator-pod:
+    pod:
+        image: android-emulator
+        disposable: true
+        lifecycle: dev
+        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp.'
+    device:
+        android:
+            from: pixel9a-36
+        device-add_candy:
+            add_candy:
+                - '@github.com/opencharly/charly/candy/android-test-apps:v2026.183.1359'
+    device-net:
+        android:
+            from: pixel9a-endpoint
+        device-net-add_candy:
+            add_candy:
+                - '@github.com/opencharly/charly/candy/android-apidemos:v2026.183.1359'
+    status-shows-android:
+        check: command=charly status --json
+        id: status-shows-android
+        stdout:
+            - contains: '"kind": "android"'
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly status --json
+            in_container: false
+    status-shows-nested:
+        check: command=charly status --json
+        id: status-shows-nested
+        stdout:
+            # The pod→android nested tree renders as a JSON `nested:[…]`
+            # array under the emulator pod (children bare-keyed device/
+            # device-net; the parent context comes from the nesting, so
+            # there is no flattened dotted path). Assert the overlay
+            # structure. Fails if status_nested stops nesting the
+            # AndroidCollector rows under their parent pod.
+            - contains: '"nested"'
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: charly status --json
+            in_container: false
+# check-openclaw-pod deploys the minimal headless openclaw gateway on the
+# CachyOS (Arch) base. Exercises the cachyos→arch-builder npm build of the
+# openclaw package + the dbus/charly/socat/supervisord stack. The deploy-scope
+# probe confirms the openclaw CLI binary landed under ~/.npm-global/bin.
+check-openclaw-pod:
+    pod:
+        image: openclaw
+        disposable: true
+        lifecycle: dev
+        description: Sole build+runtime witness for box:openclaw — the MINIMAL openclaw composition (agent-forwarding + openclaw + dbus); NOT redundant with check-openclaw-full-pod because the dbus candy is composed ONLY here, never in the 27-candy box:openclaw-full meta. Builds (npm) and deploys the minimal openclaw pod on the CachyOS (Arch) base, exercising the cachyos→arch-builder npm build of the openclaw package plus the dbus/charly/socat/supervisord layer stack, and runs the inherited agent-forwarding + openclaw + dbus baked checks — the gateway CLI binary under ~/.npm-global/bin, the supervised service, and the openclaw :18789 TCP reachability.
+# check-openclaw-full-pod deploys the maximal headless openclaw-full on the
+# CachyOS (Arch) base — a non-browser gateway (no chrome/chrome-cdp). Exercises
+# the tool stack incl. gogcli@latest (Arch go 1.26.x) and the ffmpeg/sqlite
+# Arch package coverage. The check: block asserts those migration-critical
+# artifacts are present on the running container.
+check-openclaw-full-pod:
+    pod:
+        image: openclaw-full
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the maximal headless openclaw-full non-browser gateway + tool stack (gogcli@latest go-install on Arch go 1.26.x, ffmpeg/sqlite) composes and runs on the CachyOS (Arch) base. Builds (npm + go install multistage) and deploys the openclaw-full pod, then runs the inherited agent-forwarding + openclaw-full baked checks asserting gogcli, ffmpeg, sqlite, and the gateway/tool stack present.
+# check-openclaw-desktop-pod deploys the all-in-one openclaw-desktop image on
+# the CachyOS (Arch) base — the selkies streaming desktop fused with the
+# openclaw-full gateway/tool stack (claude-code/codex/gemini), a CPU ollama,
+# and the full nested charly toolchain (charly + container-nesting + golang + gh).
+# Ports are remapped into a free 340xx block to coexist with the
+# selkies/openclaw beds. The image-level check (baked) carries the nested-
+# rootless posture + nested-podman + libvirt-session + charly version/doctor +
+# the three services' liveness; this bed's deploy-scope probes assert the
+# cross-stack headline artifacts (AUR chrome, selkies HTTPS UI, the AI CLIs,
+# the ollama binary) actually landed on the running combined container.
+check-openclaw-desktop-pod:
+    pod:
+        image: openclaw-desktop
+        disposable: true
+        lifecycle: dev
+        description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go + ollama tarball multistage) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp.
+# charly-cachyos — the operator CachyOS workstation profile (target: local +
+# host: local). NOT a zero-side-effect test bed (it mutates the operator's
+# real machine), so it stays a kind:deploy operator entry, not an check bed.
+# disposable: operator has authorized this host as a test system, so
+# `charly update charly-cachyos` (full destroy + reinstall via the install ledger)
+# is allowed for strict R10 verification. Shares the name `charly-cachyos` with
+# the kind:local template it applies (cross-kind name reuse).
+charly-cachyos:
+    local:
+        from: charly-cachyos-app
+        host: local
+        disposable: true
+        description: Apply charly-cachyos to this workstation
+    charly-cachyos-install_opts:
+        install_opts:
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+    charly-cachyos-env:
+        env:
+            - EDITOR=nvim
+# cachyos-gpu — the PERSISTENT operator GPU workstation VM (target: vm,
+# vm: cachyos-gpu). The VM analog of the charly-cachyos local profile, evolved
+# into a full graphical <distro>-coder workstation: the full charly-cachyos dev
+# stack PLUS a complete KDE Plasma desktop synced to the host, provisioned
+# ONCE over SSH into the GPU-passthrough VM (persisted on the guest disk,
+# survives the autostart reboot), plus the VM-only layers — nvidia-driver
+# (kernel module + KDE/Wayland userspace + reboot), qemu-guest-agent (full
+# RPC surface), workspace-mount (/workspace), and kde-selkies (remote WebRTC
+# KDE stream, NVENC). Supersedes the earlier headless charly-cachyos-gpu.
+#
+# NOT disposable: this is a real workstation, not a rebuildable test bed. The
+# full machinery is R10-proven on the disposable check-cachyos-gpu-vm bed;
+# this entry just composes it. builder_image is the cuda-arch-builder so the
+# cross-host pixi build of pixelflux links the real NVENC encoder.
+#
+# The @github layer pins are aligned to the newest main tag by
+# `charly box reconcile` (the new main-repo desktop/stream layers — kde-desktop,
+# fonts-extended, desktop-media, cachyos-extras, kde-selkies — resolve only at
+# the post-landing tag).
+cachyos-gpu:
+    vm:
+        from: cachyos-gpu-workstation-vm
+        description: Persistent GPU CachyOS KDE coder workstation VM (bare-metal SDDM Plasma seat on the monitors + nested selkies-kde-nvidia stream pod (real NVENC, :3000) + /workspace + autostart)
+    selkies-kde:
+        pod:
+            image: selkies-kde-nvidia
+    cachyos-gpu-add_candy:
+        add_candy:
+            - wheel-nopasswd
+            - '@github.com/opencharly/charly/candy/yay:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dev-tools:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/gh:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/pre-commit:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/tmux:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/direnv:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/gnupg:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/keepassxc:v2026.183.1359'
+            - keepassxc-keyring
+            - '@github.com/opencharly/charly/candy/tailscale:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/tailscale-up:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/build-toolchain:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/golang:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/rust:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/uv:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/codex:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/gemini:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/oracle:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/forgecode:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/devops-tools:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/docker-ce:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/kubernetes:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/vscode:v2026.183.1359'
+            - ghostty
+            - '@github.com/opencharly/charly/candy/chrome:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
+            # Full KDE Plasma desktop synced to the host + GPU display/stream
+            # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
+            # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
+            # (vendored) adds the CachyOS theming; fonts-extended + desktop-media
+            # sync the host font/codec set; cachyos-extras fills the dev/CLI gap.
+            # The WebRTC streaming desktop is the nested selkies-kde-nvidia pod
+            # (real NVENC, :3000) deployed as a persistent in-guest quadlet — see
+            # `nested:` below, NOT an in-guest layer. The bare-metal SDDM Plasma
+            # seat (kde-desktop) drives the physical RTX monitors.
+            - '@github.com/opencharly/charly/candy/kde-desktop:v2026.183.1359'
+            - cachyos-kde-settings
+            # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
+            # checks (+ ydotool test tool). charly check live collects this layer's
+            # deploy-scope checks for BOTH the bed and the operator VM (R3).
+            - cachyos-gpu-desktop-check
+            - '@github.com/opencharly/charly/candy/fonts-extended:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/desktop-media:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/cachyos-extras:v2026.183.1359'
+            # (in-guest kde-selkies layer REMOVED — the WebRTC streaming desktop is
+            # the nested selkies-kde-nvidia pod below; podman is its in-guest substrate.)
+            # VM-only additions. podman for GPU/CUDA containers; the guest agent +
+            # workspace mount; nvidia-driver LAST — its reboot: true emits a
+            # trailing RebootStep, so the guest reboots ONCE after everything is in
+            # place, and the enabled workspace.mount + guest agent come back clean.
+            - podman
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.183.1359'
+            - nvidia-driver
+    cachyos-gpu-install_opts:
+        install_opts:
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+            verify: true
+            # CUDA builder so the cross-host pixi build of pixelflux links the real
+            # NVENC encoder (the stock arch-builder has no CUDA → NVENC stub).
+            builder_image: arch.cuda-arch-builder
+    cachyos-gpu-env:
+        env:
+            - EDITOR=nvim
+            - PAGER=less
+#  charly-cachyos — the operator CachyOS workstation profile (kind:local
+#  template). Shared layers are pulled by GITHUB REFERENCE from the main
+#  opencharly repo; the cachyos-exclusive layers (ghostty, keepassxc-keyring,
+#  wheel-nopasswd) are vendored locally under candy/. The builder_image is a
+#  published OCI ref (arch-builder), not a layer.
+charly-cachyos-app:
+    local:
+        description: |
+            CachyOS Developer Experience profile
+            Kitchen-sink dev workstation: core CLI tools, full Arch build
+            toolchain, Go/Rust/Node/Python runtimes, the full AI-coding-agent
+            fleet (Claude Code, Codex, Gemini, Oracle, ForgeCode), and
+            DevOps/container tooling (docker, kubectl, helm, AWS CLI, jq).
+            Targets the operator's CachyOS host via direct local exec.
+    charly-cachyos-app-candy:
+        candy:
+            - wheel-nopasswd
+            - '@github.com/opencharly/charly/candy/yay:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dev-tools:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/gh:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/pre-commit:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/tmux:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/direnv:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/gnupg:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/keepassxc:v2026.183.1359'
+            - keepassxc-keyring
+            - '@github.com/opencharly/charly/candy/tailscale:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/tailscale-up:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/build-toolchain:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/golang:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/rust:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/uv:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/codex:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/gemini:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/oracle:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/forgecode:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/devops-tools:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/docker-ce:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/kubernetes:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/vscode:v2026.183.1359'
+            - ghostty
+            - '@github.com/opencharly/charly/candy/chrome:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
+    charly-cachyos-app-install_opts:
+        install_opts:
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+            builder_image: ghcr.io/opencharly/arch-builder:2026.122.2252
+    charly-cachyos-app-env:
+        env:
+            - EDITOR=nvim
+            - PAGER=less
+    passwordless-sudo-host:
+        check: command=sudo -n true
+        id: passwordless-sudo-host
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: sudo -n true
+            in_container: false
+    nvidia-ctk-present:
+        check: |
+            command=if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+              command -v nvidia-ctk
+            else
+              echo "host NVIDIA driver not active (vfio passthrough or no GPU) — toolkit check N/A"
+            fi
+        id: nvidia-ctk-present
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+                  command -v nvidia-ctk
+                else
+                  echo "host NVIDIA driver not active (vfio passthrough or no GPU) — toolkit check N/A"
+                fi
+            in_container: false
+    nvidia-cdi-spec:
+        check: |
+            command=if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+              test -f /etc/cdi/nvidia.yaml
+            else
+              echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
+            fi
+        id: nvidia-cdi-spec
+        exit_status: 0
+        context:
+            - runtime
+        plugin: command
+        plugin_input:
+            command: |
+                if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+                  test -f /etc/cdi/nvidia.yaml
+                else
+                  echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
+                fi
+            in_container: false
+cachyos-vm:
+    vm:
+        # Bootstrap-from-scratch via cachyos-pacstrap-builder (local). The cachyos
+        # distro config (pacstrap base packages, keyring, mirrors, repos) lives in
+        # the embedded build vocabulary (`charly/charly.yml`).
+        source:
+            kind: bootstrap
+            builder: pacstrap
+            builder_image: cachyos-pacstrap-builder
+            distro: cachyos
+            package:
+                - sudo
+                - openssh
+                - qemu-guest-agent
+                - cloud-init
+                - grub
+                - efibootmgr
+            rootfs: btrfs
+            kernel_args: console=tty0 console=ttyS0,115200
+        disk_size: 25G
+        ram: 4G
+        cpu: 2
+        machine: q35
+        firmware: uefi-insecure
+        network:
+            mode: user
+        ssh:
+            user: cachy
+            port: 12226
+            key_source: generate
+        cloud_init:
+            # The cachy account (sudo NOPASSWD + /bin/bash + ssh key + wheel) is
+            # provisioned from ssh.user via the cloud-init create-pattern
+            # (composeUsers), so no explicit users: block is needed here.
+            runcmd:
+                - systemctl enable --now sshd
+                - systemctl enable --now qemu-guest-agent
+                # Disable nvidia-container-toolkit's install-time CDI-generate
+                # alpm hook. On a VM the passed-through GPU's driver only loads
+                # AFTER the nvidia-driver layer's reboot, so `nvidia-ctk cdi
+                # generate` at toolkit-install time fails ("NVML: Driver Not
+                # Loaded"), pacman exits non-zero, and the deploy aborts at the
+                # nvidia layer. CDI is (re)generated post-reboot by the
+                # nvidia-driver layer's charly-nvidia-cdi oneshot once the driver is
+                # up. Symlinking a hook to /dev/null is pacman's canonical
+                # "disable this hook". Runs at first boot, before any deploy.
+                - sh -c 'mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/nvidia-ctk-cdi.hook'
+cachyos-gpu-vm:
+    vm:
+        # GPU-passthrough VM guest that receives a physical NVIDIA GPU via a VFIO
+        # <hostdev>. Driven by the check-cachyos-gpu-vm bed, which mirrors the
+        # operator workstation: a bare-metal KDE Plasma seat in-guest plus a nested
+        # selkies-kde-nvidia streaming pod (real NVENC) deployed as a persistent
+        # in-guest quadlet.
+        #
+        # SUBSTRATE = CachyOS bootstrap (pacstrap) under UEFI/OVMF. UEFI is
+        # MANDATORY for a modern GPU: the RTX 4080's 16 GB VRAM sits behind a
+        # 64-bit large BAR that SeaBIOS cannot map, so under BIOS the guest nvidia
+        # driver fails GSP boot ("bad register read 0xbadf…"). The Arch cloud image
+        # can't boot under UEFI (stale BOOTX64.EFI; see /charly-vm:arch), so a fresh
+        # pacstrap install with its own EFI bootloader is used — it boots the
+        # passed-through GPU cleanly under OVMF. pacstrap needs the rootful builder
+        # (`charly settings set engine.rootful sudo`).
+        #
+        # PORTABLE — this committed entity carries NO host-specific devices: no
+        # `libvirt.devices.hostdevs:` (a PCI bus/slot address is host-specific) and
+        # no host-path `filesystems:` (a virtiofs share rooted at an absolute host
+        # path). The GPU hostdev is AUTO-ALLOCATED: the bed declares
+        # `requires_exclusive: [nvidia-gpu]`, the embedded resource: vocabulary maps that
+        # token to a `resource: {nvidia-gpu: {gpu: {vendor: "0x10de"}}}` selector, and
+        # `charly vm create` (autoAllocateExclusiveGPUs) detects the matching NVIDIA
+        # card, writes its whole-IOMMU-group `<hostdev>` block into THIS host's
+        # instance overlay (~/.local/share/charly/vm/charly-cachyos-gpu-vm/
+        # instance.yml), and injects it via VmInstanceOverride.ApplyToVmSpec — so the
+        # bed attaches this host's real RTX 4080 (real GPU passthrough + NVENC) with
+        # NO manual `charly vm gpu list` step and no PCI address in version control.
+        # An operator-authored hostdev (committed here or in instance.yml) ALWAYS
+        # wins — auto-allocation defers to it. If the resource is required but no
+        # matching card is present, `charly vm create` FAILS HARD (operator directive:
+        # auto-allocate or fail hard). The host-path `filesystems:` overlay (if any)
+        # is still operator-authored in instance.yml. See /charly-vm:vm "GPU
+        # passthrough", /charly-internals:disposable "resource-arbitration axis".
+        #
+        # backend: libvirt is mandatory — <hostdev> PCI passthrough only renders
+        # on the libvirt backend. Rootless passthrough also needs a raised memlock
+        # limit + /dev/vfio access — see `charly vm gpu status`.
+        source:
+            kind: bootstrap
+            builder: pacstrap
+            builder_image: cachyos-pacstrap-builder
+            distro: cachyos
+            package:
+                # Bootstrap essentials ONLY — enough to boot + reach the guest
+                # over SSH so layers apply. App packages arrive via add_layer.
+                - sudo
+                - openssh
+                - qemu-guest-agent
+                - cloud-init
+                - grub
+                - efibootmgr
+            rootfs: btrfs
+            # modprobe.blacklist=nouveau: blacklist the in-tree driver at early
+            # boot so the open NVIDIA module binds the passed-through GPU (no
+            # initramfs regen needed — see the nvidia-driver layer).
+            kernel_args: console=tty0 console=ttyS0,115200 modprobe.blacklist=nouveau nvidia-drm.modeset=1
+        backend: libvirt
+        # 100G (sparse qcow2): the full KDE+GPU+dev rootfs PLUS the nested
+        # selkies-kde-nvidia pod image (~15 GB) loaded into the guest user's
+        # rootless podman storage (/home/cachy/.local/share/containers) — 50G
+        # ran out of space mid-load. The disk grows on demand, so the larger
+        # ceiling costs nothing until used.
+        disk_size: 100G
+        ram: 8G
+        cpu: 4
+        machine: q35
+        firmware: uefi-insecure
+        # Exercises the autostart code path (DomainSetAutostart + linger +
+        # virtqemud.socket) on a disposable target — the bed is torn down, so
+        # nothing persistently autostarts. This is the R10 vehicle for the
+        # generic autostart machinery the cachyos-gpu operator VM relies on.
+        autostart: true
+        network:
+            mode: user
+        ssh:
+            user: cachy
+            port: 12227
+            key_source: generate
+        cloud_init:
+            # /etc/pacman.conf is written into the rootfs by the cachyos pacstrap
+            # bootstrap (the embedded distro.cachyos.pacstrap.runtime_pacman_conf vocabulary) —
+            # the single source for every cachyos pacstrap VM, so no per-VM
+            # write_files block is needed here.
+            runcmd:
+                - systemctl enable --now sshd
+                - systemctl enable --now qemu-guest-agent
+                # Disable nvidia-container-toolkit's install-time CDI-generate
+                # alpm hook. On a VM the passed-through GPU's driver only loads
+                # AFTER the nvidia-driver layer's reboot, so `nvidia-ctk cdi
+                # generate` at toolkit-install time fails ("NVML: Driver Not
+                # Loaded"), pacman exits non-zero, and the deploy aborts at the
+                # nvidia layer. CDI is (re)generated post-reboot by the
+                # nvidia-driver layer's charly-nvidia-cdi oneshot once the driver is
+                # up. Symlinking a hook to /dev/null is pacman's canonical
+                # "disable this hook". Runs at first boot, before any deploy.
+                - sh -c 'mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/nvidia-ctk-cdi.hook'
+    cachyos-gpu-vm-libvirt:
+        libvirt:
+            # memfd/shared backing is auto-paired by the renderer for the virtiofs
+            # share; declared here too so the bed asserts the explicit path works.
+            memory_backing:
+                source: memfd
+                access: shared
+            devices:
+                # SPICE virtual monitor: the headless display the GPU-passthrough
+                # KDE session renders to, so `charly check spice screenshot` captures the
+                # live desktop (the bed asserts a non-uniform frame = it rendered).
+                # The virtio-gpu head is the seat-0 primary scanout — the passed-
+                # through NVIDIA GPU has no connected output.
+                graphics:
+                    - type: spice
+                      listen:
+                        - type: socket
+                video:
+                    - model: virtio
+                      vram: 65536
+                      heads: 1
+                      accel3d: false
+                      primary: true
+                # Guest-agent control channel + the SPICE agent channel (spicevmc) —
+                # exercises the structured unix channel render + qemu-guest-agent.
+                channels:
+                    - type: unix
+                      name: org.qemu.guest_agent.0
+                    - type: spicevmc
+                      name: com.redhat.spice.0
+                      # NO host-path `filesystems:` and NO `hostdevs:` committed here —
+                      # both are host-specific and live in THIS host's instance overlay
+                      # (~/.local/share/charly/vm/charly-cachyos-gpu-vm/instance.yml), merged at
+                      # `charly vm create` by VmInstanceOverride.ApplyToVmSpec:
+                      #   - the GPU <hostdev> (RTX 4080, IOMMU group = 01:00.0 + 01:00.1);
+                      #   - a virtiofs `workspace` share rooted at an operator-provisioned
+                      #     mode-0700 scratch dir (NOT world-writable /tmp) so the
+                      #     guest-user idmap is actually exercised: the guest user owns +
+                      #     writes it ONLY when the auto-injected idmap maps guest-uid-1000
+                      #     → the host operator (libvirt's default maps guest-ROOT →
+                      #     operator, leaving it root-owned + unreadable to the guest user).
+cachyos-gpu-workstation-vm:
+    vm:
+        # PERSISTENT operator GPU workstation VM — the full charly-cachyos dev stack
+        # PLUS a complete KDE Plasma desktop synced to the host, inside a
+        # GPU-passthrough VM that auto-starts with the host. The VM analog of the
+        # `charly-cachyos` local workstation profile, evolved into a full graphical
+        # `<distro>-coder` workstation; provisioned once via the `cachyos-gpu`
+        # kind:deploy (full layer stack over SSH, persisted on the guest disk),
+        # then it just boots. Supersedes the earlier headless charly-cachyos-gpu.
+        #
+        # Two ways to use the SAME GPU: a physical monitor on the RTX 4080
+        # (SDDM/Plasma on DRM), and a remote KDE-selkies WebRTC browser stream
+        # (port 3000, NVENC) of a nested Plasma.
+        #
+        # PORTABLE (like local.charly-cachyos): this committed entity carries NO
+        # host-specific config — the NVIDIA PCI <hostdev> and the operator's
+        # /home/<operator> share both live in THIS host's instance overlay
+        # (~/.local/share/charly/vm/charly-cachyos-gpu/instance.yml), merged at
+        # `charly vm create` by VmInstanceOverride.ApplyToVmSpec. Generate the hostdev
+        # block with `charly vm gpu list`. (Unlike the disposable bed, this
+        # persistent workstation deploy declares no `requires_exclusive:` resource,
+        # so its hostdev is operator-authored here — auto-allocation
+        # (gpu_allocate.go) fires for a `requires_exclusive: [nvidia-gpu]` CLAIMANT
+        # like the check-cachyos-gpu-vm bed; an operator-authored hostdev always
+        # wins regardless.) NOT a disposable test bed — there is no disposable
+        # deploy for it; the full machinery is R10-proven on the disposable
+        # check-cachyos-gpu-vm bed instead.
+        #
+        # SUBSTRATE = CachyOS pacstrap under UEFI/OVMF (same rationale as
+        # cachyos-gpu-vm: the RTX 4080's 64-bit large BAR needs UEFI). On this host
+        # the passed-through card is vfio-pci-bound and the host drives display
+        # from the AMD GPU, so autostarting this VM costs the host no display.
+        source:
+            kind: bootstrap
+            builder: pacstrap
+            builder_image: cachyos-pacstrap-builder
+            distro: cachyos
+            package:
+                - sudo
+                - openssh
+                - qemu-guest-agent
+                - cloud-init
+                - grub
+                - efibootmgr
+            rootfs: btrfs
+            kernel_args: console=tty0 console=ttyS0,115200 modprobe.blacklist=nouveau nvidia-drm.modeset=1
+        backend: libvirt
+        # 1 TB VIRTUAL — the qcow2 is sparse (truncate + qemu-img convert with no
+        # preallocation), so it grows on demand and the operator's data lives on
+        # the /workspace virtiofs share (host passthrough), not on this disk.
+        disk_size: 1T
+        ram: 64G
+        cpu: 12
+        machine: q35
+        firmware: uefi-insecure
+        # Start with the host. Sets libvirt's domain autostart flag AND wires the
+        # qemu:///session boot trigger (loginctl enable-linger + virtqemud.socket).
+        autostart: true
+        network:
+            mode: user
+        ssh:
+            user: cachy
+            port: 12228
+            key_source: generate
+        cloud_init:
+            # /etc/pacman.conf is written into the rootfs by the cachyos pacstrap
+            # bootstrap (the embedded distro.cachyos.pacstrap.runtime_pacman_conf vocabulary) —
+            # the single source for every cachyos pacstrap VM. (A persistent
+            # workstation can later harden SigLevel after pacman-key init.)
+            runcmd:
+                - systemctl enable --now sshd
+                - systemctl enable --now qemu-guest-agent
+                # Disable nvidia-container-toolkit's install-time CDI-generate
+                # alpm hook. On a VM the passed-through GPU's driver only loads
+                # AFTER the nvidia-driver layer's reboot, so `nvidia-ctk cdi
+                # generate` at toolkit-install time fails ("NVML: Driver Not
+                # Loaded"), pacman exits non-zero, and the deploy aborts at the
+                # nvidia layer. CDI is (re)generated post-reboot by the
+                # nvidia-driver layer's charly-nvidia-cdi oneshot once the driver is
+                # up. Symlinking a hook to /dev/null is pacman's canonical
+                # "disable this hook". Runs at first boot, before any deploy.
+                - sh -c 'mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/nvidia-ctk-cdi.hook'
+    cachyos-gpu-workstation-vm-libvirt:
+        libvirt:
+            # memfd/shared is auto-paired for the virtiofs share by the renderer;
+            # declared explicitly here for clarity on a persistent operator entity.
+            memory_backing:
+                source: memfd
+                access: shared
+            devices:
+                # NO SPICE, no emulated display head. The passed-through RTX 4080
+                # drives the operator's PHYSICAL monitors directly over DRM — the
+                # KDE desktop lives there, and (via the ScreenCast-portal browser
+                # mirror) is streamed to the browser as the SAME desktop. SPICE + a
+                # virtio-gpu head are intentionally BED-ONLY: the portable check bed
+                # (cachyos-gpu-vm) has no physical GPU, so it needs a virtual head to
+                # screenshot. On this operator the GPU IS the display; early-boot
+                # output is the serial console (console=ttyS0 in kernel_args above).
+                # Dropping the virtio head also removes the spurious "Virtual-1"
+                # output that otherwise becomes the Plasma primary at 0,0.
+                video:
+                    - model: none
+                # qemu-guest-agent control channel (host↔guest). No spicevmc — the
+                # operator runs no SPICE server.
+                channels:
+                    - type: unix
+                      name: org.qemu.guest_agent.0
+                      # NO host-path `filesystems:` and NO `hostdevs:` committed here —
+                      # both are host-specific and live in THIS host's instance overlay
+                      # (~/.local/share/charly/vm/charly-cachyos-gpu/instance.yml), merged at
+                      # `charly vm create` by VmInstanceOverride.ApplyToVmSpec:
+                      #   - the GPU <hostdev> (RTX 4080, IOMMU group = 01:00.0 + 01:00.1);
+                      #   - the operator's home (/home/<operator>) shared into the guest at
+                      #     /workspace via virtiofs passthrough (mounted by the
+                      #     workspace-mount layer; passthrough preserves uid/gid).
+# In-pod emulator device — the android-emulator image bakes the Android 16
+# (API 36, google_apis_playstore x86_64) system image + the pixel_9a AVD;
+# this device REFERENCES it (the API level / system image are build-time
+# properties, not driven from here). apkeep runs in-pod; adb reaches the
+# emulator via the pod. google_account names the credential-store secret
+# keys the apkeep google-play source reads (an AAS token, NOT a password).
+pixel9a-36:
+    android:
+        box: android-emulator
+        device: pixel_9a
+        api_level: 36
+        google_account:
+            email_secret: GOOGLE_ACCOUNT_EMAIL
+            token_secret: GOOGLE_AAS_TOKEN
+# Remote/physical device example — addresses an adb SERVER over the network
+# (a host running `adb connect` to a phone, OR an emulator pod's published
+# 5037). apkeep runs on the HOST and the APK is pushed via goadb to the
+# endpoint; the host needs apkeep + android-tools (adb) for the `package:`
+# download path (PKGBUILD optdepends). The `apk: <committed-file>` path
+# needs neither (pure goadb push). The 127.0.0.1:35002 value here matches
+# the check-android-emulator-pod bed's published ADB port — it lets the
+# remote/endpoint code path be exercised against the bed's own emulator
+# with no physical hardware.
+pixel9a-endpoint:
+    android:
+        adb:
+            # ${HOST_PORT:5037} resolves at deploy time to the PARENT emulator
+            # pod's host-mapped adb-server port (container 5037), so the endpoint
+            # follows the pod's published port instead of hard-coding it. Used
+            # nested under check-android-emulator-pod (which publishes …:5037).
+            host: 127.0.0.1:${HOST_PORT:5037}
+        serial: emulator-5554
+        device: pixel_9a

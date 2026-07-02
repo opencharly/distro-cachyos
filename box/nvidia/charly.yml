@@ -1,0 +1,15 @@
+nvidia:
+    candy:
+        # CachyOS GPU base — the Arch-derived analogue of the Fedora `nvidia`
+        # image. Inherits build:[pac] + builder→arch.arch-builder from the cachyos
+        # base (same namespace). The nvidia + cuda layers are multi-distro and
+        # install the Arch GPU stack (nvidia-utils, nvidia-container-toolkit,
+        # cuda, cudnn, onnxruntime).
+        base: cachyos
+        platform:
+            - linux/amd64
+    nvidia-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/cuda:v2026.183.1359'

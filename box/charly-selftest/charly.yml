@@ -1,0 +1,11 @@
+charly-selftest:
+    candy:
+        base: cachyos
+        build:
+            - pac
+            - aur
+    charly-selftest-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/charly-mcp:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/container-nesting:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.183.1359'

@@ -1,0 +1,59 @@
+cachyos:
+    candy:
+        version: 2026.152.2025
+        # Canonical CachyOS base: the upstream-published OCI image (cachyos-v3 —
+        # x86_64_v3-optimized). The pacstrap-from-scratch variant is preserved as
+        # `cachyos-pacstrap` for environments where pulling from Docker Hub isn't
+        # possible.
+        # Pinned by digest (NO floating tag) — Docker Hub publishes ONLY the
+        # rolling tag for cachyos-v3 (no named/dated tags exist), so a digest is
+        # the most precise coordinate. Refresh by repinning to a newer digest:
+        #   skopeo inspect --no-tags docker://docker.io/cachyos/cachyos-v3 | jq -r .Digest
+        base: docker.io/cachyos/cachyos-v3@sha256:179b4523807e3e3faddca03ca9ee9e16256b196820cfc8709273a21ad284e3a9
+        build:
+            - pac
+        # CachyOS is Arch-derived and has no builder of its own; route all four
+        # formats to arch.arch-builder (the opencharly/distro-arch submodule's builder, via
+        # the `arch` import namespace). Builder maps do NOT cross a namespace
+        # boundary, so a consumer that builds declares its own builder map.
+        builder:
+            aur: arch.arch-builder
+            cargo: arch.arch-builder
+            npm: arch.arch-builder
+            pixi: arch.arch-builder
+        produce:
+            - pixi
+            - npm
+            - cargo
+            - aur
+    cachyos-distro:
+        distro:
+            - cachyos
+            - arch
+    cachyos-os-release:
+        check: command=cat /etc/os-release
+        id: cachyos-os-release
+        exit_status: 0
+        stdout:
+            - contains: "ID=cachyos"
+        plugin: command
+        plugin_input:
+            command: cat /etc/os-release
+    cachyos-pacman:
+        check: command=pacman --version
+        id: cachyos-pacman
+        exit_status: 0
+        stdout:
+            - contains: "Pacman v"
+        plugin: command
+        plugin_input:
+            command: pacman --version
+    cachyos-v3-repo-configured:
+        check: command=pacman-conf --repo-list
+        id: cachyos-v3-repo-configured
+        exit_status: 0
+        stdout:
+            - contains: "cachyos-v3"
+        plugin: command
+        plugin_input:
+            command: pacman-conf --repo-list

@@ -1,0 +1,35 @@
+openclaw-desktop:
+    candy:
+        # All-in-one CachyOS power image: the selkies streaming desktop + the
+        # openclaw-full gateway/tool stack (claude-code/codex/gemini included) +
+        # a CPU ollama + the full nested charly toolchain (build images, run nested
+        # rootless pods, launch rootless libvirt VMs from a terminal inside the
+        # desktop). build:[pac,aur] is required for selkies' AUR google-chrome
+        # + wlrctl.
+        enabled: true
+        base: cachyos
+        build:
+            - pac
+            - aur
+        platform:
+            - linux/amd64
+    openclaw-desktop-candy:
+        candy:
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/selkies-desktop:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/openclaw-full:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/ollama:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/container-nesting:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/golang:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/gh:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.183.1359'
+        # No box-level check: every check this all-in-one image carries lives on the
+        # candy that provides the behaviour, so each is covered once across all
+        # composing boxes — selkies/chrome/labwc/traefik/sshd binaries (selkies +
+        # chrome/labwc/sshd candies), ollama/gocryptfs/socat (their candies), the
+        # nested-rootless posture + nested-podman-run + nested binaries
+        # (container-nesting), the rootless libvirt session (virtualization, via the
+        # charly toolchain), charly version/doctor (charly), the chrome-devtools-mcp
+        # port (chrome-devtools-mcp), the gateway port (openclaw), and the ollama API
+        # (ollama).
