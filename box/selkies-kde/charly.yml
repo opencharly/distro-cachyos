@@ -12,7 +12,6 @@ selkies-kde:
             - aur
         platform:
             - linux/amd64
-    selkies-kde-candy:
         candy:
             - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/selkies-kde-desktop:v2026.183.1359'

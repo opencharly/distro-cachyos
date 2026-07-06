@@ -24,15 +24,14 @@ android-emulator:
         # (android-sdk emulator-binary/adb-binary, appium-server appium-binary,
         # java-openjdk java-binary, android-emulator-layer start-emulator-script +
         # emulator-service-running), so one check covers every box composing them.
-    android-emulator-candy:
+
         candy:
             - '@github.com/opencharly/charly/candy/nodejs:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/java-openjdk:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/android-sdk:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/appium-server:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/android-emulator-layer:v2026.183.1359'
-    android-emulator-env:
         env:
-            - EMULATOR_NAME=charly_avd_36
-            - EMULATOR_API_LEVEL=36
-            - EMULATOR_DEVICE=pixel_9a
+            EMULATOR_NAME: charly_avd_36
+            EMULATOR_API_LEVEL: "36"
+            EMULATOR_DEVICE: pixel_9a

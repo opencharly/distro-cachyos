@@ -6,10 +6,8 @@ cachyos-pacstrap-builder:
         base: arch.arch
         build:
             - pac
-    cachyos-pacstrap-builder-distro:
         distro:
             - arch
-    cachyos-pacstrap-builder-candy:
         candy:
             - '@github.com/opencharly/charly/candy/pacstrap-builder:v2026.183.1359'
         # No box-level check: the pacstrap/arch-install-scripts/grub/parted toolchain

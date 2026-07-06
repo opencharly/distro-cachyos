@@ -9,7 +9,6 @@ cachyos-kde-settings:
             with the generic kde-desktop layer to reproduce a stock CachyOS KDE
             workstation. Verifiable: the cachyos settings/theme/wallpaper packages
             install and (at deploy scope) SDDM autologin is configured.
-    cachyos-kde-settings-distro:
         distro:
             arch:
                 package:
@@ -35,7 +34,6 @@ cachyos-kde-settings:
                     # qt6-tools provides qdbus6 — the Plasma scripting CLI driven by
                     # the all-monitors panel autostart below (R9 explicit dep).
                     - qt6-tools
-    cachyos-kde-settings-service:
         service:
             # Headless always-on policy (part 2 of 2): inhibit powerdevil's idle
             # screen-OFF / dim / suspend (and the screensaver) for the session lifetime.
@@ -50,106 +48,87 @@ cachyos-kde-settings:
               enable: true
               scope: user
               after: [graphical-session.target]
-    cachyos-kde-settings-step-0:
-        run: |
-            command=u="$(getent passwd 1000 | cut -d: -f1)"
-            mkdir -p /etc/sddm.conf.d
-            printf '[Autologin]\nUser=%s\nSession=plasma.desktop\n' "$u" > /etc/sddm.conf.d/10-charly-autologin.conf
-        run_as: root
-        plugin: command
-        plugin_input:
-            command: |
+        plan:
+            - run: |
+                command=u="$(getent passwd 1000 | cut -d: -f1)"
+                mkdir -p /etc/sddm.conf.d
+                printf '[Autologin]\nUser=%s\nSession=plasma.desktop\n' "$u" > /etc/sddm.conf.d/10-charly-autologin.conf
+              run_as: root
+              command: |
                 u="$(getent passwd 1000 | cut -d: -f1)"
                 mkdir -p /etc/sddm.conf.d
                 printf '[Autologin]\nUser=%s\nSession=plasma.desktop\n' "$u" > /etc/sddm.conf.d/10-charly-autologin.conf
-    cachyos-kde-settings-step-1:
-        run: copy=charly-kde-panels-all-screens.sh
-        copy: charly-kde-panels-all-screens.sh
-        to: /usr/local/bin/charly-kde-panels-all-screens.sh
-        mode: "0755"
-        run_as: root
-    cachyos-kde-settings-step-2:
-        run: copy=charly-kde-panels-all-screens.desktop
-        copy: charly-kde-panels-all-screens.desktop
-        to: /etc/xdg/autostart/charly-kde-panels-all-screens.desktop
-        mode: "0644"
-        run_as: root
-    cachyos-kde-settings-step-3:
-        run: write=/etc/xdg/kscreenlockerrc
-        write: /etc/xdg/kscreenlockerrc
-        run_as: root
-        mode: "0644"
-        content: |
-            [Daemon]
-            Autolock=false
-            LockOnResume=false
-    cachyos-kde-settings-step-4:
-        check: the cachyos-settings package is installed
-        plugin: package
-        plugin_input:
-            package: cachyos-settings
-            installed: true
-    cachyos-kde-settings-step-5:
-        check: the cachyos-kde-settings package is installed
-        plugin: package
-        plugin_input:
-            package: cachyos-kde-settings
-            installed: true
-    cachyos-kde-settings-step-6:
-        check: SDDM is configured to auto-login into the Plasma Wayland session
-        context:
-            - runtime
-        plugin: file
-        plugin_input:
-            file: /etc/sddm.conf.d/10-charly-autologin.conf
-            contains: "Session=plasma.desktop"
-    sddm-autologin-configured:
-        check: file=/etc/sddm.conf.d/10-charly-autologin.conf
-        id: sddm-autologin-configured
-        context:
-            - runtime
-        plugin: file
-        plugin_input:
-            file: /etc/sddm.conf.d/10-charly-autologin.conf
-            contains: "Session=plasma.desktop"
-    kde-panel-autostart-installed:
-        check: |
-            command=test -x /usr/local/bin/charly-kde-panels-all-screens.sh || { echo "FAIL: panel ensure-script missing or not executable"; exit 1; }
-            test -f /etc/xdg/autostart/charly-kde-panels-all-screens.desktop || { echo "FAIL: panel autostart .desktop missing"; exit 1; }
-            echo PANEL-AUTOSTART-INSTALLED
-        id: kde-panel-autostart-installed
-        stdout:
-            contains: PANEL-AUTOSTART-INSTALLED
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - run: copy=charly-kde-panels-all-screens.sh
+              copy: charly-kde-panels-all-screens.sh
+              to: /usr/local/bin/charly-kde-panels-all-screens.sh
+              mode: "0755"
+              run_as: root
+            - run: copy=charly-kde-panels-all-screens.desktop
+              copy: charly-kde-panels-all-screens.desktop
+              to: /etc/xdg/autostart/charly-kde-panels-all-screens.desktop
+              mode: "0644"
+              run_as: root
+            - run: write=/etc/xdg/kscreenlockerrc
+              write: /etc/xdg/kscreenlockerrc
+              run_as: root
+              mode: "0644"
+              content: |
+                [Daemon]
+                Autolock=false
+                LockOnResume=false
+            - check: the cachyos-settings package is installed
+              package:
+                package: cachyos-settings
+                installed: true
+            - check: the cachyos-kde-settings package is installed
+              package:
+                package: cachyos-kde-settings
+                installed: true
+            - check: SDDM is configured to auto-login into the Plasma Wayland session
+              context:
+                - runtime
+              file:
+                file: /etc/sddm.conf.d/10-charly-autologin.conf
+                contains: "Session=plasma.desktop"
+            - check: file=/etc/sddm.conf.d/10-charly-autologin.conf
+              id: sddm-autologin-configured
+              context:
+                - runtime
+              file:
+                file: /etc/sddm.conf.d/10-charly-autologin.conf
+                contains: "Session=plasma.desktop"
+            - check: |
+                command=test -x /usr/local/bin/charly-kde-panels-all-screens.sh || { echo "FAIL: panel ensure-script missing or not executable"; exit 1; }
+                test -f /etc/xdg/autostart/charly-kde-panels-all-screens.desktop || { echo "FAIL: panel autostart .desktop missing"; exit 1; }
+                echo PANEL-AUTOSTART-INSTALLED
+              id: kde-panel-autostart-installed
+              stdout:
+                contains: PANEL-AUTOSTART-INSTALLED
+              context:
+                - runtime
+              command: |
                 test -x /usr/local/bin/charly-kde-panels-all-screens.sh || { echo "FAIL: panel ensure-script missing or not executable"; exit 1; }
                 test -f /etc/xdg/autostart/charly-kde-panels-all-screens.desktop || { echo "FAIL: panel autostart .desktop missing"; exit 1; }
                 echo PANEL-AUTOSTART-INSTALLED
-    kde-panel-on-every-screen:
-        check: |
-            command=export XDG_RUNTIME_DIR=/run/user/$(id -u)
-            export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
-            QDBUS=qdbus6; command -v qdbus6 >/dev/null 2>&1 || QDBUS=qdbus
-            # Drive the deployed ensure-script (idempotent), then assert that no
-            # screen is left without a Plasma panel.
-            [ -x /usr/local/bin/charly-kde-panels-all-screens.sh ] && /usr/local/bin/charly-kde-panels-all-screens.sh >/dev/null 2>&1
-            out=$("$QDBUS" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'var have={}; panels().forEach(function(p){have[p.screen]=true;}); var missing=[]; for(var s=0;s<screenCount;s++){ if(!have[s]) missing.push(s); } print("screens="+screenCount+" panels="+panels().length+" missing=["+missing.join(",")+"]");' 2>/dev/null)
-            echo "$out"
-            case "$out" in
-              *"missing=[]"*) echo PANEL-ON-EVERY-SCREEN ;;
-              *) echo "FAIL: some screens have no Plasma panel"; exit 1 ;;
-            esac
-        id: kde-panel-on-every-screen
-        stdout:
-            contains: PANEL-ON-EVERY-SCREEN
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=export XDG_RUNTIME_DIR=/run/user/$(id -u)
+                export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+                QDBUS=qdbus6; command -v qdbus6 >/dev/null 2>&1 || QDBUS=qdbus
+                # Drive the deployed ensure-script (idempotent), then assert that no
+                # screen is left without a Plasma panel.
+                [ -x /usr/local/bin/charly-kde-panels-all-screens.sh ] && /usr/local/bin/charly-kde-panels-all-screens.sh >/dev/null 2>&1
+                out=$("$QDBUS" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'var have={}; panels().forEach(function(p){have[p.screen]=true;}); var missing=[]; for(var s=0;s<screenCount;s++){ if(!have[s]) missing.push(s); } print("screens="+screenCount+" panels="+panels().length+" missing=["+missing.join(",")+"]");' 2>/dev/null)
+                echo "$out"
+                case "$out" in
+                  *"missing=[]"*) echo PANEL-ON-EVERY-SCREEN ;;
+                  *) echo "FAIL: some screens have no Plasma panel"; exit 1 ;;
+                esac
+              id: kde-panel-on-every-screen
+              stdout:
+                contains: PANEL-ON-EVERY-SCREEN
+              context:
+                - runtime
+              command: |
                 export XDG_RUNTIME_DIR=/run/user/$(id -u)
                 export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
                 QDBUS=qdbus6; command -v qdbus6 >/dev/null 2>&1 || QDBUS=qdbus
@@ -162,52 +141,39 @@ cachyos-kde-settings:
                   *"missing=[]"*) echo PANEL-ON-EVERY-SCREEN ;;
                   *) echo "FAIL: some screens have no Plasma panel"; exit 1 ;;
                 esac
-    cachyos-settings-installed:
-        check: package=cachyos-settings
-        id: cachyos-settings-installed
-        plugin: package
-        plugin_input:
-            package: cachyos-settings
-            installed: true
-    cachyos-kde-settings-installed:
-        check: package=cachyos-kde-settings
-        id: cachyos-kde-settings-installed
-        plugin: package
-        plugin_input:
-            package: cachyos-kde-settings
-            installed: true
-    cachyos-wallpapers-installed:
-        check: package=cachyos-wallpapers
-        id: cachyos-wallpapers-installed
-        plugin: package
-        plugin_input:
-            package: cachyos-wallpapers
-            installed: true
-    cachyos-themes-sddm-installed:
-        check: package=cachyos-themes-sddm
-        id: cachyos-themes-sddm-installed
-        plugin: package
-        plugin_input:
-            package: cachyos-themes-sddm
-            installed: true
-    kscreenlocker-autolock-disabled:
-        check: file=/etc/xdg/kscreenlockerrc
-        id: kscreenlocker-autolock-disabled
-        context:
-            - runtime
-        plugin: file
-        plugin_input:
-            file: /etc/xdg/kscreenlockerrc
-            contains: "Autolock=false"
-    display-keepalive-active:
-        check: |
-            command=pgrep -f 'kde-inhibit .*screenSaver' >/dev/null 2>&1 && echo KEEPALIVE-OK || { echo "FAIL: charly-display-keepalive (kde-inhibit) not running — idle screen-off not inhibited"; exit 1; }
-        id: display-keepalive-active
-        stdout:
-            contains: KEEPALIVE-OK
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: package=cachyos-settings
+              id: cachyos-settings-installed
+              package:
+                package: cachyos-settings
+                installed: true
+            - check: package=cachyos-kde-settings
+              id: cachyos-kde-settings-installed
+              package:
+                package: cachyos-kde-settings
+                installed: true
+            - check: package=cachyos-wallpapers
+              id: cachyos-wallpapers-installed
+              package:
+                package: cachyos-wallpapers
+                installed: true
+            - check: package=cachyos-themes-sddm
+              id: cachyos-themes-sddm-installed
+              package:
+                package: cachyos-themes-sddm
+                installed: true
+            - check: file=/etc/xdg/kscreenlockerrc
+              id: kscreenlocker-autolock-disabled
+              context:
+                - runtime
+              file:
+                file: /etc/xdg/kscreenlockerrc
+                contains: "Autolock=false"
+            - check: |
+                command=pgrep -f 'kde-inhibit .*screenSaver' >/dev/null 2>&1 && echo KEEPALIVE-OK || { echo "FAIL: charly-display-keepalive (kde-inhibit) not running — idle screen-off not inhibited"; exit 1; }
+              id: display-keepalive-active
+              stdout:
+                contains: KEEPALIVE-OK
+              context:
+                - runtime
+              command: |
                 pgrep -f 'kde-inhibit .*screenSaver' >/dev/null 2>&1 && echo KEEPALIVE-OK || { echo "FAIL: charly-display-keepalive (kde-inhibit) not running — idle screen-off not inhibited"; exit 1; }

@@ -8,6 +8,5 @@ cuda-check:
         base: nvidia
         platform:
             - linux/amd64
-    cuda-check-candy:
         candy:
             - cuda-smoke

@@ -10,7 +10,6 @@ cachyos-pacstrap:
         bootstrap_builder_image: cachyos-pacstrap-builder
         build:
             - pac
-    cachyos-pacstrap-distro:
         distro:
             - cachyos
             - arch

@@ -10,7 +10,6 @@ githubrunner:
         # container-nesting's rootless posture (cap_add:[], unmask=/proc/*,
         # /dev/fuse, /dev/net/tun) at uid 1000. Same shape as openclaw-desktop.
         network: host
-    githubrunner-candy:
         candy:
             - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/github-runner:v2026.183.1359'

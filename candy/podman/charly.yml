@@ -8,31 +8,24 @@ podman:
             Minimal on purpose — unlike container-nesting (rootless nested podman),
             a VM guest runs podman as root directly. Verifiable: the podman binary
             lands at /usr/bin/podman and reports its version.
-    podman-distro:
         distro:
             arch:
                 package:
                     - podman
                     - crun
                     - netavark
-    podman-step-0:
-        check: the podman binary is installed at /usr/bin/podman
-        plugin: file
-        plugin_input:
-            file: /usr/bin/podman
-            exists: true
-    podman-step-1:
-        check: podman reports its version
-        exit_status: 0
-        stdout:
-            - matches: "podman version"
-        plugin: command
-        plugin_input:
-            command: /usr/bin/podman --version
-    podman-binary:
-        check: file=/usr/bin/podman
-        id: podman-binary
-        plugin: file
-        plugin_input:
-            file: /usr/bin/podman
-            exists: true
+        plan:
+            - check: the podman binary is installed at /usr/bin/podman
+              file:
+                file: /usr/bin/podman
+                exists: true
+            - check: podman reports its version
+              exit_status: 0
+              stdout:
+                - matches: "podman version"
+              command: /usr/bin/podman --version
+            - check: file=/usr/bin/podman
+              id: podman-binary
+              file:
+                file: /usr/bin/podman
+                exists: true

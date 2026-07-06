@@ -26,34 +26,25 @@ cachyos:
             - npm
             - cargo
             - aur
-    cachyos-distro:
         distro:
             - cachyos
             - arch
-    cachyos-os-release:
-        check: command=cat /etc/os-release
-        id: cachyos-os-release
-        exit_status: 0
-        stdout:
-            - contains: "ID=cachyos"
-        plugin: command
-        plugin_input:
-            command: cat /etc/os-release
-    cachyos-pacman:
-        check: command=pacman --version
-        id: cachyos-pacman
-        exit_status: 0
-        stdout:
-            - contains: "Pacman v"
-        plugin: command
-        plugin_input:
-            command: pacman --version
-    cachyos-v3-repo-configured:
-        check: command=pacman-conf --repo-list
-        id: cachyos-v3-repo-configured
-        exit_status: 0
-        stdout:
-            - contains: "cachyos-v3"
-        plugin: command
-        plugin_input:
-            command: pacman-conf --repo-list
+        plan:
+            - check: command=cat /etc/os-release
+              id: cachyos-os-release
+              exit_status: 0
+              stdout:
+                - contains: "ID=cachyos"
+              command: cat /etc/os-release
+            - check: command=pacman --version
+              id: cachyos-pacman
+              exit_status: 0
+              stdout:
+                - contains: "Pacman v"
+              command: pacman --version
+            - check: command=pacman-conf --repo-list
+              id: cachyos-v3-repo-configured
+              exit_status: 0
+              stdout:
+                - contains: "cachyos-v3"
+              command: pacman-conf --repo-list

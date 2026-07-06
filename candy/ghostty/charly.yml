@@ -6,45 +6,33 @@ ghostty:
             Installs the ghostty terminal emulator. Verifiable: the ghostty binary
             lands at /usr/bin/ghostty, the package is registered, and
             `ghostty --version` reports its version banner.
-    ghostty-distro:
         distro:
             arch:
                 package:
                     - ghostty
-    ghostty-step-0:
-        check: the ghostty binary is installed at /usr/bin/ghostty
-        plugin: file
-        plugin_input:
-            file: /usr/bin/ghostty
-            exists: true
-    ghostty-step-1:
-        check: ghostty reports its version
-        exit_status: 0
-        stdout:
-            - matches: "^Ghostty"
-        plugin: command
-        plugin_input:
-            command: /usr/bin/ghostty --version
-    ghostty-binary:
-        check: file=/usr/bin/ghostty
-        id: ghostty-binary
-        plugin: file
-        plugin_input:
-            file: /usr/bin/ghostty
-            exists: true
-    ghostty-package:
-        check: package=ghostty
-        id: ghostty-package
-        plugin: package
-        plugin_input:
-            package: ghostty
-            installed: true
-    ghostty-version:
-        check: command=/usr/bin/ghostty --version
-        id: ghostty-version
-        exit_status: 0
-        stdout:
-            - matches: "^Ghostty"
-        plugin: command
-        plugin_input:
-            command: /usr/bin/ghostty --version
+        plan:
+            - check: the ghostty binary is installed at /usr/bin/ghostty
+              file:
+                file: /usr/bin/ghostty
+                exists: true
+            - check: ghostty reports its version
+              exit_status: 0
+              stdout:
+                - matches: "^Ghostty"
+              command: /usr/bin/ghostty --version
+            - check: file=/usr/bin/ghostty
+              id: ghostty-binary
+              file:
+                file: /usr/bin/ghostty
+                exists: true
+            - check: package=ghostty
+              id: ghostty-package
+              package:
+                package: ghostty
+                installed: true
+            - check: command=/usr/bin/ghostty --version
+              id: ghostty-version
+              exit_status: 0
+              stdout:
+                - matches: "^Ghostty"
+              command: /usr/bin/ghostty --version

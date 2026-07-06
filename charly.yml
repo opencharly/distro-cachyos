@@ -19,7 +19,7 @@
 #  Directly buildable: `charly box build cachyos` (from the parent repo:
 #  `charly -C box/cachyos box build cachyos`; anywhere:
 #  `charly --repo opencharly/distro-cachyos box build cachyos`).
-version: 2026.174.1100
+version: 2026.186.2323
 defaults:
     platform:
         - linux/amd64
@@ -52,7 +52,6 @@ check-cachyos-vm:
         disposable: true
         lifecycle: dev
         description: Sole proof of the CachyOS pacstrap-from-scratch bootstrap VM booting AND the charly toolchain installing as a native pac package (opencharly-git via makepkg + pacman -U), distinct from the Arch cloud-VM pac witness. Pacstrap-builds a CachyOS rootfs, boots it under UEFI, deploys the charly + dev-tools layers over SSH (the charly localpkg builds opencharly-git from the superproject pkg/arch), then runs the baked charly-binary/version + dev-tools command/file/package checks.
-    check-cachyos-vm-add_candy:
         # The cachyos bootstrap-VM R10 canary: pacstrap builds the cachyos rootfs
         # from scratch, the guest boots, the charly candy deploys onto it (its
         # localpkg: builds opencharly-git from the superproject pkg/arch via makepkg
@@ -67,7 +66,6 @@ check-cachyos-vm:
         add_candy:
             - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/dev-tools:v2026.183.1359'
-    check-cachyos-vm-install_opts:
         install_opts:
             allow_repo_changes: true
             allow_root_tasks: true
@@ -95,10 +93,6 @@ check-cachyos-gpu-vm:
         disposable: true
         lifecycle: dev
         description: Sole proof of the operator's dual-desktop GPU workstation config — a VFIO GPU-passthrough VM running BOTH a bare-metal KDE/SDDM seat AND a nested selkies-kde-nvidia streaming pod with real NVENC; the only bed exercising spice+wl+mcp + gpu-passthrough + preempt + nested + localpkg + multistage together. Pacstrap GPU-passthrough VM (preempts the preemptible nvidia-gpu holder) installs the KDE seat + nvidia driver/CDI + charly localpkg + npm AI CLIs, deploys a nested selkies-kde-nvidia quadlet, then over SSH runs ~14 command checks plus the inherited cachyos-gpu-desktop-check spice probes; GPU/NVENC checks N/A cleanly without a VFIO host.
-    selkies-kde:
-        pod:
-            image: selkies-kde-nvidia
-    check-cachyos-gpu-vm-requires_exclusive:
         # Claims the single physical NVIDIA GPU. The resource arbiter
         # (charly/preempt.go) gracefully preempts any RUNNING preemptible holder of
         # the `nvidia-gpu` token — e.g. the operator's vm:cachyos-gpu workstation
@@ -110,7 +104,6 @@ check-cachyos-gpu-vm:
         # runs anywhere. See /charly-internals:disposable "The resource-arbitration
         # axis", /charly-core:deploy.
         requires_exclusive: [nvidia-gpu]
-    check-cachyos-gpu-vm-add_candy:
         add_candy:
             # Order matters: everything before nvidia-driver, whose reboot: true
             # emits a trailing RebootStep — so the guest reboots ONCE after the
@@ -152,7 +145,6 @@ check-cachyos-gpu-vm:
             - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
             - nvidia-driver
-    check-cachyos-gpu-vm-install_opts:
         install_opts:
             # with_service gates the systemd unit enable for sddm (the bare-metal
             # KDE seat). The persistent cachyos-gpu deploy sets it; the bed must
@@ -169,157 +161,131 @@ check-cachyos-gpu-vm:
             # NVENC pixi build of pixelflux now lives in the selkies-kde-nvidia image
             # built on the host, not these guest layers).
             builder_image: arch.cuda-arch-builder
-    gpu-guest-cachyos-kernel:
-        check: command=pacman -Q linux-cachyos 2>/dev/null && echo CACHYOS-KERNEL
-        id: gpu-guest-cachyos-kernel
-        stdout:
-            contains: CACHYOS-KERNEL
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: pacman -Q linux-cachyos 2>/dev/null && echo CACHYOS-KERNEL
-    gpu-podman-present:
-        check: command=command -v podman
-        id: gpu-podman-present
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: command -v podman
-    gpu-nvidia-ctk-present:
-        check: command=command -v nvidia-ctk
-        id: gpu-nvidia-ctk-present
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: command -v nvidia-ctk
-    gpu-nouveau-blacklisted:
-        check: |
-            command=if lsmod | grep -q nouveau; then echo NOUVEAU-LOADED; else echo nouveau-blacklisted; fi
-        id: gpu-nouveau-blacklisted
-        stdout:
-            contains: nouveau-blacklisted
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+        plan:
+            - check: command=pacman -Q linux-cachyos 2>/dev/null && echo CACHYOS-KERNEL
+              id: gpu-guest-cachyos-kernel
+              stdout:
+                contains: CACHYOS-KERNEL
+              context:
+                - runtime
+              command: pacman -Q linux-cachyos 2>/dev/null && echo CACHYOS-KERNEL
+            - check: command=command -v podman
+              id: gpu-podman-present
+              exit_status: 0
+              context:
+                - runtime
+              command: command -v podman
+            - check: command=command -v nvidia-ctk
+              id: gpu-nvidia-ctk-present
+              exit_status: 0
+              context:
+                - runtime
+              command: command -v nvidia-ctk
+            - check: |
+                command=if lsmod | grep -q nouveau; then echo NOUVEAU-LOADED; else echo nouveau-blacklisted; fi
+              id: gpu-nouveau-blacklisted
+              stdout:
+                contains: nouveau-blacklisted
+              context:
+                - runtime
+              command: |
                 if lsmod | grep -q nouveau; then echo NOUVEAU-LOADED; else echo nouveau-blacklisted; fi
-    gpu-driver-active:
-        check: |
-            command=if ! grep -ql 0x10de /sys/bus/pci/devices/*/vendor 2>/dev/null; then
-              echo "GPU driver N/A: no NVIDIA GPU passed through to this guest"
-            else
-              for i in $(seq 1 30); do { [ -e /dev/nvidia0 ] || nvidia-smi >/dev/null 2>&1; } && break; sleep 2; done
-              nvidia-smi -L
-            fi
-        id: gpu-driver-active
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=if ! grep -ql 0x10de /sys/bus/pci/devices/*/vendor 2>/dev/null; then
+                  echo "GPU driver N/A: no NVIDIA GPU passed through to this guest"
+                else
+                  for i in $(seq 1 30); do { [ -e /dev/nvidia0 ] || nvidia-smi >/dev/null 2>&1; } && break; sleep 2; done
+                  nvidia-smi -L
+                fi
+              id: gpu-driver-active
+              exit_status: 0
+              context:
+                - runtime
+              command: |
                 if ! grep -ql 0x10de /sys/bus/pci/devices/*/vendor 2>/dev/null; then
                   echo "GPU driver N/A: no NVIDIA GPU passed through to this guest"
                 else
                   for i in $(seq 1 30); do { [ -e /dev/nvidia0 ] || nvidia-smi >/dev/null 2>&1; } && break; sleep 2; done
                   nvidia-smi -L
                 fi
-    gpu-charly-proper-package:
-        check: |
-            command=pacman -Q opencharly-git >/dev/null 2>&1 &&
-            test "$(command -v charly)" -ef /usr/bin/charly &&
-            charly bundle from-box --help >/dev/null 2>&1 &&
-            echo CHARLY-PROPER-PACKAGE
-        id: gpu-charly-proper-package
-        stdout:
-            - contains: CHARLY-PROPER-PACKAGE
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=pacman -Q opencharly-git >/dev/null 2>&1 &&
+                test "$(command -v charly)" -ef /usr/bin/charly &&
+                charly bundle from-box --help >/dev/null 2>&1 &&
+                echo CHARLY-PROPER-PACKAGE
+              id: gpu-charly-proper-package
+              stdout:
+                - contains: CHARLY-PROPER-PACKAGE
+              exit_status: 0
+              context:
+                - runtime
+              command: |
                 pacman -Q opencharly-git >/dev/null 2>&1 &&
                 test "$(command -v charly)" -ef /usr/bin/charly &&
                 charly bundle from-box --help >/dev/null 2>&1 &&
                 echo CHARLY-PROPER-PACKAGE
-    nested-selkies-kde-quadlet:
-        check: |
-            command=export XDG_RUNTIME_DIR=/run/user/$(id -u)
-            for i in $(seq 1 30); do systemctl --user is-active charly-selkies-kde >/dev/null 2>&1 && break; sleep 2; done
-            printf 'active=%s linger=%s\n' \
-              "$(systemctl --user is-active charly-selkies-kde 2>/dev/null)" \
-              "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)"
-        id: nested-selkies-kde-quadlet
-        stdout:
-            - contains: active=active
-            - contains: linger=yes
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=export XDG_RUNTIME_DIR=/run/user/$(id -u)
+                for i in $(seq 1 30); do systemctl --user is-active charly-selkies-kde >/dev/null 2>&1 && break; sleep 2; done
+                printf 'active=%s linger=%s\n' \
+                  "$(systemctl --user is-active charly-selkies-kde 2>/dev/null)" \
+                  "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)"
+              id: nested-selkies-kde-quadlet
+              stdout:
+                - contains: active=active
+                - contains: linger=yes
+              exit_status: 0
+              context:
+                - runtime
+              command: |
                 export XDG_RUNTIME_DIR=/run/user/$(id -u)
                 for i in $(seq 1 30); do systemctl --user is-active charly-selkies-kde >/dev/null 2>&1 && break; sleep 2; done
                 printf 'active=%s linger=%s\n' \
                   "$(systemctl --user is-active charly-selkies-kde 2>/dev/null)" \
                   "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)"
-    nested-selkies-kde-stream:
-        check: |
-            command=for i in $(seq 1 60); do
-              code=$(curl -kso /dev/null -w '%{http_code}' https://localhost:3000/ 2>/dev/null)
-              [ "$code" = "200" ] && { echo "STREAM-UP ($code)"; exit 0; }
-              sleep 2
-            done
-            echo "STREAM-DOWN (last=${code:-none})"; exit 1
-        id: nested-selkies-kde-stream
-        stdout:
-            contains: STREAM-UP
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=for i in $(seq 1 60); do
+                  code=$(curl -kso /dev/null -w '%{http_code}' https://localhost:3000/ 2>/dev/null)
+                  [ "$code" = "200" ] && { echo "STREAM-UP ($code)"; exit 0; }
+                  sleep 2
+                done
+                echo "STREAM-DOWN (last=${code:-none})"; exit 1
+              id: nested-selkies-kde-stream
+              stdout:
+                contains: STREAM-UP
+              exit_status: 0
+              context:
+                - runtime
+              command: |
                 for i in $(seq 1 60); do
                   code=$(curl -kso /dev/null -w '%{http_code}' https://localhost:3000/ 2>/dev/null)
                   [ "$code" = "200" ] && { echo "STREAM-UP ($code)"; exit 0; }
                   sleep 2
                 done
                 echo "STREAM-DOWN (last=${code:-none})"; exit 1
-    workspace-virtiofs-idmap-rw:
-        check: |
-            command=# The virtiofs /workspace share is OPERATOR-PROVISIONED (a host-path
-            # filesystems: block the operator adds locally), exactly like the GPU
-            # hostdevs: above — NOT committed on the disposable bed. So this check
-            # N/As (like gpu-driver-active) when no virtiofs /workspace is present,
-            # and exercises the guest-user idmap (D4) only on an operator host that
-            # mounted the share. Never a silent pass where the share WAS provisioned:
-            # there fstype IS virtiofs and the full idmap + RW assertion runs.
-            fstype=$(findmnt -n -o FSTYPE /workspace 2>/dev/null || echo MISSING)
-            if [ "$fstype" != "virtiofs" ]; then
-              echo "WORKSPACE-IDMAP-RW (N/A: no operator-provisioned virtiofs /workspace share on this bed, fstype=$fstype)"
-            else
-              owner=$(stat -c %U /workspace 2>/dev/null)
-              [ "$owner" = "$(id -un)" ] || { echo "FAIL: /workspace owned by '$owner', not the guest user '$(id -un)' — guest-user idmap not applied (libvirt default maps guest-root)"; exit 1; }
-              touch /workspace/.charly-probe 2>/dev/null && rm -f /workspace/.charly-probe && echo WORKSPACE-IDMAP-RW
-            fi
-        id: workspace-virtiofs-idmap-rw
-        exit_status: 0
-        stdout:
-            contains: WORKSPACE-IDMAP-RW
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=# The virtiofs /workspace share is OPERATOR-PROVISIONED (a host-path
+                # filesystems: block the operator adds locally), exactly like the GPU
+                # hostdevs: above — NOT committed on the disposable bed. So this check
+                # N/As (like gpu-driver-active) when no virtiofs /workspace is present,
+                # and exercises the guest-user idmap (D4) only on an operator host that
+                # mounted the share. Never a silent pass where the share WAS provisioned:
+                # there fstype IS virtiofs and the full idmap + RW assertion runs.
+                fstype=$(findmnt -n -o FSTYPE /workspace 2>/dev/null || echo MISSING)
+                if [ "$fstype" != "virtiofs" ]; then
+                  echo "WORKSPACE-IDMAP-RW (N/A: no operator-provisioned virtiofs /workspace share on this bed, fstype=$fstype)"
+                else
+                  owner=$(stat -c %U /workspace 2>/dev/null)
+                  [ "$owner" = "$(id -un)" ] || { echo "FAIL: /workspace owned by '$owner', not the guest user '$(id -un)' — guest-user idmap not applied (libvirt default maps guest-root)"; exit 1; }
+                  touch /workspace/.charly-probe 2>/dev/null && rm -f /workspace/.charly-probe && echo WORKSPACE-IDMAP-RW
+                fi
+              id: workspace-virtiofs-idmap-rw
+              exit_status: 0
+              stdout:
+                contains: WORKSPACE-IDMAP-RW
+              context:
+                - runtime
+              command: |
                 # The virtiofs /workspace share is OPERATOR-PROVISIONED (a host-path
                 # filesystems: block the operator adds locally), exactly like the GPU
                 # hostdevs: above — NOT committed on the disposable bed. So this check
@@ -335,70 +301,61 @@ check-cachyos-gpu-vm:
                   [ "$owner" = "$(id -un)" ] || { echo "FAIL: /workspace owned by '$owner', not the guest user '$(id -un)' — guest-user idmap not applied (libvirt default maps guest-root)"; exit 1; }
                   touch /workspace/.charly-probe 2>/dev/null && rm -f /workspace/.charly-probe && echo WORKSPACE-IDMAP-RW
                 fi
-    ai-cli-claude-installed:
-        check: |
-            command=test -x "$HOME/.npm-global/bin/claude" || { echo "FAIL: ~/.npm-global/bin/claude missing — cross-host npm builder did not install it"; exit 1; }
-            "$HOME/.npm-global/bin/claude" --version >/dev/null 2>&1 && echo CLAUDE-INSTALLED
-        id: ai-cli-claude-installed
-        stdout:
-            contains: CLAUDE-INSTALLED
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=test -x "$HOME/.npm-global/bin/claude" || { echo "FAIL: ~/.npm-global/bin/claude missing — cross-host npm builder did not install it"; exit 1; }
+                "$HOME/.npm-global/bin/claude" --version >/dev/null 2>&1 && echo CLAUDE-INSTALLED
+              id: ai-cli-claude-installed
+              stdout:
+                contains: CLAUDE-INSTALLED
+              context:
+                - runtime
+              command: |
                 test -x "$HOME/.npm-global/bin/claude" || { echo "FAIL: ~/.npm-global/bin/claude missing — cross-host npm builder did not install it"; exit 1; }
                 "$HOME/.npm-global/bin/claude" --version >/dev/null 2>&1 && echo CLAUDE-INSTALLED
-    envd-guest-home:
-        check: |
-            command=f="$HOME/.config/opencharly/env.d/nodejs.env"
-            test -f "$f" || { echo "FAIL: $f missing"; exit 1; }
-            grep -q "$HOME/.npm-global" "$f" || { echo "FAIL: env.d NPM prefix not the guest home"; cat "$f"; exit 1; }
-            foreign=$(grep -oE '/home/[^/[:space:]"]+' "$f" | sort -u | grep -vxF "$HOME")
-            [ -z "$foreign" ] || { echo "FAIL: env.d baked a foreign home path (the \$HOME bug): $foreign"; cat "$f"; exit 1; }
-            echo ENVD-GUEST-HOME
-        id: envd-guest-home
-        stdout:
-            contains: ENVD-GUEST-HOME
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=f="$HOME/.config/opencharly/env.d/nodejs.env"
+                test -f "$f" || { echo "FAIL: $f missing"; exit 1; }
+                grep -q "$HOME/.npm-global" "$f" || { echo "FAIL: env.d NPM prefix not the guest home"; cat "$f"; exit 1; }
+                foreign=$(grep -oE '/home/[^/[:space:]"]+' "$f" | sort -u | grep -vxF "$HOME")
+                [ -z "$foreign" ] || { echo "FAIL: env.d baked a foreign home path (the \$HOME bug): $foreign"; cat "$f"; exit 1; }
+                echo ENVD-GUEST-HOME
+              id: envd-guest-home
+              stdout:
+                contains: ENVD-GUEST-HOME
+              context:
+                - runtime
+              command: |
                 f="$HOME/.config/opencharly/env.d/nodejs.env"
                 test -f "$f" || { echo "FAIL: $f missing"; exit 1; }
                 grep -q "$HOME/.npm-global" "$f" || { echo "FAIL: env.d NPM prefix not the guest home"; cat "$f"; exit 1; }
                 foreign=$(grep -oE '/home/[^/[:space:]"]+' "$f" | sort -u | grep -vxF "$HOME")
                 [ -z "$foreign" ] || { echo "FAIL: env.d baked a foreign home path (the \$HOME bug): $foreign"; cat "$f"; exit 1; }
                 echo ENVD-GUEST-HOME
-    envd-on-login-path:
-        check: |
-            command=bash -lic 'command -v claude >/dev/null 2>&1' && echo CLAUDE-ON-LOGIN-PATH || { echo "FAIL: claude not on the interactive-login PATH — env.d aggregator not sourced by the login shell"; exit 1; }
-        id: envd-on-login-path
-        stdout:
-            contains: CLAUDE-ON-LOGIN-PATH
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=bash -lic 'command -v claude >/dev/null 2>&1' && echo CLAUDE-ON-LOGIN-PATH || { echo "FAIL: claude not on the interactive-login PATH — env.d aggregator not sourced by the login shell"; exit 1; }
+              id: envd-on-login-path
+              stdout:
+                contains: CLAUDE-ON-LOGIN-PATH
+              context:
+                - runtime
+              command: |
                 bash -lic 'command -v claude >/dev/null 2>&1' && echo CLAUDE-ON-LOGIN-PATH || { echo "FAIL: claude not on the interactive-login PATH — env.d aggregator not sourced by the login shell"; exit 1; }
-    qemu-ga-active:
-        check: |
-            command=test -f /etc/qemu/qemu-ga.conf && systemctl is-active --quiet qemu-guest-agent && echo QGA-ACTIVE
-        id: qemu-ga-active
-        stdout:
-            contains: QGA-ACTIVE
-            # Shared desktop / monitor / SPICE / selkies checks now
-            # live in the cachyos-gpu-desktop-check layer (added via add_layer above);
-            # charly check live collects an applied layer's deploy-scope checks, so the SAME
-            # set runs on BOTH this bed and the persistent cachyos-gpu deploy (R3).
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: |
+                command=test -f /etc/qemu/qemu-ga.conf && systemctl is-active --quiet qemu-guest-agent && echo QGA-ACTIVE
+              id: qemu-ga-active
+              stdout:
+                contains: QGA-ACTIVE
+                # Shared desktop / monitor / SPICE / selkies checks now
+                # live in the cachyos-gpu-desktop-check layer (added via add_layer above);
+                # charly check live collects an applied layer's deploy-scope checks, so the SAME
+                # set runs on BOTH this bed and the persistent cachyos-gpu deploy (R3).
+              context:
+                - runtime
+              command: |
                 test -f /etc/qemu/qemu-ga.conf && systemctl is-active --quiet qemu-guest-agent && echo QGA-ACTIVE
+    selkies-kde:
+        pod:
+            image: selkies-kde-nvidia
 # Disposable R10 pod beds for the CachyOS GPU image family. Each drives the
 # full `charly check run` sequence (build → check box → deploy → check live →
 # fresh update → tear down) on the cachyos-namespace image of the same name.
@@ -414,7 +371,6 @@ check-cachyos-jupyter-ml-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS GPU jupyter-ml image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml pod (cachyos.nvidia base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
-    check-cachyos-jupyter-ml-pod-requires_shared:
         requires_shared: [nvidia-gpu]
 check-cachyos-ollama-pod:
     pod:
@@ -428,7 +384,6 @@ check-cachyos-comfyui-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS GPU comfyui image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui pod and runs the inherited comfyui + dbus baked checks — ComfyUI HTTP UI liveness plus service/port/file/command probes.
-    check-cachyos-comfyui-pod-requires_shared:
         requires_shared: [nvidia-gpu]
 check-cachyos-unsloth-studio-pod:
     pod:
@@ -436,7 +391,6 @@ check-cachyos-unsloth-studio-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS GPU unsloth-studio fine-tuning notebook + API composes on the Arch CUDA base (no MCP candy, unlike jupyter-ml). Builds and deploys the unsloth-studio pod and runs the inherited unsloth-studio + notebook-finetuning + dbus baked checks — notebook/API HTTP liveness plus file/service/port/command probes.
-    check-cachyos-unsloth-studio-pod-requires_shared:
         requires_shared: [nvidia-gpu]
 check-cachyos-immich-ml-pod:
     pod:
@@ -444,7 +398,6 @@ check-cachyos-immich-ml-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof the full 9-candy Immich photo stack (Immich + PostgreSQL + VectorChord + Redis + CUDA ML) composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the immich-ml pod (nodejs + python-ml + supervisord + postgresql + vectorchord + redis + immich + immich-ml) via the build [pac, aur] + npm multistage, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks.
-    check-cachyos-immich-ml-pod-requires_shared:
         requires_shared: [nvidia-gpu]
 check-selkies-kde-pod:
     pod:
@@ -474,12 +427,7 @@ check-selkies-labwc-nvidia-vm:
         disposable: true
         lifecycle: dev
         description: Sole proof the labwc selkies desktop reaches REAL NVENC frame production inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod (cuda-arch-builder NVENC pixelflux build). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested --device nvidia.com/gpu=all selkies-labwc-nvidia pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC session probe plus chrome-devtools-mcp; the NVENC check N/As without a GPU.
-    selkies-labwc-nvidia-pod:
-        pod:
-            image: selkies-labwc-nvidia
-    check-selkies-labwc-nvidia-vm-requires_exclusive:
         requires_exclusive: [nvidia-gpu]
-    check-selkies-labwc-nvidia-vm-add_candy:
         # Guest GPU stack so the passed-through RTX 4080 has a loaded driver +
         # nvidia-container-toolkit (CDI) + podman — the prerequisites for the nested
         # `--device nvidia.com/gpu=all` selkies pod to reach the GPU and for the
@@ -492,49 +440,42 @@ check-selkies-labwc-nvidia-vm:
             - '@github.com/opencharly/charly/candy/workspace-mount:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
             - nvidia-driver
-    check-selkies-labwc-nvidia-vm-install_opts:
         install_opts:
             with_service: true
             allow_repo_changes: true
             allow_root_tasks: true
             skip_incompatible: true
             verify: true
-    selkies-nvidia-stream-https:
-        check: http=https://127.0.0.1:3000/
-        id: selkies-nvidia-stream-https
-        timeout: 30s
-        context:
-            - runtime
-        plugin: http
-        plugin_input:
-            http: https://127.0.0.1:3000/
-            status: 200
-            allow_insecure: true
-    selkies-nvidia-encoder:
-        check: |
-            command=if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
-        id: selkies-nvidia-encoder
-        exit_status: 0
-        stdout:
-            - matches: "NVENC-SESSION-ACTIVE|NVENC-N/A"
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+        plan:
+            - check: http=https://127.0.0.1:3000/
+              id: selkies-nvidia-stream-https
+              timeout: 30s
+              context:
+                - runtime
+              http:
+                http: https://127.0.0.1:3000/
+                status: 200
+                allow_insecure: true
+            - check: |
+                command=if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+              id: selkies-nvidia-encoder
+              exit_status: 0
+              stdout:
+                - matches: "NVENC-SESSION-ACTIVE|NVENC-N/A"
+              context:
+                - runtime
+              command: |
                 if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+    selkies-labwc-nvidia-pod:
+        pod:
+            image: selkies-labwc-nvidia
 check-selkies-kde-nvidia-vm:
     vm:
         from: cachyos-gpu-vm
         disposable: true
         lifecycle: dev
         description: Sole proof the full KDE Plasma selkies desktop reaches REAL NVENC inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod — the KDE compositor variant of the labwc-nvidia bed (adds wl). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested selkies-kde-nvidia pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC probe plus the nested pod's kde-selkies wl and chrome-devtools-mcp probes; NVENC N/As without a GPU.
-    selkies-kde-nvidia-pod:
-        pod:
-            image: selkies-kde-nvidia
-    check-selkies-kde-nvidia-vm-requires_exclusive:
         requires_exclusive: [nvidia-gpu]
-    check-selkies-kde-nvidia-vm-add_candy:
         # Guest GPU stack (see check-selkies-labwc-nvidia-vm) — driver + CDI + podman
         # so the nested --device nvidia.com/gpu=all selkies-kde pod reaches the GPU.
         add_candy:
@@ -543,187 +484,160 @@ check-selkies-kde-nvidia-vm:
             - '@github.com/opencharly/charly/candy/workspace-mount:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
             - nvidia-driver
-    check-selkies-kde-nvidia-vm-install_opts:
         install_opts:
             with_service: true
             allow_repo_changes: true
             allow_root_tasks: true
             skip_incompatible: true
             verify: true
-    selkies-nvidia-stream-https:
-        check: http=https://127.0.0.1:3000/
-        id: selkies-nvidia-stream-https
-        timeout: 30s
-        context:
-            - runtime
-        plugin: http
-        plugin_input:
-            http: https://127.0.0.1:3000/
-            status: 200
-            allow_insecure: true
-    selkies-nvidia-encoder:
-        check: |
-            command=if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
-        id: selkies-nvidia-encoder
-        exit_status: 0
-        stdout:
-            - matches: "NVENC-SESSION-ACTIVE|NVENC-N/A"
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+        plan:
+            - check: http=https://127.0.0.1:3000/
+              id: selkies-nvidia-stream-https
+              timeout: 30s
+              context:
+                - runtime
+              http:
+                http: https://127.0.0.1:3000/
+                status: 200
+                allow_insecure: true
+            - check: |
+                command=if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+              id: selkies-nvidia-encoder
+              exit_status: 0
+              stdout:
+                - matches: "NVENC-SESSION-ACTIVE|NVENC-N/A"
+              context:
+                - runtime
+              command: |
                 if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
+    selkies-kde-nvidia-pod:
+        pod:
+            image: selkies-kde-nvidia
 check-charly-selftest-pod:
     pod:
         image: charly-selftest
         disposable: true
         lifecycle: dev
         description: Sole proof the in-development charly toolchain (--dev-local-pkg) exposes and runs every command group correctly in-container on the full CachyOS toolchain image, plus the charly-mcp Kong MCP surface. Builds and deploys the charly-selftest pod (charly-mcp + container-nesting + claude-code) and runs ~13 in-container command checks across every charly command group (version/doctor/settings/secrets/vm/status/box/deploy/check/clean/migrate/feature/config) plus charly-mcp's mcp list-tools/call (box.build/box.list live).
-    charly-cli-version:
-        check: command=charly version
-        id: charly-cli-version
-        exit_status: 0
-        stdout:
-            - matches: "[0-9]{4}\\.[0-9]+"
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly version
-            in_container: true
-    charly-cli-doctor:
-        check: command=charly doctor
-        id: charly-cli-doctor
-        exit_status: 0
-        stdout:
-            - contains: "charly doctor"
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly doctor
-            in_container: true
-    charly-cli-settings:
-        check: command=charly settings list
-        id: charly-cli-settings
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly settings list
-            in_container: true
-    charly-cli-secrets:
-        check: command=charly secrets list
-        id: charly-cli-secrets
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly secrets list
-            in_container: true
-    charly-cli-vm:
-        check: command=charly vm list
-        id: charly-cli-vm
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly vm list
-            in_container: true
-    charly-cli-status:
-        check: command=charly status --json
-        id: charly-cli-status
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly status --json
-            in_container: true
-    charly-cli-box-group:
-        check: command=charly box --help
-        id: charly-cli-box-group
-        exit_status: 0
-        stdout:
-            - contains: build
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly box --help
-            in_container: true
-    charly-cli-deploy-group:
-        check: command=charly bundle --help
-        id: charly-cli-deploy-group
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly bundle --help
-            in_container: true
-    charly-cli-check-group:
-        check: command=charly check --help
-        id: charly-cli-check-group
-        exit_status: 0
-        stdout:
-            - contains: live
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly check --help
-            in_container: true
-    charly-cli-clean-group:
-        check: command=charly clean --help
-        id: charly-cli-clean-group
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly clean --help
-            in_container: true
-    charly-cli-migrate-group:
-        check: command=charly migrate --help
-        id: charly-cli-migrate-group
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly migrate --help
-            in_container: true
-    charly-cli-feature-group:
-        check: command=charly feature --help
-        id: charly-cli-feature-group
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly feature --help
-            in_container: true
-    charly-cli-config-group:
-        check: command=charly config --help
-        id: charly-cli-config-group
-        exit_status: 0
-        # NB: the WHOLE Kong command surface exposed via `charly mcp serve` is
-        # proven by the charly-mcp layer's own deploy-scope mcp checks
-        # (mcp-charly-list-tools + mcp-charly-call-* assert box.build / box.list.boxes
-        # are live tools), which run here as part of this bed's check-live — no
-        # duplicate surface check needed (R3).
+        plan:
+            - check: command=charly version
+              id: charly-cli-version
+              exit_status: 0
+              stdout:
+                - matches: "[0-9]{4}\\.[0-9]+"
+              context:
+                - runtime
+              command:
+                command: charly version
+                in_container: true
+            - check: command=charly doctor
+              id: charly-cli-doctor
+              exit_status: 0
+              stdout:
+                - contains: "charly doctor"
+              context:
+                - runtime
+              command:
+                command: charly doctor
+                in_container: true
+            - check: command=charly settings list
+              id: charly-cli-settings
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly settings list
+                in_container: true
+            - check: command=charly secrets list
+              id: charly-cli-secrets
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly secrets list
+                in_container: true
+            - check: command=charly vm list
+              id: charly-cli-vm
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly vm list
+                in_container: true
+            - check: command=charly status --json
+              id: charly-cli-status
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly status --json
+                in_container: true
+            - check: command=charly box --help
+              id: charly-cli-box-group
+              exit_status: 0
+              stdout:
+                - contains: build
+              context:
+                - runtime
+              command:
+                command: charly box --help
+                in_container: true
+            - check: command=charly bundle --help
+              id: charly-cli-deploy-group
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly bundle --help
+                in_container: true
+            - check: command=charly check --help
+              id: charly-cli-check-group
+              exit_status: 0
+              stdout:
+                - contains: live
+              context:
+                - runtime
+              command:
+                command: charly check --help
+                in_container: true
+            - check: command=charly clean --help
+              id: charly-cli-clean-group
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly clean --help
+                in_container: true
+            - check: command=charly migrate --help
+              id: charly-cli-migrate-group
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly migrate --help
+                in_container: true
+            - check: command=charly feature --help
+              id: charly-cli-feature-group
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: charly feature --help
+                in_container: true
+            - check: command=charly config --help
+              id: charly-cli-config-group
+              exit_status: 0
+              # NB: the WHOLE Kong command surface exposed via `charly mcp serve` is
+              # proven by the charly-mcp layer's own deploy-scope mcp checks
+              # (mcp-charly-list-tools + mcp-charly-call-* assert box.build / box.list.boxes
+              # are live tools), which run here as part of this bed's check-live — no
+              # duplicate surface check needed (R3).
 
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly config --help
-            in_container: true
+              context:
+                - runtime
+              command:
+                command: charly config --help
+                in_container: true
 # Cross-deployment probing (pod→pod): a Chrome DRIVER pod (sibling member)
 # CDP-probes this web-server SUBJECT pod over the shared `charly` network.
 # Proves cross-member addressing via ${HOST:<subject>} plus tree-position
@@ -737,7 +651,6 @@ check-versa-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof the full OSM analytics + vector-tile pipeline (quackosm/tippecanoe/martin/maputnik + GPU geospatial extensions) plus the marimo MCP notebook surface composes and runs end-to-end on CachyOS. Builds (pixi/npm/cargo source builds — tippecanoe-from-source, martin Rust musl multistage) and deploys the versa pod, then runs notebook-render byte checks, martin /monaco tilejson HTTP probes, pipeline-artifact byte checks, GPU-extension import checks, and the marimo MCP read-only notebook-inspection tools.
-    check-versa-pod-requires_shared:
         requires_shared: [nvidia-gpu]
 check-githubrunner-pod:
     pod:
@@ -756,46 +669,41 @@ check-android-emulator-pod:
         disposable: true
         lifecycle: dev
         description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp.'
+        plan:
+            - check: command=charly status --json
+              id: status-shows-android
+              stdout:
+                - contains: '"kind": "android"'
+              context:
+                - runtime
+              command:
+                command: charly status --json
+                in_container: false
+            - check: command=charly status --json
+              id: status-shows-nested
+              stdout:
+                # The pod→android nested tree renders as a JSON `nested:[…]`
+                # array under the emulator pod (children bare-keyed device/
+                # device-net; the parent context comes from the nesting, so
+                # there is no flattened dotted path). Assert the overlay
+                # structure. Fails if status_nested stops nesting the
+                # AndroidCollector rows under their parent pod.
+                - contains: '"nested"'
+              context:
+                - runtime
+              command:
+                command: charly status --json
+                in_container: false
     device:
         android:
             from: pixel9a-36
-        device-add_candy:
             add_candy:
                 - '@github.com/opencharly/charly/candy/android-test-apps:v2026.183.1359'
     device-net:
         android:
             from: pixel9a-endpoint
-        device-net-add_candy:
             add_candy:
                 - '@github.com/opencharly/charly/candy/android-apidemos:v2026.183.1359'
-    status-shows-android:
-        check: command=charly status --json
-        id: status-shows-android
-        stdout:
-            - contains: '"kind": "android"'
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly status --json
-            in_container: false
-    status-shows-nested:
-        check: command=charly status --json
-        id: status-shows-nested
-        stdout:
-            # The pod→android nested tree renders as a JSON `nested:[…]`
-            # array under the emulator pod (children bare-keyed device/
-            # device-net; the parent context comes from the nesting, so
-            # there is no flattened dotted path). Assert the overlay
-            # structure. Fails if status_nested stops nesting the
-            # AndroidCollector rows under their parent pod.
-            - contains: '"nested"'
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: charly status --json
-            in_container: false
 # check-openclaw-pod deploys the minimal headless openclaw gateway on the
 # CachyOS (Arch) base. Exercises the cachyos→arch-builder npm build of the
 # openclaw package + the dbus/charly/socat/supervisord stack. The deploy-scope
@@ -846,14 +754,12 @@ charly-cachyos:
         host: local
         disposable: true
         description: Apply charly-cachyos to this workstation
-    charly-cachyos-install_opts:
         install_opts:
             with_service: true
             allow_repo_changes: true
             allow_root_tasks: true
-    charly-cachyos-env:
         env:
-            - EDITOR=nvim
+            EDITOR: nvim
 # cachyos-gpu — the PERSISTENT operator GPU workstation VM (target: vm,
 # vm: cachyos-gpu). The VM analog of the charly-cachyos local profile, evolved
 # into a full graphical <distro>-coder workstation: the full charly-cachyos dev
@@ -877,10 +783,6 @@ cachyos-gpu:
     vm:
         from: cachyos-gpu-workstation-vm
         description: Persistent GPU CachyOS KDE coder workstation VM (bare-metal SDDM Plasma seat on the monitors + nested selkies-kde-nvidia stream pod (real NVENC, :3000) + /workspace + autostart)
-    selkies-kde:
-        pod:
-            image: selkies-kde-nvidia
-    cachyos-gpu-add_candy:
         add_candy:
             - wheel-nopasswd
             - '@github.com/opencharly/charly/candy/yay:v2026.183.1359'
@@ -940,7 +842,6 @@ cachyos-gpu:
             - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/workspace-mount:v2026.183.1359'
             - nvidia-driver
-    cachyos-gpu-install_opts:
         install_opts:
             with_service: true
             allow_repo_changes: true
@@ -950,10 +851,12 @@ cachyos-gpu:
             # CUDA builder so the cross-host pixi build of pixelflux links the real
             # NVENC encoder (the stock arch-builder has no CUDA → NVENC stub).
             builder_image: arch.cuda-arch-builder
-    cachyos-gpu-env:
         env:
-            - EDITOR=nvim
-            - PAGER=less
+            EDITOR: nvim
+            PAGER: less
+    selkies-kde:
+        pod:
+            image: selkies-kde-nvidia
 #  charly-cachyos — the operator CachyOS workstation profile (kind:local
 #  template). Shared layers are pulled by GITHUB REFERENCE from the main
 #  opencharly repo; the cachyos-exclusive layers (ghostty, keepassxc-keyring,
@@ -968,7 +871,6 @@ charly-cachyos-app:
             fleet (Claude Code, Codex, Gemini, Oracle, ForgeCode), and
             DevOps/container tooling (docker, kubectl, helm, AWS CLI, jq).
             Targets the operator's CachyOS host via direct local exec.
-    charly-cachyos-app-candy:
         candy:
             - wheel-nopasswd
             - '@github.com/opencharly/charly/candy/yay:v2026.183.1359'
@@ -1000,66 +902,59 @@ charly-cachyos-app:
             - '@github.com/opencharly/charly/candy/chrome:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/charly:v2026.183.1359'
-    charly-cachyos-app-install_opts:
         install_opts:
             with_service: true
             allow_repo_changes: true
             allow_root_tasks: true
             builder_image: ghcr.io/opencharly/arch-builder:2026.122.2252
-    charly-cachyos-app-env:
         env:
-            - EDITOR=nvim
-            - PAGER=less
-    passwordless-sudo-host:
-        check: command=sudo -n true
-        id: passwordless-sudo-host
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: sudo -n true
-            in_container: false
-    nvidia-ctk-present:
-        check: |
-            command=if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
-              command -v nvidia-ctk
-            else
-              echo "host NVIDIA driver not active (vfio passthrough or no GPU) — toolkit check N/A"
-            fi
-        id: nvidia-ctk-present
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
-                if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+            EDITOR: nvim
+            PAGER: less
+        plan:
+            - check: command=sudo -n true
+              id: passwordless-sudo-host
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: sudo -n true
+                in_container: false
+            - check: |
+                command=if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
                   command -v nvidia-ctk
                 else
                   echo "host NVIDIA driver not active (vfio passthrough or no GPU) — toolkit check N/A"
                 fi
-            in_container: false
-    nvidia-cdi-spec:
-        check: |
-            command=if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
-              test -f /etc/cdi/nvidia.yaml
-            else
-              echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
-            fi
-        id: nvidia-cdi-spec
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
-                if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+              id: nvidia-ctk-present
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: |
+                    if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+                      command -v nvidia-ctk
+                    else
+                      echo "host NVIDIA driver not active (vfio passthrough or no GPU) — toolkit check N/A"
+                    fi
+                in_container: false
+            - check: |
+                command=if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
                   test -f /etc/cdi/nvidia.yaml
                 else
                   echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
                 fi
-            in_container: false
+              id: nvidia-cdi-spec
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: |
+                    if [ -e /dev/nvidiactl ] || nvidia-smi >/dev/null 2>&1; then
+                      test -f /etc/cdi/nvidia.yaml
+                    else
+                      echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
+                    fi
+                in_container: false
 cachyos-vm:
     vm:
         # Bootstrap-from-scratch via cachyos-pacstrap-builder (local). The cachyos
@@ -1088,7 +983,7 @@ cachyos-vm:
             mode: user
         ssh:
             user: cachy
-            port: 12226
+            port_auto: true
             key_source: generate
         cloud_init:
             # The cachy account (sudo NOPASSWD + /bin/bash + ssh key + wheel) is
@@ -1185,7 +1080,7 @@ cachyos-gpu-vm:
             mode: user
         ssh:
             user: cachy
-            port: 12227
+            port_auto: true
             key_source: generate
         cloud_init:
             # /etc/pacman.conf is written into the rootfs by the cachyos pacstrap
@@ -1205,7 +1100,6 @@ cachyos-gpu-vm:
                 # up. Symlinking a hook to /dev/null is pacman's canonical
                 # "disable this hook". Runs at first boot, before any deploy.
                 - sh -c 'mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/nvidia-ctk-cdi.hook'
-    cachyos-gpu-vm-libvirt:
         libvirt:
             # memfd/shared backing is auto-paired by the renderer for the virtiofs
             # share; declared here too so the bed asserts the explicit path works.
@@ -1308,7 +1202,7 @@ cachyos-gpu-workstation-vm:
             mode: user
         ssh:
             user: cachy
-            port: 12228
+            port_auto: true
             key_source: generate
         cloud_init:
             # /etc/pacman.conf is written into the rootfs by the cachyos pacstrap
@@ -1328,7 +1222,6 @@ cachyos-gpu-workstation-vm:
                 # up. Symlinking a hook to /dev/null is pacman's canonical
                 # "disable this hook". Runs at first boot, before any deploy.
                 - sh -c 'mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/nvidia-ctk-cdi.hook'
-    cachyos-gpu-workstation-vm-libvirt:
         libvirt:
             # memfd/shared is auto-paired for the virtiofs share by the renderer;
             # declared explicitly here for clarity on a persistent operator entity.

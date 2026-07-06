@@ -9,14 +9,12 @@ keepassxc-keyring:
             gpg-agent + ssh-agent + direnv shell hooks. Verifiable: the keepassxc +
             pinentry-qt + secret-tool binaries exist and (at deploy scope)
             FdoSecrets is enabled in keepassxc.ini.
-    keepassxc-keyring-require:
         # keepassxc, gnupg, direnv stay in main (shared) → pulled by @github ref so
         # this locally-vendored layer's deps still resolve in this repo's namespace.
         require:
             - '@github.com/opencharly/charly/candy/keepassxc:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/gnupg:v2026.183.1359'
             - '@github.com/opencharly/charly/candy/direnv:v2026.183.1359'
-    keepassxc-keyring-distro:
         distro:
             arch:
                 package:
@@ -34,7 +32,6 @@ keepassxc-keyring:
                 package:
                     - pinentry-qt
                     - libsecret-tools
-    keepassxc-keyring-shell:
         # Shell-init exports for KeePassXC-as-Secret-Service-provider. Mirrors
         # what ~/.config/environment.d/ssh-agent.conf already provides for
         # systemd-bootstrapped sessions; this block covers shells that aren't
@@ -66,51 +63,48 @@ keepassxc-keyring:
                         end
                     end
                     set -gx GPG_TTY (tty 2>/dev/null; or echo /dev/tty)
-    keepassxc-keyring-step-0:
-        run: mkdir=${HOME}/.config/keepassxc
-        mkdir: "${HOME}/.config/keepassxc"
-        run_as: "${USER}"
-    keepassxc-keyring-step-1:
-        run: |
-            command=set -eu
-            python3 - <<'PY'
-            import configparser, os
-            p = os.path.expanduser("~/.config/keepassxc/keepassxc.ini")
-            cp = configparser.ConfigParser()
-            cp.optionxform = str  # preserve key case
-            if os.path.exists(p):
-                cp.read(p)
-            for section in ("FdoSecrets", "SSHAgent", "General", "GUI"):
-                if section not in cp:
-                    cp[section] = {}
-            cp["FdoSecrets"].update({
-                "Enabled": "true",
-                "ShowNotification": "true",
-                "ConfirmAccessItem": "false",
-                "UnlockBeforeSearch": "true",
-            })
-            cp["SSHAgent"].update({
-                "Enabled": "true",
-                "UseOpenSSH": "true",
-            })
-            cp["General"].update({
-                "RememberLastDatabases": "true",
-                "OpenPreviousDatabasesOnStartup": "true",
-            })
-            cp["GUI"].update({
-                "MinimizeOnStartup": "false",
-                "MinimizeOnClose": "false",
-                "ShowTrayIcon": "true",
-            })
-            os.makedirs(os.path.dirname(p), exist_ok=True)
-            with open(p, "w") as f:
-                cp.write(f, space_around_delimiters=False)
-            PY
-        run_as: "${USER}"
-        comment: Merge KeePassXC FdoSecrets + auto-open + tray-friendly settings (preserves user state like LastOpenedDatabases)
-        plugin: command
-        plugin_input:
-            command: |
+        plan:
+            - run: mkdir=${HOME}/.config/keepassxc
+              mkdir: "${HOME}/.config/keepassxc"
+              run_as: "${USER}"
+            - run: |
+                command=set -eu
+                python3 - <<'PY'
+                import configparser, os
+                p = os.path.expanduser("~/.config/keepassxc/keepassxc.ini")
+                cp = configparser.ConfigParser()
+                cp.optionxform = str  # preserve key case
+                if os.path.exists(p):
+                    cp.read(p)
+                for section in ("FdoSecrets", "SSHAgent", "General", "GUI"):
+                    if section not in cp:
+                        cp[section] = {}
+                cp["FdoSecrets"].update({
+                    "Enabled": "true",
+                    "ShowNotification": "true",
+                    "ConfirmAccessItem": "false",
+                    "UnlockBeforeSearch": "true",
+                })
+                cp["SSHAgent"].update({
+                    "Enabled": "true",
+                    "UseOpenSSH": "true",
+                })
+                cp["General"].update({
+                    "RememberLastDatabases": "true",
+                    "OpenPreviousDatabasesOnStartup": "true",
+                })
+                cp["GUI"].update({
+                    "MinimizeOnStartup": "false",
+                    "MinimizeOnClose": "false",
+                    "ShowTrayIcon": "true",
+                })
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, "w") as f:
+                    cp.write(f, space_around_delimiters=False)
+                PY
+              run_as: "${USER}"
+              comment: Merge KeePassXC FdoSecrets + auto-open + tray-friendly settings (preserves user state like LastOpenedDatabases)
+              command: |
                 set -eu
                 python3 - <<'PY'
                 import configparser, os
@@ -145,71 +139,66 @@ keepassxc-keyring:
                 with open(p, "w") as f:
                     cp.write(f, space_around_delimiters=False)
                 PY
-    keepassxc-keyring-step-2:
-        run: mkdir=${HOME}/.config/autostart
-        mkdir: "${HOME}/.config/autostart"
-        run_as: "${USER}"
-    keepassxc-keyring-step-3:
-        run: write=${HOME}/.config/autostart/keepassxc.desktop
-        write: "${HOME}/.config/autostart/keepassxc.desktop"
-        mode: "0644"
-        run_as: "${USER}"
-        content: |
-            [Desktop Entry]
-            Type=Application
-            Name=KeePassXC
-            Exec=keepassxc
-            Icon=keepassxc
-            Terminal=false
-            X-GNOME-Autostart-enabled=true
-            Hidden=false
-            NoDisplay=false
-    keepassxc-keyring-step-4:
-        run: |
-            command=set -eu
-            autostart_dir="${HOME}/.config/autostart"
-            mkdir -p "$autostart_dir"
-            for name in \
-                gnome-keyring-secrets \
-                gnome-keyring-ssh \
-                gnome-keyring-pkcs11 \
-                org.kde.kwalletd6 \
-                org.kde.kwalletd5 \
-                kwalletd \
-                kwalletd5 \
-                kwalletd6 \
-                pam_kwallet_init \
-                ksecretd ; do
-              src="/etc/xdg/autostart/${name}.desktop"
-              dst="${autostart_dir}/${name}.desktop"
-              if [ -f "$src" ]; then
-                cp "$src" "$dst"
-              else
-                cat > "$dst" <<EOF
-            [Desktop Entry]
-            Type=Application
-            Name=${name} (disabled by charly keepassxc-keyring)
-            Exec=/bin/true
-            Hidden=true
-            NoDisplay=true
-            EOF
-              fi
-              if grep -q '^Hidden=' "$dst"; then
-                sed -i 's/^Hidden=.*/Hidden=true/' "$dst"
-              else
-                printf 'Hidden=true\n' >> "$dst"
-              fi
-              if grep -q '^X-GNOME-Autostart-enabled=' "$dst"; then
-                sed -i 's/^X-GNOME-Autostart-enabled=.*/X-GNOME-Autostart-enabled=false/' "$dst"
-              else
-                printf 'X-GNOME-Autostart-enabled=false\n' >> "$dst"
-              fi
-            done
-        run_as: "${USER}"
-        comment: Override system XDG autostart for known Secret Service competitors
-        plugin: command
-        plugin_input:
-            command: |
+            - run: mkdir=${HOME}/.config/autostart
+              mkdir: "${HOME}/.config/autostart"
+              run_as: "${USER}"
+            - run: write=${HOME}/.config/autostart/keepassxc.desktop
+              write: "${HOME}/.config/autostart/keepassxc.desktop"
+              mode: "0644"
+              run_as: "${USER}"
+              content: |
+                [Desktop Entry]
+                Type=Application
+                Name=KeePassXC
+                Exec=keepassxc
+                Icon=keepassxc
+                Terminal=false
+                X-GNOME-Autostart-enabled=true
+                Hidden=false
+                NoDisplay=false
+            - run: |
+                command=set -eu
+                autostart_dir="${HOME}/.config/autostart"
+                mkdir -p "$autostart_dir"
+                for name in \
+                    gnome-keyring-secrets \
+                    gnome-keyring-ssh \
+                    gnome-keyring-pkcs11 \
+                    org.kde.kwalletd6 \
+                    org.kde.kwalletd5 \
+                    kwalletd \
+                    kwalletd5 \
+                    kwalletd6 \
+                    pam_kwallet_init \
+                    ksecretd ; do
+                  src="/etc/xdg/autostart/${name}.desktop"
+                  dst="${autostart_dir}/${name}.desktop"
+                  if [ -f "$src" ]; then
+                    cp "$src" "$dst"
+                  else
+                    cat > "$dst" <<EOF
+                [Desktop Entry]
+                Type=Application
+                Name=${name} (disabled by charly keepassxc-keyring)
+                Exec=/bin/true
+                Hidden=true
+                NoDisplay=true
+                EOF
+                  fi
+                  if grep -q '^Hidden=' "$dst"; then
+                    sed -i 's/^Hidden=.*/Hidden=true/' "$dst"
+                  else
+                    printf 'Hidden=true\n' >> "$dst"
+                  fi
+                  if grep -q '^X-GNOME-Autostart-enabled=' "$dst"; then
+                    sed -i 's/^X-GNOME-Autostart-enabled=.*/X-GNOME-Autostart-enabled=false/' "$dst"
+                  else
+                    printf 'X-GNOME-Autostart-enabled=false\n' >> "$dst"
+                  fi
+                done
+              run_as: "${USER}"
+              comment: Override system XDG autostart for known Secret Service competitors
+              command: |
                 set -eu
                 autostart_dir="${HOME}/.config/autostart"
                 mkdir -p "$autostart_dir"
@@ -249,37 +238,34 @@ keepassxc-keyring:
                     printf 'X-GNOME-Autostart-enabled=false\n' >> "$dst"
                   fi
                 done
-    keepassxc-keyring-step-5:
-        run: |
-            command=set -eu
-            for unit in \
-                gnome-keyring-daemon.socket \
-                gnome-keyring-daemon.service \
-                kwalletd6.service \
-                kwalletd5.service \
-                org.kde.kwalletd6.service \
-                org.kde.kwalletd5.service \
-                plasma-kwallet-pam.service \
-                ksecretd.service ; do
-              if systemctl --user is-enabled "$unit" >/dev/null 2>&1; then
-                systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
-              fi
-              if systemctl --user is-active "$unit" >/dev/null 2>&1; then
-                systemctl --user stop "$unit" >/dev/null 2>&1 || true
-              fi
-            done
-            # Stop any currently-running competitor processes — they hold
-            # `org.freedesktop.secrets` until killed, blocking KeePassXC from
-            # claiming the bus name. PAM relaunches them at next session, but
-            # the autostart override above (`pam_kwallet_init`) prevents that.
-            for proc in ksecretd kwalletd6 kwalletd5 gnome-keyring-daemon ; do
-              pkill -x "$proc" >/dev/null 2>&1 || true
-            done
-        run_as: "${USER}"
-        comment: Disable systemd --user units + kill running competitor processes for the current session
-        plugin: command
-        plugin_input:
-            command: |
+            - run: |
+                command=set -eu
+                for unit in \
+                    gnome-keyring-daemon.socket \
+                    gnome-keyring-daemon.service \
+                    kwalletd6.service \
+                    kwalletd5.service \
+                    org.kde.kwalletd6.service \
+                    org.kde.kwalletd5.service \
+                    plasma-kwallet-pam.service \
+                    ksecretd.service ; do
+                  if systemctl --user is-enabled "$unit" >/dev/null 2>&1; then
+                    systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
+                  fi
+                  if systemctl --user is-active "$unit" >/dev/null 2>&1; then
+                    systemctl --user stop "$unit" >/dev/null 2>&1 || true
+                  fi
+                done
+                # Stop any currently-running competitor processes — they hold
+                # `org.freedesktop.secrets` until killed, blocking KeePassXC from
+                # claiming the bus name. PAM relaunches them at next session, but
+                # the autostart override above (`pam_kwallet_init`) prevents that.
+                for proc in ksecretd kwalletd6 kwalletd5 gnome-keyring-daemon ; do
+                  pkill -x "$proc" >/dev/null 2>&1 || true
+                done
+              run_as: "${USER}"
+              comment: Disable systemd --user units + kill running competitor processes for the current session
+              command: |
                 set -eu
                 for unit in \
                     gnome-keyring-daemon.socket \
@@ -304,73 +290,60 @@ keepassxc-keyring:
                 for proc in ksecretd kwalletd6 kwalletd5 gnome-keyring-daemon ; do
                   pkill -x "$proc" >/dev/null 2>&1 || true
                 done
-    keepassxc-keyring-step-6:
-        run: mkdir=${HOME}/.gnupg
-        mkdir: "${HOME}/.gnupg"
-        mode: "0700"
-        run_as: "${USER}"
-    keepassxc-keyring-step-7:
-        run: write=${HOME}/.gnupg/gpg-agent.conf
-        write: "${HOME}/.gnupg/gpg-agent.conf"
-        mode: "0600"
-        run_as: "${USER}"
-        content: |
-            # Managed by charly keepassxc-keyring layer.
-            pinentry-program /usr/bin/pinentry-qt
-            default-cache-ttl 28800
-            max-cache-ttl 43200
-            allow-preset-passphrase
-    keepassxc-keyring-step-8:
-        run: |
-            command=set -eu
-            systemctl --user enable --now gpg-agent.socket gpg-agent-extra.socket >/dev/null 2>&1 || true
-            gpg-connect-agent reloadagent /bye >/dev/null 2>&1 || true
-        run_as: "${USER}"
-        comment: Enable gpg-agent socket + reload to pick up the new gpg-agent.conf
-        plugin: command
-        plugin_input:
-            command: |
+            - run: mkdir=${HOME}/.gnupg
+              mkdir: "${HOME}/.gnupg"
+              mode: "0700"
+              run_as: "${USER}"
+            - run: write=${HOME}/.gnupg/gpg-agent.conf
+              write: "${HOME}/.gnupg/gpg-agent.conf"
+              mode: "0600"
+              run_as: "${USER}"
+              content: |
+                # Managed by charly keepassxc-keyring layer.
+                pinentry-program /usr/bin/pinentry-qt
+                default-cache-ttl 28800
+                max-cache-ttl 43200
+                allow-preset-passphrase
+            - run: |
+                command=set -eu
+                systemctl --user enable --now gpg-agent.socket gpg-agent-extra.socket >/dev/null 2>&1 || true
+                gpg-connect-agent reloadagent /bye >/dev/null 2>&1 || true
+              run_as: "${USER}"
+              comment: Enable gpg-agent socket + reload to pick up the new gpg-agent.conf
+              command: |
                 set -eu
                 systemctl --user enable --now gpg-agent.socket gpg-agent-extra.socket >/dev/null 2>&1 || true
                 gpg-connect-agent reloadagent /bye >/dev/null 2>&1 || true
-    keepassxc-keyring-step-9:
-        run: |
-            command=set -eu
-            systemctl --user enable --now ssh-agent.service >/dev/null 2>&1 || true
-        run_as: "${USER}"
-        comment: Enable ssh-agent.service (KeePassXC integrates AS A CLIENT to it)
-        plugin: command
-        plugin_input:
-            command: |
+            - run: |
+                command=set -eu
+                systemctl --user enable --now ssh-agent.service >/dev/null 2>&1 || true
+              run_as: "${USER}"
+              comment: Enable ssh-agent.service (KeePassXC integrates AS A CLIENT to it)
+              command: |
                 set -eu
                 systemctl --user enable --now ssh-agent.service >/dev/null 2>&1 || true
-    keepassxc-keyring-step-10:
-        run: mkdir=${HOME}/.config/environment.d
-        mkdir: "${HOME}/.config/environment.d"
-        run_as: "${USER}"
-    keepassxc-keyring-step-11:
-        run: write=${HOME}/.config/environment.d/ssh-agent.conf
-        write: "${HOME}/.config/environment.d/ssh-agent.conf"
-        mode: "0644"
-        run_as: "${USER}"
-        content: |
-            # Managed by charly keepassxc-keyring layer.
-            # Point session SSH_AUTH_SOCK at the systemd-user ssh-agent socket.
-            SSH_AUTH_SOCK=${XDG_RUNTIME_DIR}/ssh-agent.socket
-    keepassxc-keyring-step-12:
-        run: |
-            command=set -eu
-            for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
-              if [ -f "$rc" ] && grep -qF '# opencharly:begin ssh-auth-sock' "$rc"; then
-                sed -i '/# opencharly:begin ssh-auth-sock/,/# opencharly:end ssh-auth-sock/d' "$rc"
-              fi
-            done
-            rm -f "${HOME}/.config/fish/conf.d/ssh-auth-sock.fish"
-        run_as: "${USER}"
-        comment: Strip obsolete ssh-auth-sock shell-rc hooks (replaced by environment.d)
-        plugin: command
-        plugin_input:
-            command: |
+            - run: mkdir=${HOME}/.config/environment.d
+              mkdir: "${HOME}/.config/environment.d"
+              run_as: "${USER}"
+            - run: write=${HOME}/.config/environment.d/ssh-agent.conf
+              write: "${HOME}/.config/environment.d/ssh-agent.conf"
+              mode: "0644"
+              run_as: "${USER}"
+              content: |
+                # Managed by charly keepassxc-keyring layer.
+                # Point session SSH_AUTH_SOCK at the systemd-user ssh-agent socket.
+                SSH_AUTH_SOCK=${XDG_RUNTIME_DIR}/ssh-agent.socket
+            - run: |
+                command=set -eu
+                for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
+                  if [ -f "$rc" ] && grep -qF '# opencharly:begin ssh-auth-sock' "$rc"; then
+                    sed -i '/# opencharly:begin ssh-auth-sock/,/# opencharly:end ssh-auth-sock/d' "$rc"
+                  fi
+                done
+                rm -f "${HOME}/.config/fish/conf.d/ssh-auth-sock.fish"
+              run_as: "${USER}"
+              comment: Strip obsolete ssh-auth-sock shell-rc hooks (replaced by environment.d)
+              command: |
                 set -eu
                 for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
                   if [ -f "$rc" ] && grep -qF '# opencharly:begin ssh-auth-sock' "$rc"; then
@@ -378,26 +351,23 @@ keepassxc-keyring:
                   fi
                 done
                 rm -f "${HOME}/.config/fish/conf.d/ssh-auth-sock.fish"
-    keepassxc-keyring-step-13:
-        run: |
-            command=set -eu
-            for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
-              if [ -f "$rc" ] && grep -qF '# opencharly:begin direnv-hook' "$rc"; then
-                sed -i '/# opencharly:begin direnv-hook/,/# opencharly:end direnv-hook/d' "$rc"
-              fi
-            done
-            # Legacy fish drop-in path (no charly- prefix) — DELETED in the
-            # cutover; the direnv layer's shell: schema writes to
-            # ~/.config/fish/conf.d/charly-direnv.fish instead.
-            legacy_fish="${HOME}/.config/fish/conf.d/direnv.fish"
-            if [ -f "$legacy_fish" ] && grep -qF '# opencharly:begin direnv-hook' "$legacy_fish"; then
-              rm -f "$legacy_fish"
-            fi
-        run_as: "${USER}"
-        comment: "Strip pre-2026-05 direnv-hook shell-rc hooks (now provided by direnv layer's shell: schema)"
-        plugin: command
-        plugin_input:
-            command: |
+            - run: |
+                command=set -eu
+                for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
+                  if [ -f "$rc" ] && grep -qF '# opencharly:begin direnv-hook' "$rc"; then
+                    sed -i '/# opencharly:begin direnv-hook/,/# opencharly:end direnv-hook/d' "$rc"
+                  fi
+                done
+                # Legacy fish drop-in path (no charly- prefix) — DELETED in the
+                # cutover; the direnv layer's shell: schema writes to
+                # ~/.config/fish/conf.d/charly-direnv.fish instead.
+                legacy_fish="${HOME}/.config/fish/conf.d/direnv.fish"
+                if [ -f "$legacy_fish" ] && grep -qF '# opencharly:begin direnv-hook' "$legacy_fish"; then
+                  rm -f "$legacy_fish"
+                fi
+              run_as: "${USER}"
+              comment: "Strip pre-2026-05 direnv-hook shell-rc hooks (now provided by direnv layer's shell: schema)"
+              command: |
                 set -eu
                 for rc in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
                   if [ -f "$rc" ] && grep -qF '# opencharly:begin direnv-hook' "$rc"; then
@@ -411,60 +381,52 @@ keepassxc-keyring:
                 if [ -f "$legacy_fish" ] && grep -qF '# opencharly:begin direnv-hook' "$legacy_fish"; then
                   rm -f "$legacy_fish"
                 fi
-    keepassxc-keyring-step-14:
-        run: mkdir=${HOME}/.config/systemd/user
-        mkdir: "${HOME}/.config/systemd/user"
-        run_as: "${USER}"
-    keepassxc-keyring-step-15:
-        run: write=${HOME}/.config/systemd/user/keepassxc.service
-        write: "${HOME}/.config/systemd/user/keepassxc.service"
-        mode: "0644"
-        run_as: "${USER}"
-        content: |
-            [Unit]
-            Description=KeePassXC Password Manager (managed by charly keepassxc-keyring)
-            After=graphical-session.target
-            PartOf=graphical-session.target
+            - run: mkdir=${HOME}/.config/systemd/user
+              mkdir: "${HOME}/.config/systemd/user"
+              run_as: "${USER}"
+            - run: write=${HOME}/.config/systemd/user/keepassxc.service
+              write: "${HOME}/.config/systemd/user/keepassxc.service"
+              mode: "0644"
+              run_as: "${USER}"
+              content: |
+                [Unit]
+                Description=KeePassXC Password Manager (managed by charly keepassxc-keyring)
+                After=graphical-session.target
+                PartOf=graphical-session.target
 
-            [Service]
-            Type=simple
-            ExecStart=/usr/bin/keepassxc
-            Restart=on-failure
-            RestartSec=5
+                [Service]
+                Type=simple
+                ExecStart=/usr/bin/keepassxc
+                Restart=on-failure
+                RestartSec=5
 
-            [Install]
-            WantedBy=graphical-session.target
-    keepassxc-keyring-step-16:
-        run: |
-            command=set -eu
-            systemctl --user daemon-reload
-            systemctl --user enable keepassxc.service >/dev/null 2>&1 || true
-        run_as: "${USER}"
-        comment: Reload systemd --user + enable keepassxc.service
-        plugin: command
-        plugin_input:
-            command: |
+                [Install]
+                WantedBy=graphical-session.target
+            - run: |
+                command=set -eu
+                systemctl --user daemon-reload
+                systemctl --user enable keepassxc.service >/dev/null 2>&1 || true
+              run_as: "${USER}"
+              comment: Reload systemd --user + enable keepassxc.service
+              command: |
                 set -eu
                 systemctl --user daemon-reload
                 systemctl --user enable keepassxc.service >/dev/null 2>&1 || true
-    keepassxc-keyring-step-17:
-        run: |
-            command=set -eu
-            if pgrep -x keepassxc >/dev/null 2>&1; then
-              exit 0
-            fi
-            if systemctl --user --quiet is-active graphical-session.target 2>/dev/null \
-               || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ] \
-               || [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/wayland-0" ]; then
-              systemd-run --user --quiet --no-block \
-                --unit=keepassxc-keyring-launch \
-                /usr/bin/keepassxc >/dev/null 2>&1 || true
-            fi
-        run_as: "${USER}"
-        comment: Best-effort start KeePassXC in the current session (no-op if no display)
-        plugin: command
-        plugin_input:
-            command: |
+            - run: |
+                command=set -eu
+                if pgrep -x keepassxc >/dev/null 2>&1; then
+                  exit 0
+                fi
+                if systemctl --user --quiet is-active graphical-session.target 2>/dev/null \
+                   || [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ] \
+                   || [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/wayland-0" ]; then
+                  systemd-run --user --quiet --no-block \
+                    --unit=keepassxc-keyring-launch \
+                    /usr/bin/keepassxc >/dev/null 2>&1 || true
+                fi
+              run_as: "${USER}"
+              comment: Best-effort start KeePassXC in the current session (no-op if no display)
+              command: |
                 set -eu
                 if pgrep -x keepassxc >/dev/null 2>&1; then
                   exit 0
@@ -476,181 +438,117 @@ keepassxc-keyring:
                     --unit=keepassxc-keyring-launch \
                     /usr/bin/keepassxc >/dev/null 2>&1 || true
                 fi
-    keepassxc-keyring-step-18:
-        check: the keepassxc binary is installed and executable
-        exit_status: 0
-        plugin: command
-        plugin_input:
-            command: test -x /usr/bin/keepassxc
-    keepassxc-keyring-step-19:
-        check: the secret-tool libsecret client is installed
-        exit_status: 0
-        plugin: command
-        plugin_input:
-            command: command -v secret-tool
-    keepassxc-keyring-step-20:
-        check: the FdoSecrets plugin is enabled in keepassxc.ini
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: grep -q '^Enabled=true' ${HOME}/.config/keepassxc/keepassxc.ini
-    keepassxc-binary:
-        check: command=test -x /usr/bin/keepassxc
-        id: keepassxc-binary
-        exit_status: 0
-        plugin: command
-        plugin_input:
-            command: test -x /usr/bin/keepassxc
-    pinentry-qt-installed:
-        check: command=command -v pinentry-qt || command -v pinentry-qt5 || command -v pinentry-qt6
-        id: pinentry-qt-installed
-        exit_status: 0
-        plugin: command
-        plugin_input:
-            command: command -v pinentry-qt || command -v pinentry-qt5 || command -v pinentry-qt6
-    secret-tool-installed:
-        check: command=command -v secret-tool
-        id: secret-tool-installed
-        exit_status: 0
-        plugin: command
-        plugin_input:
-            command: command -v secret-tool
-    keepassxc-ini-fdosecrets:
-        check: command=grep -q '^Enabled=true' ${HOME}/.config/keepassxc/keepassxc.ini
-        id: keepassxc-ini-fdosecrets
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: grep -q '^Enabled=true' ${HOME}/.config/keepassxc/keepassxc.ini
-    keepassxc-ini-auto-open:
-        check: command=grep -q '^OpenPreviousDatabasesOnStartup=true' ${HOME}/.config/keepassxc/keepassxc.ini
-        id: keepassxc-ini-auto-open
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: grep -q '^OpenPreviousDatabasesOnStartup=true' ${HOME}/.config/keepassxc/keepassxc.ini
-    keepassxc-autostart:
-        check: command=test -r ${HOME}/.config/autostart/keepassxc.desktop
-        id: keepassxc-autostart
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: test -r ${HOME}/.config/autostart/keepassxc.desktop
-    gpg-agent-conf-installed:
-        check: command=grep -q '^pinentry-program /usr/bin/pinentry-qt' ${HOME}/.gnupg/gpg-agent.conf
-        id: gpg-agent-conf-installed
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: grep -q '^pinentry-program /usr/bin/pinentry-qt' ${HOME}/.gnupg/gpg-agent.conf
-    gpg-agent-socket-active:
-        check: command=systemctl --user is-active gpg-agent.socket
-        id: gpg-agent-socket-active
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: systemctl --user is-active gpg-agent.socket
-    ssh-agent-ini-enabled:
-        check: |
-            command=python3 -c "import configparser,os; cp=configparser.ConfigParser(); cp.optionxform=str; cp.read(os.path.expanduser('~/.config/keepassxc/keepassxc.ini')); exit(0 if cp.get('SSHAgent','Enabled',fallback='false')=='true' else 1)"
-        id: ssh-agent-ini-enabled
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: the keepassxc binary is installed and executable
+              exit_status: 0
+              command: test -x /usr/bin/keepassxc
+            - check: the secret-tool libsecret client is installed
+              exit_status: 0
+              command: command -v secret-tool
+            - check: the FdoSecrets plugin is enabled in keepassxc.ini
+              exit_status: 0
+              context:
+                - runtime
+              command: grep -q '^Enabled=true' ${HOME}/.config/keepassxc/keepassxc.ini
+            - check: command=test -x /usr/bin/keepassxc
+              id: keepassxc-binary
+              exit_status: 0
+              command: test -x /usr/bin/keepassxc
+            - check: command=command -v pinentry-qt || command -v pinentry-qt5 || command -v pinentry-qt6
+              id: pinentry-qt-installed
+              exit_status: 0
+              command: command -v pinentry-qt || command -v pinentry-qt5 || command -v pinentry-qt6
+            - check: command=command -v secret-tool
+              id: secret-tool-installed
+              exit_status: 0
+              command: command -v secret-tool
+            - check: command=grep -q '^Enabled=true' ${HOME}/.config/keepassxc/keepassxc.ini
+              id: keepassxc-ini-fdosecrets
+              exit_status: 0
+              context:
+                - runtime
+              command: grep -q '^Enabled=true' ${HOME}/.config/keepassxc/keepassxc.ini
+            - check: command=grep -q '^OpenPreviousDatabasesOnStartup=true' ${HOME}/.config/keepassxc/keepassxc.ini
+              id: keepassxc-ini-auto-open
+              exit_status: 0
+              context:
+                - runtime
+              command: grep -q '^OpenPreviousDatabasesOnStartup=true' ${HOME}/.config/keepassxc/keepassxc.ini
+            - check: command=test -r ${HOME}/.config/autostart/keepassxc.desktop
+              id: keepassxc-autostart
+              exit_status: 0
+              context:
+                - runtime
+              command: test -r ${HOME}/.config/autostart/keepassxc.desktop
+            - check: command=grep -q '^pinentry-program /usr/bin/pinentry-qt' ${HOME}/.gnupg/gpg-agent.conf
+              id: gpg-agent-conf-installed
+              exit_status: 0
+              context:
+                - runtime
+              command: grep -q '^pinentry-program /usr/bin/pinentry-qt' ${HOME}/.gnupg/gpg-agent.conf
+            - check: command=systemctl --user is-active gpg-agent.socket
+              id: gpg-agent-socket-active
+              exit_status: 0
+              context:
+                - runtime
+              command: systemctl --user is-active gpg-agent.socket
+            - check: |
+                command=python3 -c "import configparser,os; cp=configparser.ConfigParser(); cp.optionxform=str; cp.read(os.path.expanduser('~/.config/keepassxc/keepassxc.ini')); exit(0 if cp.get('SSHAgent','Enabled',fallback='false')=='true' else 1)"
+              id: ssh-agent-ini-enabled
+              exit_status: 0
+              context:
+                - runtime
+              command: |
                 python3 -c "import configparser,os; cp=configparser.ConfigParser(); cp.optionxform=str; cp.read(os.path.expanduser('~/.config/keepassxc/keepassxc.ini')); exit(0 if cp.get('SSHAgent','Enabled',fallback='false')=='true' else 1)"
-    keepassxc-systemd-unit-enabled:
-        check: command=systemctl --user is-enabled keepassxc.service
-        id: keepassxc-systemd-unit-enabled
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: systemctl --user is-enabled keepassxc.service
-    ssh-agent-service-enabled:
-        check: command=systemctl --user is-enabled ssh-agent.service
-        id: ssh-agent-service-enabled
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            # The layer `enable --now`s ssh-agent.service; `is-enabled` reflects that
-            # durable action. `is-active` is session-timing-fragile (the agent is
-            # socket-/login-activated, so a fresh SSH session's user instance may
-            # report it inactive even though it starts on the graphical session).
-            command: systemctl --user is-enabled ssh-agent.service
-    environment-d-ssh-auth-sock:
-        check: command=grep -q '^SSH_AUTH_SOCK=' ${HOME}/.config/environment.d/ssh-agent.conf
-        id: environment-d-ssh-auth-sock
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: grep -q '^SSH_AUTH_SOCK=' ${HOME}/.config/environment.d/ssh-agent.conf
-    gnome-keyring-secrets-disabled:
-        check: |
-            command=f=${HOME}/.config/autostart/gnome-keyring-secrets.desktop
-            ! test -f "$f" || grep -q '^Hidden=true' "$f"
-        id: gnome-keyring-secrets-disabled
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: |
+            - check: command=systemctl --user is-enabled keepassxc.service
+              id: keepassxc-systemd-unit-enabled
+              exit_status: 0
+              context:
+                - runtime
+              command: systemctl --user is-enabled keepassxc.service
+            - check: command=systemctl --user is-enabled ssh-agent.service
+              id: ssh-agent-service-enabled
+              exit_status: 0
+              context:
+                - runtime
+              command: systemctl --user is-enabled ssh-agent.service
+            - check: command=grep -q '^SSH_AUTH_SOCK=' ${HOME}/.config/environment.d/ssh-agent.conf
+              id: environment-d-ssh-auth-sock
+              exit_status: 0
+              context:
+                - runtime
+              command: grep -q '^SSH_AUTH_SOCK=' ${HOME}/.config/environment.d/ssh-agent.conf
+            - check: |
+                command=f=${HOME}/.config/autostart/gnome-keyring-secrets.desktop
+                ! test -f "$f" || grep -q '^Hidden=true' "$f"
+              id: gnome-keyring-secrets-disabled
+              exit_status: 0
+              context:
+                - runtime
+              command: |
                 f=${HOME}/.config/autostart/gnome-keyring-secrets.desktop
                 ! test -f "$f" || grep -q '^Hidden=true' "$f"
-    direnv-fish-hook:
-        check: |
-            command=f="${HOME}/.config/fish/conf.d/charly-direnv.fish"
-            if [ -f "$f" ]; then
-              grep -q 'direnv hook fish' "$f" && echo FISH-HOOK-OK
-            else
-              echo "FISH-HOOK-OK (fish not per-user-configured on this deploy; login-shell hook covers direnv)"
-            fi
-        id: direnv-fish-hook
-        stdout:
-            contains: FISH-HOOK-OK
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            # direnv's shell: schema writes the fish hook to charly-direnv.fish (the
-            # legacy direnv.fish path is stripped by this layer's cleanup task).
-            # On a deploy whose login shell is bash and where fish has no per-user
-            # config yet (a fresh VM/headless guest), the fish drop-in is absent —
-            # the login-shell hook (direnv-bash-hook below) already proves direnv
-            # is wired. So: require the fish hook only where fish IS configured.
-            command: |
+            - check: |
+                command=f="${HOME}/.config/fish/conf.d/charly-direnv.fish"
+                if [ -f "$f" ]; then
+                  grep -q 'direnv hook fish' "$f" && echo FISH-HOOK-OK
+                else
+                  echo "FISH-HOOK-OK (fish not per-user-configured on this deploy; login-shell hook covers direnv)"
+                fi
+              id: direnv-fish-hook
+              stdout:
+                contains: FISH-HOOK-OK
+              context:
+                - runtime
+              command: |
                 f="${HOME}/.config/fish/conf.d/charly-direnv.fish"
                 if [ -f "$f" ]; then
                   grep -q 'direnv hook fish' "$f" && echo FISH-HOOK-OK
                 else
                   echo "FISH-HOOK-OK (fish not per-user-configured on this deploy; login-shell hook covers direnv)"
                 fi
-    direnv-bash-hook:
-        check: command=grep -q 'direnv hook bash' ${HOME}/.bashrc
-        id: direnv-bash-hook
-        exit_status: 0
-        context:
-            - runtime
-        plugin: command
-        plugin_input:
-            command: grep -q 'direnv hook bash' ${HOME}/.bashrc
+            - check: command=grep -q 'direnv hook bash' ${HOME}/.bashrc
+              id: direnv-bash-hook
+              exit_status: 0
+              context:
+                - runtime
+              command: grep -q 'direnv hook bash' ${HOME}/.bashrc
