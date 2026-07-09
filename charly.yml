@@ -742,17 +742,27 @@ check-openclaw-desktop-pod:
         lifecycle: dev
         description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go + ollama tarball multistage) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp.
 # charly-cachyos — the operator CachyOS workstation profile (target: local +
-# host: local). NOT a zero-side-effect test bed (it mutates the operator's
-# real machine), so it stays a kind:deploy operator entry, not an check bed.
-# disposable: operator has authorized this host as a test system, so
-# `charly update charly-cachyos` (full destroy + reinstall via the install ledger)
-# is allowed for strict R10 verification. Shares the name `charly-cachyos` with
-# the kind:local template it applies (cross-kind name reuse).
+# host: local). It mutates the operator's REAL MACHINE — it installs packages as
+# root and may change repo config — so it is an operator profile, NEVER a test bed.
+#
+# It carries NO `disposable:` flag, and must not regain one. `disposable: true` is
+# not merely "unattended destroy is authorized": it is the SOLE definition of a
+# check bed (a check bed IS a deploy marked `disposable: true`; there is no separate
+# `check:` block — /charly-check:check). So the flag makes an entity a roster bed by
+# construction: `/verify-beds` discovers every `disposable: true` entity and runs
+# `charly check run` on it. With the flag present, a routine R10 roster provisioned
+# this workstation unattended — 697s of `deploy-add` installing gstreamer, pipewire,
+# gtk4, ghostty and more as root, until it died in the chrome AUR builder.
+#
+# Consequence, accepted deliberately: `charly update charly-cachyos` is no longer an
+# unattended destroy+rebuild. It is a hard-to-reverse action on a non-disposable
+# resource and requires operator confirmation, like every other such resource.
+# Shares the name `charly-cachyos` with the kind:local template it applies
+# (cross-kind name reuse).
 charly-cachyos:
     local:
         from: charly-cachyos-app
         host: local
-        disposable: true
         description: Apply charly-cachyos to this workstation
         install_opts:
             with_service: true
