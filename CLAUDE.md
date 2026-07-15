@@ -16,7 +16,7 @@ layers via `@github` refs. After the 2026-06 box inversion main imports THIS rep
 - `/charly-distros:cachyos` — the CachyOS base image.
 - `/charly-distros:cachyos-pacstrap`, `/charly-distros:cachyos-pacstrap-builder` — the
   bootstrap builder.
-- `/charly-vm:cachyos` — the CachyOS bootstrap VM + its disposable check bed.
+- `/charly-vm:cachyos-bootstrap-vm` — the CachyOS bootstrap VM + its disposable check bed.
 - `/charly-local:charly-cachyos` — the operator workstation profile.
 - `/charly-selkies:selkies-labwc`, `/charly-selkies:selkies-labwc-nvidia` — the CPU
   + GPU labwc streaming desktops; `/charly-selkies:selkies` for the engine.
