@@ -9,6 +9,6 @@ nvidia:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/cuda:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/cuda:v2026.201.0706'

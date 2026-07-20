@@ -26,11 +26,11 @@ android-emulator:
         # emulator-service-running), so one check covers every box composing them.
 
         candy:
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/java-openjdk:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/android-sdk:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/appium-server:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/android-emulator-layer:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/java-openjdk:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/android-sdk:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/appium-server:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/android-emulator-layer:v2026.201.0706'
         env:
             EMULATOR_NAME: charly_avd_36
             EMULATOR_API_LEVEL: "36"
