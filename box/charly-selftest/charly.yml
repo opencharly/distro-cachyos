@@ -5,6 +5,6 @@ charly-selftest:
             - pac
             - aur
         candy:
-            - '@github.com/opencharly/charly/candy/charly-mcp:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/container-nesting:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/claude-code:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/charly-mcp:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/container-nesting:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.201.0706'

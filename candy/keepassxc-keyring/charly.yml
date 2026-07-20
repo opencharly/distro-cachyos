@@ -12,9 +12,9 @@ keepassxc-keyring:
         # keepassxc, gnupg, direnv stay in main (shared) → pulled by @github ref so
         # this locally-vendored layer's deps still resolve in this repo's namespace.
         require:
-            - '@github.com/opencharly/charly/candy/keepassxc:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/gnupg:v2026.183.1359'
-            - '@github.com/opencharly/charly/candy/direnv:v2026.183.1359'
+            - '@github.com/opencharly/charly/candy/keepassxc:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/gnupg:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/direnv:v2026.201.0706'
         distro:
             arch:
                 package:
