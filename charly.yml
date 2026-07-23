@@ -19,7 +19,7 @@
 #  Directly buildable: `charly box build cachyos` (from the parent repo:
 #  `charly -C box/cachyos box build cachyos`; anywhere:
 #  `charly --repo opencharly/distro-cachyos box build cachyos`).
-version: 2026.202.0105
+version: 2026.204.1223
 defaults:
     platform:
         - linux/amd64
