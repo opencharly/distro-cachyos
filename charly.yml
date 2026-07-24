@@ -548,6 +548,31 @@ check-charly-selftest-pod:
               command:
                 command: charly settings list
                 in_container: true
+            # charly-cli-settings-roundtrip — wave γ's ADE check-coverage obligation
+            # (scratchpad/wave-gamma-scoping-map.md "R10 roster"): the smoke check above
+            # only proves `charly settings list` doesn't crash; it does not prove
+            # set/get/reset actually PERSIST and REVERT through candy/plugin-settings'
+            # new in-plugin config subsystem (config.go — pure sdk/kit file I/O + the
+            # secret_backend credential touch via InvokeProvider(verb:credential)). This
+            # step asserts the FULL set → get(via list, not `get` — `settings get
+            # secret_backend` resolves the LIVE active credential-store name, which is
+            # environment-dependent; `settings list`'s row reports the persisted CONFIG
+            # value + its source, which is deterministic) → reset round-trip.
+            - check: settings set/list/reset round-trip actually persists and reverts secret_backend (not just that each subcommand exits 0)
+              id: charly-cli-settings-roundtrip
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: |
+                  charly settings set secret_backend config
+                  echo "AFTER-SET:"; charly settings list | grep '^secret_backend'
+                  charly settings reset secret_backend
+                  echo "AFTER-RESET:"; charly settings list | grep '^secret_backend'
+                in_container: true
+              stdout:
+                - matches: "secret_backend\\s+config\\s+\\(config\\)"
+                - matches: "secret_backend\\s+auto\\s+\\(default\\)"
             - check: command=charly secrets list
               id: charly-cli-secrets
               exit_status: 0
