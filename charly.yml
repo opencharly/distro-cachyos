@@ -94,7 +94,8 @@ check-cachyos-gpu-vm:
         lifecycle: dev
         description: Sole proof of the operator's dual-desktop GPU workstation config — a VFIO GPU-passthrough VM running BOTH a bare-metal KDE/SDDM seat AND a nested selkies-kde-nvidia streaming pod with real NVENC; the only bed exercising spice+wl+mcp + gpu-passthrough + preempt + nested + localpkg + multistage together. Pacstrap GPU-passthrough VM (preempts the preemptible nvidia-gpu holder) installs the KDE seat + nvidia driver/CDI + charly localpkg + npm AI CLIs, deploys a nested selkies-kde-nvidia quadlet, then over SSH runs ~14 command checks plus the inherited cachyos-gpu-desktop-check spice probes; GPU/NVENC checks N/A cleanly without a VFIO host.
         # Claims the single physical NVIDIA GPU. The resource arbiter
-        # (charly/preempt.go) gracefully preempts any RUNNING preemptible holder of
+        # (candy/plugin-preempt's verb:arbiter — the former charly/preempt.go is
+        # DELETED, K-wave 2) gracefully preempts any RUNNING preemptible holder of
         # the `nvidia-gpu` token — e.g. the operator's vm:cachyos-gpu workstation
         # when its PER-HOST `~/.config/charly/deploy.yml` overlay marks it
         # `preemptible: {holds: [nvidia-gpu]}` — before this bed brings up its VM,
