@@ -79,7 +79,7 @@ check-cachyos-vm:
 # (the driver layer reboots the guest, via the RebootStep), then runVM deploys
 # the nested `selkies-kde` pod as a PERSISTENT in-guest quadlet
 # (deployNestedPodsInGuest: host-build selkies-kde-nvidia → cp-box into the
-# guest → the guest's own project-free `charly bundle from-box`, lingering on so
+# guest → the guest's own project-free `charly fleet from-box`, lingering on so
 # it survives a guest reboot). This is the nested-pod-in-VM capability under
 # test. The deploy-scope checks below run inside the guest over SSH.
 #
@@ -212,7 +212,7 @@ check-cachyos-gpu-vm:
             - check: |
                 command=pacman -Q opencharly-git >/dev/null 2>&1 &&
                 test "$(command -v charly)" -ef /usr/bin/charly &&
-                charly bundle from-box --help >/dev/null 2>&1 &&
+                charly fleet from-box --help >/dev/null 2>&1 &&
                 echo CHARLY-PROPER-PACKAGE
               id: gpu-charly-proper-package
               stdout:
@@ -223,7 +223,7 @@ check-cachyos-gpu-vm:
               command: |
                 pacman -Q opencharly-git >/dev/null 2>&1 &&
                 test "$(command -v charly)" -ef /usr/bin/charly &&
-                charly bundle from-box --help >/dev/null 2>&1 &&
+                charly fleet from-box --help >/dev/null 2>&1 &&
                 echo CHARLY-PROPER-PACKAGE
             - check: |
                 command=export XDG_RUNTIME_DIR=/run/user/$(id -u)
@@ -583,13 +583,13 @@ check-charly-selftest-pod:
               command:
                 command: charly box --help
                 in_container: true
-            - check: command=charly bundle --help
+            - check: command=charly fleet --help
               id: charly-cli-deploy-group
               exit_status: 0
               context:
                 - runtime
               command:
-                command: charly bundle --help
+                command: charly fleet --help
                 in_container: true
             - check: command=charly check --help
               id: charly-cli-check-group
