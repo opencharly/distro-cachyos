@@ -36,7 +36,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.200.2132'
+    - arch: '@github.com/opencharly/distro-arch:v2026.229.1615'
 discover:
     - path: box
       recursive: true
@@ -51,11 +51,12 @@ check-cachyos-vm:
         from: cachyos-vm
         disposable: true
         lifecycle: dev
-        description: Sole proof of the CachyOS pacstrap-from-scratch bootstrap VM booting AND the charly toolchain installing as a native pac package (opencharly-git via makepkg + pacman -U), distinct from the Arch cloud-VM pac witness. Pacstrap-builds a CachyOS rootfs, boots it under UEFI, deploys the charly + dev-tools layers over SSH (the charly localpkg builds opencharly-git from the superproject pkg/arch), then runs the baked charly-binary/version + dev-tools command/file/package checks.
+        description: Sole proof of the CachyOS pacstrap-from-scratch bootstrap VM booting AND the charly toolchain installing as a native pac package (charly via the `charly generate-packages` plugin + pacman -U), distinct from the Arch cloud-VM pac witness. Pacstrap-builds a CachyOS rootfs, boots it under UEFI, deploys the charly + dev-tools layers over SSH (the charly localpkg builds the charly package via the `charly generate-packages` plugin from the candy's `packaging:` section), then runs the baked charly-binary/version + dev-tools command/file/package checks.
         # The cachyos bootstrap-VM R10 canary: pacstrap builds the cachyos rootfs
         # from scratch, the guest boots, the charly candy deploys onto it (its
-        # localpkg: builds opencharly-git from the superproject pkg/arch via makepkg
-        # and `pacman -U`s it in — a failed install fails THIS bed at the deploy
+        # localpkg: builds the charly package via the `charly generate-packages`
+        # plugin (sdk/packagekit) from the candy's `packaging:` section and
+        # `pacman -U`s it in — a failed install fails THIS bed at the deploy
         # step), and the baked charly-binary/charly-version checks run on the guest.
         # The explicit pac localpkg AUTO-RESOLVE assertion (pacman -U pulling the
         # mandatory repo deps podman/libvirt/tailscale/gocryptfs) lives ONCE, on
@@ -137,9 +138,10 @@ check-cachyos-gpu-vm:
             - '@github.com/opencharly/charly/candy/desktop-media:v2026.201.0706'
             - '@github.com/opencharly/charly/candy/cachyos-extras:v2026.201.0706'
             # charly (→ charly layer) exercises the charly-layer-on-VM-deploy path: on
-            # this Arch/CachyOS guest the charly layer's localpkg: builds opencharly-git
-            # from the repo's pkg/arch PKGBUILD on the host (makepkg) + pacman -U's
-            # it into the guest at /usr/bin/charly — proving the proper-package install
+            # this Arch/CachyOS guest the charly layer's localpkg builds the charly
+            # package via the `charly generate-packages` plugin (sdk/packagekit) from
+            # the candy's `packaging:` section + pacman -U's it into the guest at
+            # /usr/bin/charly — proving the proper-package install
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
@@ -210,7 +212,7 @@ check-cachyos-gpu-vm:
                   nvidia-smi -L
                 fi
             - check: |
-                command=pacman -Q opencharly-git >/dev/null 2>&1 &&
+                command=pacman -Q charly >/dev/null 2>&1 &&
                 test "$(command -v charly)" -ef /usr/bin/charly &&
                 charly fleet from-box --help >/dev/null 2>&1 &&
                 echo CHARLY-PROPER-PACKAGE
@@ -221,7 +223,7 @@ check-cachyos-gpu-vm:
               context:
                 - runtime
               command: |
-                pacman -Q opencharly-git >/dev/null 2>&1 &&
+                pacman -Q charly >/dev/null 2>&1 &&
                 test "$(command -v charly)" -ef /usr/bin/charly &&
                 charly fleet from-box --help >/dev/null 2>&1 &&
                 echo CHARLY-PROPER-PACKAGE
