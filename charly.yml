@@ -36,7 +36,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.229.1615'
+    - arch: '@github.com/opencharly/distro-arch:v2026.231.0559'
 discover:
     - path: box
       recursive: true
@@ -65,8 +65,8 @@ check-cachyos-vm:
         # dev-tools is composed here so this canary also validates the cachyos
         # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
         add_candy:
-            - '@github.com/opencharly/charly/candy/charly:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/dev-tools:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/dev-tools:v2026.231.0714'
         install_opts:
             allow_repo_changes: true
             allow_root_tasks: true
@@ -113,30 +113,30 @@ check-cachyos-gpu-vm:
             # agent come back clean on the fresh boot. All packages arrive via
             # these layers (never the VM bootstrap package list).
             - podman
-            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.231.0714'
             # nodejs + claude-code exercise the cross-host npm builder on a VM:
             # the npm builder runs on the host and the ~/.npm-global artifacts are
             # tarred into the guest home. Proves the AI-CLI stack installs on a VM
             # (the bug that made claude/codex/etc. silently absent) plus the
             # deploy-time {{.Home}} env.d resolution + env.d-sourcing managed block.
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/claude-code:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.231.0714'
             # Full bare-metal KDE Plasma SEAT — the in-guest half of the workstation
             # (Plasma + SDDM + graphical .target on the virtual head), CachyOS
             # theming, fonts/codecs/dev-gap. The WebRTC STREAMING desktop is NOT an
             # in-guest layer here — it runs as the nested selkies-kde pod below
             # (kde-selkies moved into the selkies-kde-nvidia image). This mirrors the
             # workstation's dual-desktop split: bare-metal seat + headless stream.
-            - '@github.com/opencharly/charly/candy/kde-desktop:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/kde-desktop:v2026.231.0714'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
             # deploy-scope checks for BOTH the bed and the operator VM (R3).
             - cachyos-gpu-desktop-check
-            - '@github.com/opencharly/charly/candy/fonts-extended:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/desktop-media:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/cachyos-extras:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/fonts-extended:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/desktop-media:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/cachyos-extras:v2026.231.0714'
             # charly (→ charly layer) exercises the charly-layer-on-VM-deploy path: on
             # this Arch/CachyOS guest the charly layer's localpkg builds the charly
             # package via the `charly generate-packages` plugin (sdk/packagekit) from
@@ -145,8 +145,8 @@ check-cachyos-gpu-vm:
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
-            - '@github.com/opencharly/charly/candy/charly:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
             - nvidia-driver
         install_opts:
             # with_service gates the systemd unit enable for sddm (the bare-metal
@@ -380,7 +380,46 @@ check-cachyos-ollama-pod:
         image: ollama
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU ollama LLM-server image composes and serves on the Arch CUDA base. Builds and deploys the ollama pod and runs the inherited ollama + dbus baked checks — server HTTP/API liveness plus binary/service/port/file probes; GPU via CDI when present, portable otherwise.
+        requires_shared: [nvidia-gpu]
+        description: >-
+            Sole proof the CachyOS GPU ollama LLM-server image composes and serves on the Arch CUDA base, that the packaged CUDA backend is present, that the compiled-in command:ollama plugin works end-to-end, AND that real inference runs on the passed-through NVIDIA GPU. Builds and deploys the ollama pod and runs the checks baked into the ollama, ollama-cuda and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the CUDA backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port — plus the bed's own GPU-inference plan: nvidia-smi enumerates the card via CDI, a tiny model answers a prompt (a real generation pass), and `ollama ps` reports the model 100% GPU-resident (proving the CUDA backend executed it, not CPU fallback). The `requires_shared: [nvidia-gpu]` makes the arbiter flip the IOMMU group vfio→nvidia at deploy and back at teardown, so the pod reaches the card through CDI. On Arch the server comes from the split `ollama` package rather than the upstream tarball, so this bed is also the proof of that install path.
+        plan:
+            - check: the passed-through NVIDIA GPU is visible inside the container via CDI — nvidia-smi enumerates the card
+              id: ollama-gpu-visible
+              context:
+                - runtime
+              command: nvidia-smi -L
+              stdout:
+                - contains: "NVIDIA"
+            - check: ollama runs a real generation pass — a tiny model answers a prompt (the first run pulls the model, hence the raised timeout)
+              id: ollama-gpu-inference
+              context:
+                - runtime
+              timeout: 5m
+              exit_status: 0
+              command: ollama run qwen2.5:0.5b "What is 2+2? Reply with just the number."
+            - check: the model is resident on the GPU — ollama ps reports 100% GPU in the processor column, proving the CUDA backend executed the generation rather than CPU fallback
+              id: ollama-gpu-resident
+              context:
+                - runtime
+              command: ollama ps
+              stdout:
+                - contains: "100% GPU"
+# check-cachyos-ollama-rocm-pod — the AMD sibling of check-cachyos-ollama-pod, and
+# the sole consumer that proves candy/ollama-rocm. Plain cachyos base (no NVIDIA),
+# so it also proves the base ollama candy composes without any GPU candy at all.
+# SCOPE BOUNDARY, stated so nobody reads more into a green run than it earns: on a
+# host with no AMD card this proves composition, that the ROCm backend library
+# actually ships, and that the server reaches steady state — NOT that inference
+# runs on an AMD GPU. Live GPU enumeration needs a real card passed through, the
+# same limit candy/rocm states for itself. Ollama falls back to CPU here, which is
+# why every inherited runtime check still passes.
+check-cachyos-ollama-rocm-pod:
+    pod:
+        image: ollama-rocm
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the CachyOS AMD ollama image composes on the plain CachyOS base and serves, and the sole consumer proving the ollama-rocm backend candy. Builds and deploys the ollama-rocm pod and runs the checks baked into the ollama, ollama-rocm and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the ROCm/HIP backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port. Without an AMD card passed through the server runs CPU inference, so this bed proves the backend SHIPS, not that it executes on a GPU.
 check-cachyos-comfyui-pod:
     pod:
         image: comfyui
@@ -439,9 +478,9 @@ check-selkies-labwc-nvidia-vm:
         # nvidia-driver layer's reboot: true reloads the open module on a clean boot.
         add_candy:
             - podman
-            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
             - nvidia-driver
         install_opts:
             with_service: true
@@ -483,9 +522,9 @@ check-selkies-kde-nvidia-vm:
         # so the nested --device nvidia.com/gpu=all selkies-kde pod reaches the GPU.
         add_candy:
             - podman
-            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
             - nvidia-driver
         install_opts:
             with_service: true
@@ -701,12 +740,12 @@ check-android-emulator-pod:
         android:
             from: pixel9a-36
             add_candy:
-                - '@github.com/opencharly/charly/candy/android-test-apps:v2026.201.0706'
+                - '@github.com/opencharly/charly/candy/android-test-apps:v2026.231.0714'
     device-net:
         android:
             from: pixel9a-endpoint
             add_candy:
-                - '@github.com/opencharly/charly/candy/android-apidemos:v2026.201.0706'
+                - '@github.com/opencharly/charly/candy/android-apidemos:v2026.231.0714'
 # check-openclaw-pod deploys the minimal headless openclaw gateway on the
 # CachyOS (Arch) base. Exercises the cachyos→arch-builder npm build of the
 # openclaw package + the dbus/charly/socat/supervisord stack. The deploy-scope
@@ -743,7 +782,7 @@ check-openclaw-desktop-pod:
         image: openclaw-desktop
         disposable: true
         lifecycle: dev
-        description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go + ollama tarball multistage) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp.
+        description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go multistage, plus the packaged CPU ollama) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp.
 # charly-cachyos — the operator CachyOS workstation profile (target: local +
 # host: local). It mutates the operator's REAL MACHINE — it installs packages as
 # root and may change repo config — so it is an operator profile, NEVER a test bed.
@@ -798,35 +837,35 @@ cachyos-gpu:
         description: Persistent GPU CachyOS KDE coder workstation VM (bare-metal SDDM Plasma seat on the monitors + nested selkies-kde-nvidia stream pod (real NVENC, :3000) + /workspace + autostart)
         add_candy:
             - wheel-nopasswd
-            - '@github.com/opencharly/charly/candy/yay:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/dev-tools:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/gh:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/pre-commit:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/tmux:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/direnv:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/gnupg:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/keepassxc:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/yay:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/dev-tools:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/gh:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/pre-commit:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/tmux:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/direnv:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/gnupg:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/keepassxc:v2026.231.0714'
             - keepassxc-keyring
-            - '@github.com/opencharly/charly/candy/tailscale:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/tailscale-up:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/build-toolchain:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/golang:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/rust:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/uv:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/claude-code:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/codex:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/gemini:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/oracle:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/forgecode:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/devops-tools:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/docker-ce:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/kubernetes:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/vscode:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/tailscale:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/tailscale-up:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/build-toolchain:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/golang:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/rust:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/uv:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/codex:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/gemini:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/oracle:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/forgecode:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/devops-tools:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/docker-ce:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/kubernetes:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/vscode:v2026.231.0714'
             - ghostty
-            - '@github.com/opencharly/charly/candy/chrome:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/charly:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/chrome:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
@@ -836,15 +875,15 @@ cachyos-gpu:
             # (real NVENC, :3000) deployed as a persistent in-guest quadlet — see
             # `nested:` below, NOT an in-guest layer. The bare-metal SDDM Plasma
             # seat (kde-desktop) drives the physical RTX monitors.
-            - '@github.com/opencharly/charly/candy/kde-desktop:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/kde-desktop:v2026.231.0714'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
             # deploy-scope checks for BOTH the bed and the operator VM (R3).
             - cachyos-gpu-desktop-check
-            - '@github.com/opencharly/charly/candy/fonts-extended:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/desktop-media:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/cachyos-extras:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/fonts-extended:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/desktop-media:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/cachyos-extras:v2026.231.0714'
             # (in-guest kde-selkies layer REMOVED — the WebRTC streaming desktop is
             # the nested selkies-kde-nvidia pod below; podman is its in-guest substrate.)
             # VM-only additions. podman for GPU/CUDA containers; the guest agent +
@@ -852,8 +891,8 @@ cachyos-gpu:
             # trailing RebootStep, so the guest reboots ONCE after everything is in
             # place, and the enabled workspace.mount + guest agent come back clean.
             - podman
-            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/workspace-mount:v2026.231.0714'
             - nvidia-driver
         install_opts:
             with_service: true
@@ -886,35 +925,35 @@ charly-cachyos-app:
             Targets the operator's CachyOS host via direct local exec.
         candy:
             - wheel-nopasswd
-            - '@github.com/opencharly/charly/candy/yay:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/dev-tools:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/gh:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/pre-commit:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/tmux:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/direnv:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/gnupg:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/keepassxc:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/yay:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/dev-tools:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/gh:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/pre-commit:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/tmux:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/direnv:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/gnupg:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/keepassxc:v2026.231.0714'
             - keepassxc-keyring
-            - '@github.com/opencharly/charly/candy/tailscale:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/tailscale-up:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/build-toolchain:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/golang:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/rust:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/uv:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/claude-code:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/codex:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/gemini:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/oracle:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/forgecode:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/devops-tools:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/docker-ce:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/kubernetes:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/vscode:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/tailscale:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/tailscale-up:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/build-toolchain:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/golang:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/rust:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/nodejs:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/uv:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/claude-code:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/codex:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/gemini:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/oracle:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/forgecode:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/devops-tools:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/docker-ce:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/kubernetes:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/vscode:v2026.231.0714'
             - ghostty
-            - '@github.com/opencharly/charly/candy/chrome:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/charly:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/chrome:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
         install_opts:
             with_service: true
             allow_repo_changes: true

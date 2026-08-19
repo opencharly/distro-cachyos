@@ -1,6 +1,6 @@
 cachyos:
     candy:
-        version: 2026.152.2025
+        version: 2026.231.1219
         # Canonical CachyOS base: the upstream-published OCI image (cachyos-v3 —
         # x86_64_v3-optimized). The pacstrap-from-scratch variant is preserved as
         # `cachyos-pacstrap` for environments where pulling from Docker Hub isn't
@@ -10,6 +10,14 @@ cachyos:
         # the most precise coordinate. Refresh by repinning to a newer digest:
         #   skopeo inspect --no-tags docker://docker.io/cachyos/cachyos-v3 | jq -r .Digest
         base: docker.io/cachyos/cachyos-v3@sha256:2f87e702822dc3bc1c527215ace3f7b1b20c5d9d4171bb78e012557be477d487
+        # The cachyos base checks (sandbox-disabled, os-release, pacman, v3-repo) live on
+        # the cachyos-base-check CANDY, composed here, NOT in this box's plan: a base-box
+        # plan does not bake into derived images (CollectDescriptions bakes only the TOP
+        # box's plan + the candy chain), so a plan here would leave the headline sandbox
+        # gate unexecuted in every bed that ships the fix. Composing the candy makes the
+        # checks bake into this base image AND every image that FROMs it.
+        candy:
+            - cachyos-base-check
         build:
             - pac
         # CachyOS is Arch-derived and has no builder of its own; route all four
@@ -29,22 +37,3 @@ cachyos:
         distro:
             - cachyos
             - arch
-        plan:
-            - check: command=cat /etc/os-release
-              id: cachyos-os-release
-              exit_status: 0
-              stdout:
-                - contains: "ID=cachyos"
-              command: cat /etc/os-release
-            - check: command=pacman --version
-              id: cachyos-pacman
-              exit_status: 0
-              stdout:
-                - contains: "Pacman v"
-              command: pacman --version
-            - check: command=pacman-conf --repo-list
-              id: cachyos-v3-repo-configured
-              exit_status: 0
-              stdout:
-                - contains: "cachyos-v3"
-              command: pacman-conf --repo-list

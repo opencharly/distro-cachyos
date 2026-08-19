@@ -1,0 +1,70 @@
+cachyos-base-check:
+    candy:
+        version: 2026.231.1219
+        description: |
+            CachyOS base-image verification layer: proves the pacman scriptlet network
+            sandbox is disabled (so install scriptlets and hooks actually run in rootless
+            build containers), the image is CachyOS, pacman is present, and the cachyos-v3
+            repo is configured. Composed by the cachyos base box so every CachyOS-derived
+            image bakes these checks into its ai.opencharly.description plan and they run
+            in `charly check box` / `charly check live` — a base-box plan alone would NOT
+            bake into derived images, leaving the headline sandbox gate unexecuted in the
+            beds that ship the fix.
+        # The checks verify pacman's configuration, so the candy declares pacman itself as
+        # its install content (a no-op on the base, which already ships it) — this is the
+        # honest content that makes the candy a valid ADE entity (a check-only candy with
+        # no install and no composition is rejected by validateCandyContents).
+        distro:
+            arch:
+                package:
+                    - pacman
+        # CachyOS's pacman is a -4 REBUILD of the same 7.1.0.r9.g54d9411 version Arch
+        # ships as -2, and it carries a scriptlet network-isolation patch Arch's does
+        # not (proven by extracting both libalpm: 2,025,008 B vs 281,240 B, and by the
+        # -4 binary alone carrying the strings "could not isolate the network" and
+        # "refusing to run %s with network access"). It runs every install scriptlet and
+        # hook inside a fresh network namespace and ABORTS THE SCRIPTLET ENTIRELY when
+        # that namespace cannot be created — which is exactly the case in a rootless
+        # build container, where unshare(CLONE_NEWNET) returns EPERM.
+        #
+        # The cost was silent and large: 46-51 scriptlets and hooks never ran in ANY
+        # shipped CachyOS image — ldconfig (no linker cache), systemd-hook x34-37 (no
+        # unit presets), update-ca-trust (CA store not rebuilt), locale-gen, fc-cache,
+        # iconvconfig, and nvidia-ctk-cdi (no CDI spec on the GPU boxes). pacman treats
+        # a refused hook as non-fatal, so the build "succeeded" every time.
+        #
+        # pacman.conf(5), shipped inside this very image, names this option as the
+        # supported fix for "unprivileged containers lacking CAP_SYS_ADMIN". It is
+        # strictly NARROWER than the DisableSandboxFilesystem that Arch's own container
+        # image ships, and it leaves the download sandbox intact.
+        #
+        # The DIRECTIVE lives in the cachyos base box's pac install, not the shared `pac`
+        # install_template: cachyos inherits arch, and Arch's -2 pacman does not recognise
+        # the directive — it would emit "directive not recognized" on every Arch build.
+        # This CHECK is cachyos-specific and lives HERE, on a candy the base box composes,
+        # so it bakes into every CachyOS-derived image (a base-box plan does not).
+        plan:
+            - check: pacman's scriptlet network sandbox is disabled, so install scriptlets and hooks actually run instead of being refused
+              id: cachyos-pacman-sandbox-disabled
+              exit_status: 0
+              stdout:
+                - contains: DisableSandboxNetwork
+              command: grep '^DisableSandboxNetwork' /etc/pacman.conf
+            - check: command=cat /etc/os-release
+              id: cachyos-os-release
+              exit_status: 0
+              stdout:
+                - contains: "ID=cachyos"
+              command: cat /etc/os-release
+            - check: command=pacman --version
+              id: cachyos-pacman
+              exit_status: 0
+              stdout:
+                - contains: "Pacman v"
+              command: pacman --version
+            - check: command=pacman-conf --repo-list
+              id: cachyos-v3-repo-configured
+              exit_status: 0
+              stdout:
+                - contains: "cachyos-v3"
+              command: pacman-conf --repo-list

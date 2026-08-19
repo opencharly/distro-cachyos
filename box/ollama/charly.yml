@@ -4,6 +4,12 @@ ollama:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/ollama:v2026.201.0706'
-            - '@github.com/opencharly/charly/candy/dbus:v2026.201.0706'
+            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/ollama:v2026.231.0714'
+            # The CUDA backend is composed HERE, not required by the ollama candy:
+            # this box sits on the NVIDIA base, so it opts into the GPU backend while
+            # a CPU consumer of the same candy (openclaw-desktop) pays nothing for it.
+            # On Arch this resolves to the split `ollama-cuda` package, which depends
+            # on `ollama` and drops its backend into the same runner directory.
+            - '@github.com/opencharly/charly/candy/ollama-cuda:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/dbus:v2026.231.0714'
