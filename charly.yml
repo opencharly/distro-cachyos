@@ -49,10 +49,12 @@ discover:
 check-cachyos-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
-    # fails with 'insufficient free space on /tmp/charly-priv-N'.
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
     # mkinitcpio 'failed to detect root filesystem' in the base-image build: the
-    # debootstrap-builder fix lands in charly#385 (the batch-1 charly cutover); this
-    # repo's charly ref advance (v2026.236.0956) is the batch exit.
+    # chroot autodetect fallback, allowlisted by charly#400
+    # (mkinitcpio-chroot-autodetect-fallback + mkinitcpio-chroot-warnings); this
+    # repo's charly ref advance (v2026.236.1316) is the batch exit.
     vm:
         from: cachyos-vm
         disposable: true
@@ -97,7 +99,8 @@ check-cachyos-vm:
 check-cachyos-gpu-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
-    # fails with 'insufficient free space on /tmp/charly-priv-N'.
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
     vm:
         from: cachyos-gpu-vm
         disposable: true
@@ -475,7 +478,8 @@ check-selkies-labwc-pod:
 check-selkies-labwc-nvidia-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
-    # fails with 'insufficient free space on /tmp/charly-priv-N'.
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
     vm:
         from: cachyos-gpu-vm
         disposable: true
@@ -526,7 +530,8 @@ check-selkies-labwc-nvidia-vm:
 check-selkies-kde-nvidia-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
-    # fails with 'insufficient free space on /tmp/charly-priv-N'.
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
     vm:
         from: cachyos-gpu-vm
         disposable: true
