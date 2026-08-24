@@ -50,6 +50,9 @@ check-cachyos-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
     # fails with 'insufficient free space on /tmp/charly-priv-N'.
+    # mkinitcpio 'failed to detect root filesystem' in the base-image build: the
+    # debootstrap-builder fix lands in charly#385 (the batch-1 charly cutover); this
+    # repo's charly ref advance (v2026.236.0956) is the batch exit.
     vm:
         from: cachyos-vm
         disposable: true
