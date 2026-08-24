@@ -47,6 +47,9 @@ discover:
 # deploy.yml). disposable: true is the sole authorization for the unattended
 # destroy+rebuild driven by `charly check run check-cachyos-vm`.
 check-cachyos-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'.
     vm:
         from: cachyos-vm
         disposable: true
@@ -89,6 +92,9 @@ check-cachyos-vm:
 # anywhere. On a host with the cachyos-gpu-vm hostdev block added locally, the
 # same checks assert real GPU encode. See cachyos-gpu-vm in vm.yml.
 check-cachyos-gpu-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'.
     vm:
         from: cachyos-gpu-vm
         disposable: true
@@ -464,6 +470,9 @@ check-selkies-labwc-pod:
         lifecycle: dev
         description: Sole proof of the CPU labwc selkies streaming desktop building from the cachyos→arch-builder pixi path — the labwc compositor variant (no wl probe) and the base box for android-emulator. Builds (pixi pixelflux + AUR chrome/wlrctl multistage) and deploys the selkies-labwc pod, then runs the inherited selkies-desktop baked checks — labwc/waybar/swaync/pavucontrol/chrome package+service probes, the selkies HTTPS :3000 UI probe, and chrome-devtools-mcp probes.
 check-selkies-labwc-nvidia-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'.
     vm:
         from: cachyos-gpu-vm
         disposable: true
@@ -512,6 +521,9 @@ check-selkies-labwc-nvidia-vm:
         pod:
             image: selkies-labwc-nvidia
 check-selkies-kde-nvidia-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'.
     vm:
         from: cachyos-gpu-vm
         disposable: true
