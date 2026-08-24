@@ -8,8 +8,8 @@ versa:
             - linux/amd64
         candy:
             - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714' # GPU runtime (nvidia-utils + nvidia-container-toolkit) — formerly via base: nvidia
-            - '@github.com/opencharly/layer-cuda:v2026.235.2110' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
+            - '@github.com/opencharly/layer-nvidia:v2026.235.2120' # GPU runtime (nvidia-utils + nvidia-container-toolkit) — formerly via base: nvidia
+            - '@github.com/opencharly/layer-cuda:v2026.235.2121' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
             - '@github.com/opencharly/charly/candy/marimo:v2026.231.0714' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
             - '@github.com/opencharly/charly/candy/airflow:v2026.231.0714' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
             - '@github.com/opencharly/charly/candy/osm-tools:v2026.231.0714' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI

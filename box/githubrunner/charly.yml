@@ -13,6 +13,6 @@ githubrunner:
         candy:
             - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/github-runner:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
             - '@github.com/opencharly/pod-dbus:v2026.235.2115'
             - '@github.com/opencharly/charly/candy/container-nesting:v2026.231.0714'

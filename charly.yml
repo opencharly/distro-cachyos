@@ -47,6 +47,14 @@ discover:
 # deploy.yml). disposable: true is the sole authorization for the unattended
 # destroy+rebuild driven by `charly check run check-cachyos-vm`.
 check-cachyos-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
+    # mkinitcpio 'failed to detect root filesystem' in the base-image build: the
+    # chroot autodetect fallback, allowlisted by charly#400
+    # (mkinitcpio-chroot-autodetect-fallback + mkinitcpio-chroot-warnings); this
+    # repo's charly ref advance (v2026.236.2040) is the batch exit.
     vm:
         from: cachyos-vm
         disposable: true
@@ -65,7 +73,7 @@ check-cachyos-vm:
         # dev-tools is composed here so this canary also validates the cachyos
         # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
         add_candy:
-            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
             - '@github.com/opencharly/charly/candy/dev-tools:v2026.231.0714'
         install_opts:
             allow_repo_changes: true
@@ -89,6 +97,10 @@ check-cachyos-vm:
 # anywhere. On a host with the cachyos-gpu-vm hostdev block added locally, the
 # same checks assert real GPU encode. See cachyos-gpu-vm in vm.yml.
 check-cachyos-gpu-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
     vm:
         from: cachyos-gpu-vm
         disposable: true
@@ -145,8 +157,8 @@ check-cachyos-gpu-vm:
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
-            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
+            - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
             - nvidia-driver
         install_opts:
             # with_service gates the systemd unit enable for sddm (the bare-metal
@@ -464,6 +476,10 @@ check-selkies-labwc-pod:
         lifecycle: dev
         description: Sole proof of the CPU labwc selkies streaming desktop building from the cachyos→arch-builder pixi path — the labwc compositor variant (no wl probe) and the base box for android-emulator. Builds (pixi pixelflux + AUR chrome/wlrctl multistage) and deploys the selkies-labwc pod, then runs the inherited selkies-desktop baked checks — labwc/waybar/swaync/pavucontrol/chrome package+service probes, the selkies HTTPS :3000 UI probe, and chrome-devtools-mcp probes.
 check-selkies-labwc-nvidia-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
     vm:
         from: cachyos-gpu-vm
         disposable: true
@@ -480,7 +496,7 @@ check-selkies-labwc-nvidia-vm:
             - podman
             - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/workspace-mount:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
+            - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
             - nvidia-driver
         install_opts:
             with_service: true
@@ -512,6 +528,10 @@ check-selkies-labwc-nvidia-vm:
         pod:
             image: selkies-labwc-nvidia
 check-selkies-kde-nvidia-vm:
+    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+    # on the build host's /tmp (charly vm builds the disk there); a host with less
+    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
+    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
     vm:
         from: cachyos-gpu-vm
         disposable: true
@@ -524,7 +544,7 @@ check-selkies-kde-nvidia-vm:
             - podman
             - '@github.com/opencharly/charly/candy/qemu-guest-agent:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/workspace-mount:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
+            - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
             - nvidia-driver
         install_opts:
             with_service: true
@@ -864,8 +884,8 @@ cachyos-gpu:
             - '@github.com/opencharly/charly/candy/vscode:v2026.231.0714'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.235.2057'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
+            - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
@@ -952,8 +972,8 @@ charly-cachyos-app:
             - '@github.com/opencharly/charly/candy/vscode:v2026.231.0714'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.235.2057'
-            - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
+            - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
         install_opts:
             with_service: true
             allow_repo_changes: true
