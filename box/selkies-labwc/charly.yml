@@ -16,7 +16,7 @@ selkies-labwc:
         candy:
             - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/selkies-desktop:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/dbus:v2026.231.0714'
+            - '@github.com/opencharly/pod-dbus:v2026.235.2115'
         # No box-level check: the labwc/chrome/traefik/sshd binaries belong to their
         # candies (labwc, chrome, selkies, sshd) and the chrome-devtools-mcp port to
         # candy/chrome-devtools-mcp — one candy check covers every box composing them.
