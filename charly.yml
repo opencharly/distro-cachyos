@@ -54,7 +54,7 @@ check-cachyos-vm:
     # mkinitcpio 'failed to detect root filesystem' in the base-image build: the
     # chroot autodetect fallback, allowlisted by charly#400
     # (mkinitcpio-chroot-autodetect-fallback + mkinitcpio-chroot-warnings); this
-    # repo's charly ref advance (v2026.236.1316) is the batch exit.
+    # repo's charly ref advance (v2026.236.2040) is the batch exit.
     vm:
         from: cachyos-vm
         disposable: true
@@ -73,7 +73,7 @@ check-cachyos-vm:
         # dev-tools is composed here so this canary also validates the cachyos
         # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
         add_candy:
-            - '@github.com/opencharly/charly/candy/charly:v2026.236.1316'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
             - '@github.com/opencharly/charly/candy/dev-tools:v2026.231.0714'
         install_opts:
             allow_repo_changes: true
@@ -157,7 +157,7 @@ check-cachyos-gpu-vm:
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
-            - '@github.com/opencharly/charly/candy/charly:v2026.236.1316'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
             - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
             - nvidia-driver
         install_opts:
@@ -885,7 +885,7 @@ cachyos-gpu:
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.235.2057'
             - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
-            - '@github.com/opencharly/charly/candy/charly:v2026.236.1316'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
@@ -973,7 +973,7 @@ charly-cachyos-app:
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.235.2057'
             - '@github.com/opencharly/layer-nvidia:v2026.235.2120'
-            - '@github.com/opencharly/charly/candy/charly:v2026.236.1316'
+            - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
         install_opts:
             with_service: true
             allow_repo_changes: true
