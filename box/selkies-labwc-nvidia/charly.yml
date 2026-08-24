@@ -16,7 +16,7 @@ selkies-labwc-nvidia:
         candy:
             - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/selkies-desktop:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/dbus:v2026.231.0714'
+            - '@github.com/opencharly/pod-dbus:v2026.235.2115'
         plan:
             - check: command=strings ${HOME}/.pixi/envs/default/lib/python3.*/site-packages/pixelflux/pixelflux_wayland*.so | grep -q NvEncodeAPICreateInstance && echo NVENC-COMPILED
               id: pixelflux-nvenc-compiled

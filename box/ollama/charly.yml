@@ -12,4 +12,4 @@ ollama:
             # On Arch this resolves to the split `ollama-cuda` package, which depends
             # on `ollama` and drops its backend into the same runner directory.
             - '@github.com/opencharly/charly/candy/ollama-cuda:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/dbus:v2026.231.0714'
+            - '@github.com/opencharly/pod-dbus:v2026.235.2115'

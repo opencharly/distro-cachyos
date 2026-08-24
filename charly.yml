@@ -120,7 +120,7 @@ check-cachyos-gpu-vm:
             # tarred into the guest home. Proves the AI-CLI stack installs on a VM
             # (the bug that made claude/codex/etc. silently absent) plus the
             # deploy-time {{.Home}} env.d resolution + env.d-sourcing managed block.
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.231.0714'
+            - '@github.com/opencharly/layer-nodejs:v2026.235.2056'
             - '@github.com/opencharly/charly/candy/claude-code:v2026.231.0714'
             # Full bare-metal KDE Plasma SEAT — the in-guest half of the workstation
             # (Plasma + SDDM + graphical .target on the virtual head), CachyOS
@@ -841,7 +841,7 @@ cachyos-gpu:
             - '@github.com/opencharly/charly/candy/dev-tools:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/gh:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/pre-commit:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/tmux:v2026.231.0714'
+            - '@github.com/opencharly/layer-tmux:v2026.235.2057'
             - '@github.com/opencharly/charly/candy/direnv:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/gnupg:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/keepassxc:v2026.231.0714'
@@ -849,13 +849,13 @@ cachyos-gpu:
             - '@github.com/opencharly/charly/candy/tailscale:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/tailscale-up:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/build-toolchain:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/golang:v2026.231.0714'
+            - '@github.com/opencharly/layer-golang:v2026.235.2057'
             - '@github.com/opencharly/charly/candy/rust:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.231.0714'
+            - '@github.com/opencharly/layer-nodejs:v2026.235.2056'
             - '@github.com/opencharly/charly/candy/uv:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/claude-code:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/codex:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/gemini:v2026.231.0714'
+            - '@github.com/opencharly/layer-gemini:v2026.235.2110'
             - '@github.com/opencharly/charly/candy/oracle:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/forgecode:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/devops-tools:v2026.231.0714'
@@ -863,7 +863,7 @@ cachyos-gpu:
             - '@github.com/opencharly/charly/candy/kubernetes:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/vscode:v2026.231.0714'
             - ghostty
-            - '@github.com/opencharly/charly/candy/chrome:v2026.231.0714'
+            - '@github.com/opencharly/layer-chrome:v2026.235.2057'
             - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
@@ -929,7 +929,7 @@ charly-cachyos-app:
             - '@github.com/opencharly/charly/candy/dev-tools:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/gh:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/pre-commit:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/tmux:v2026.231.0714'
+            - '@github.com/opencharly/layer-tmux:v2026.235.2057'
             - '@github.com/opencharly/charly/candy/direnv:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/gnupg:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/keepassxc:v2026.231.0714'
@@ -937,13 +937,13 @@ charly-cachyos-app:
             - '@github.com/opencharly/charly/candy/tailscale:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/tailscale-up:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/build-toolchain:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/golang:v2026.231.0714'
+            - '@github.com/opencharly/layer-golang:v2026.235.2057'
             - '@github.com/opencharly/charly/candy/rust:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.231.0714'
+            - '@github.com/opencharly/layer-nodejs:v2026.235.2056'
             - '@github.com/opencharly/charly/candy/uv:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/claude-code:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/codex:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/gemini:v2026.231.0714'
+            - '@github.com/opencharly/layer-gemini:v2026.235.2110'
             - '@github.com/opencharly/charly/candy/oracle:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/forgecode:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/devops-tools:v2026.231.0714'
@@ -951,7 +951,7 @@ charly-cachyos-app:
             - '@github.com/opencharly/charly/candy/kubernetes:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/vscode:v2026.231.0714'
             - ghostty
-            - '@github.com/opencharly/charly/candy/chrome:v2026.231.0714'
+            - '@github.com/opencharly/layer-chrome:v2026.235.2057'
             - '@github.com/opencharly/charly/candy/nvidia:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/charly:v2026.231.0714'
         install_opts:

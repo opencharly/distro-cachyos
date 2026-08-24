@@ -26,7 +26,7 @@ android-emulator:
         # emulator-service-running), so one check covers every box composing them.
 
         candy:
-            - '@github.com/opencharly/charly/candy/nodejs:v2026.231.0714'
+            - '@github.com/opencharly/layer-nodejs:v2026.235.2056'
             - '@github.com/opencharly/charly/candy/java-openjdk:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/android-sdk:v2026.231.0714'
             - '@github.com/opencharly/charly/candy/appium-server:v2026.231.0714'
