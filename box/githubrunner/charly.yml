@@ -11,8 +11,8 @@ githubrunner:
         # /dev/fuse, /dev/net/tun) at uid 1000. Same shape as openclaw-desktop.
         network: host
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/github-runner:v2026.231.0714'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.237.804'
+            - '@github.com/opencharly/pod-github-runner:v2026.237.939'
             - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
             - '@github.com/opencharly/pod-dbus:v2026.235.2115'
-            - '@github.com/opencharly/charly/candy/container-nesting:v2026.231.0714'
+            - '@github.com/opencharly/layer-container-nesting:v2026.237.938'

@@ -14,14 +14,14 @@ openclaw-desktop:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/selkies-desktop:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/openclaw-full:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/ollama:v2026.231.0714'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.237.804'
+            - '@github.com/opencharly/pod-selkies-desktop:v2026.237.937'
+            - '@github.com/opencharly/layer-openclaw-full:v2026.237.937'
+            - '@github.com/opencharly/pod-ollama:v2026.237.457'
             - '@github.com/opencharly/charly/candy/charly:v2026.236.2040'
-            - '@github.com/opencharly/charly/candy/container-nesting:v2026.231.0714'
+            - '@github.com/opencharly/layer-container-nesting:v2026.237.938'
             - '@github.com/opencharly/layer-golang:v2026.235.2057'
-            - '@github.com/opencharly/charly/candy/gh:v2026.231.0714'
+            - '@github.com/opencharly/layer-gh:v2026.237.456'
             - '@github.com/opencharly/pod-dbus:v2026.235.2115'
         # No box-level check: every check this all-in-one image carries lives on the
         # candy that provides the behaviour, so each is covered once across all

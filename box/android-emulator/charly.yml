@@ -27,10 +27,10 @@ android-emulator:
 
         candy:
             - '@github.com/opencharly/layer-nodejs:v2026.235.2056'
-            - '@github.com/opencharly/charly/candy/java-openjdk:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/android-sdk:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/appium-server:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/android-emulator-layer:v2026.231.0714'
+            - '@github.com/opencharly/layer-java-openjdk:v2026.237.457'
+            - '@github.com/opencharly/layer-android-sdk:v2026.237.805'
+            - '@github.com/opencharly/pod-appium-server:v2026.237.935'
+            - '@github.com/opencharly/pod-android-emulator-layer:v2026.237.938'
         env:
             EMULATOR_NAME: charly_avd_36
             EMULATOR_API_LEVEL: "36"

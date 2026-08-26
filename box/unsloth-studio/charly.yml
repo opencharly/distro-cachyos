@@ -4,7 +4,7 @@ unsloth-studio:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/unsloth-studio:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/notebook-finetuning:v2026.231.0714'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.237.804'
+            - '@github.com/opencharly/pod-unsloth-studio:v2026.237.0808'
+            - '@github.com/opencharly/layer-notebook-finetuning:v2026.237.936'
             - '@github.com/opencharly/pod-dbus:v2026.235.2115'
