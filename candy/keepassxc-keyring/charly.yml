@@ -9,8 +9,9 @@ keepassxc-keyring:
             gpg-agent + ssh-agent + direnv shell hooks. Verifiable: the keepassxc +
             pinentry-qt + secret-tool binaries exist and (at deploy scope)
             FdoSecrets is enabled in keepassxc.ini.
-        # keepassxc, gnupg, direnv stay in main (shared) → pulled by @github ref so
-        # this locally-vendored layer's deps still resolve in this repo's namespace.
+        # keepassxc, gnupg, direnv moved to standalone repos in the candy de-submodule
+        # cutover → pulled by their @github refs so this locally-vendored layer's deps
+        # still resolve in this repo's namespace.
         require:
             - '@github.com/opencharly/layer-keepassxc:v2026.237.457'
             - '@github.com/opencharly/layer-gnupg:v2026.237.457'
