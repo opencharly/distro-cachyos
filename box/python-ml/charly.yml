@@ -4,5 +4,5 @@ python-ml:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/python-ml:v2026.231.0714'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.237.804'
+            - '@github.com/opencharly/layer-python-ml:v2026.237.0808'

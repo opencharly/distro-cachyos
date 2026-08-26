@@ -18,7 +18,7 @@ cachyos-gpu-desktop-check:
             # out-of-process grpcProvider on both the disposable bed AND the operator
             # deploy. Mirrors how candy/k3s-server require:s plugin-kube. Remote @github
             # ref (plugin-spice lives in the main repo, not this submodule).
-            - '@github.com/opencharly/charly/candy/plugin-spice:v2026.231.0714'
+            - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.237.1428'
         # Shared desktop/GPU-stream verification layer for the CachyOS GPU workstation.
         # It carries NO install beyond the desktop-interaction TEST TOOLS (R9) and a
         # deploy-scope `check:` block. Both the disposable bed (check-cachyos-gpu-vm, on

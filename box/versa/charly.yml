@@ -7,23 +7,23 @@ versa:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.237.804'
             - '@github.com/opencharly/layer-nvidia:v2026.235.2120' # GPU runtime (nvidia-utils + nvidia-container-toolkit) — formerly via base: nvidia
             - '@github.com/opencharly/layer-cuda:v2026.235.2121' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
-            - '@github.com/opencharly/charly/candy/marimo:v2026.231.0714' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
-            - '@github.com/opencharly/charly/candy/airflow:v2026.231.0714' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
-            - '@github.com/opencharly/charly/candy/osm-tools:v2026.231.0714' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI
-            - '@github.com/opencharly/charly/candy/maputnik:v2026.231.0714' # MapLibre style editor (built from npm source, served by python -m http.server)
-            - '@github.com/opencharly/charly/candy/pmtiles-viewer:v2026.231.0714' # protomaps/PMTiles /app SPA — visual inspector for PMTiles archives (port 8001)
-            - '@github.com/opencharly/charly/candy/shortbread:v2026.231.0714' # systemed/tilemaker + shortbread-tilemaker Lua config — generates shortbread-schema vector tiles from OSM PBF
-            - '@github.com/opencharly/charly/candy/versatiles-style:v2026.231.0714' # @versatiles/style MapLibre style generator (bundled to /opt/versatiles-style/, re-exported via versatiles-frontend's http.server at /style/)
-            - '@github.com/opencharly/charly/candy/versatiles-fonts:v2026.231.0714' # SDF font glyphs (Noto Sans + 9 others) bundled to /opt/versatiles-fonts/, re-exported at /fonts/
-            - '@github.com/opencharly/charly/candy/maplibre-versatiles-styler:v2026.231.0714' # interactive MapLibre control widget bundled to /opt/maplibre-versatiles-styler/, re-exported at /styler/
-            - '@github.com/opencharly/charly/candy/versatiles:v2026.231.0714' # versatiles-rs CLI + `versatiles serve` supervisord service on port 8090 (host-mapped 28090) — convert/serve for .versatiles/.pmtiles/.mbtiles
-            - '@github.com/opencharly/charly/candy/versatiles-frontend:v2026.231.0714' # versatiles-org/versatiles-frontend SPA (port 8002) — visual tile-content explorer; also re-exports versatiles-style/fonts/styler at /style/, /fonts/, /styler/
-            - '@github.com/opencharly/charly/candy/notebook-osm:v2026.231.0714' # data layer: seeds /workspace/notebooks/osm-monaco-viz.py (notebook self-authors its DAG at runtime)
-            - '@github.com/opencharly/charly/candy/notebook-graph:v2026.231.0714' # data layer: seeds /workspace/notebooks/gpu-libraries-demo.py — cuGraph/cuML/PyG/graphistry demo
-            - '@github.com/opencharly/charly/candy/debug-tools:v2026.231.0714' # network/process/file inspection toolkit for debugging the deployed services in this image
+            - '@github.com/opencharly/pod-marimo:v2026.237.558' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
+            - '@github.com/opencharly/pod-airflow:v2026.237.804' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
+            - '@github.com/opencharly/pod-osm-tools:v2026.237.457' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI
+            - '@github.com/opencharly/pod-maputnik:v2026.237.457' # MapLibre style editor (built from npm source, served by python -m http.server)
+            - '@github.com/opencharly/pod-pmtiles-viewer:v2026.237.458' # protomaps/PMTiles /app SPA — visual inspector for PMTiles archives (port 8001)
+            - '@github.com/opencharly/layer-shortbread:v2026.237.458' # systemed/tilemaker + shortbread-tilemaker Lua config — generates shortbread-schema vector tiles from OSM PBF
+            - '@github.com/opencharly/layer-versatiles-style:v2026.237.458' # @versatiles/style MapLibre style generator (bundled to /opt/versatiles-style/, re-exported via versatiles-frontend's http.server at /style/)
+            - '@github.com/opencharly/layer-versatiles-fonts:v2026.237.458' # SDF font glyphs (Noto Sans + 9 others) bundled to /opt/versatiles-fonts/, re-exported at /fonts/
+            - '@github.com/opencharly/layer-maplibre-versatiles-styler:v2026.237.457' # interactive MapLibre control widget bundled to /opt/maplibre-versatiles-styler/, re-exported at /styler/
+            - '@github.com/opencharly/pod-versatiles:v2026.237.458' # versatiles-rs CLI + `versatiles serve` supervisord service on port 8090 (host-mapped 28090) — convert/serve for .versatiles/.pmtiles/.mbtiles
+            - '@github.com/opencharly/pod-versatiles-frontend:v2026.237.458' # versatiles-org/versatiles-frontend SPA (port 8002) — visual tile-content explorer; also re-exports versatiles-style/fonts/styler at /style/, /fonts/, /styler/
+            - '@github.com/opencharly/layer-notebook-osm:v2026.237.556' # data layer: seeds /workspace/notebooks/osm-monaco-viz.py (notebook self-authors its DAG at runtime)
+            - '@github.com/opencharly/layer-notebook-graph:v2026.237.556' # data layer: seeds /workspace/notebooks/gpu-libraries-demo.py — cuGraph/cuML/PyG/graphistry demo
+            - '@github.com/opencharly/layer-debug-tools:v2026.237.502' # network/process/file inspection toolkit for debugging the deployed services in this image
             - '@github.com/opencharly/pod-dbus:v2026.235.2115'
         plan:
             - check: |

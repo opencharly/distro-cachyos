@@ -4,7 +4,7 @@ jupyter-ml:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/charly/candy/agent-forwarding:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/jupyter-ml:v2026.231.0714'
-            - '@github.com/opencharly/charly/candy/notebook-templates:v2026.231.0714'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.237.804'
+            - '@github.com/opencharly/pod-jupyter-ml:v2026.237.936'
+            - '@github.com/opencharly/layer-notebook-templates:v2026.237.557'
             - '@github.com/opencharly/pod-dbus:v2026.235.2115'
