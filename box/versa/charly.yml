@@ -20,7 +20,7 @@ versa:
             - '@github.com/opencharly/layer-versatiles-fonts:v2026.240.0122' # SDF font glyphs (Noto Sans + 9 others) bundled to /opt/versatiles-fonts/, re-exported at /fonts/
             - '@github.com/opencharly/layer-maplibre-versatiles-styler:v2026.240.0120' # interactive MapLibre control widget bundled to /opt/maplibre-versatiles-styler/, re-exported at /styler/
             - '@github.com/opencharly/pod-versatiles:v2026.240.0122' # versatiles-rs CLI + `versatiles serve` supervisord service on port 8090 (host-mapped 28090) — convert/serve for .versatiles/.pmtiles/.mbtiles
-            - '@github.com/opencharly/pod-versatiles-frontend:v2026.239.1629' # versatiles-org/versatiles-frontend SPA (port 8002) — visual tile-content explorer; also re-exports versatiles-style/fonts/styler at /style/, /fonts/, /styler/
+            - '@github.com/opencharly/pod-versatiles-frontend:v2026.240.2052' # versatiles-org/versatiles-frontend SPA (port 8002) — visual tile-content explorer; also re-exports versatiles-style/fonts/styler at /style/, /fonts/, /styler/
             - '@github.com/opencharly/layer-notebook-osm:v2026.240.0121' # data layer: seeds /workspace/notebooks/osm-monaco-viz.py (notebook self-authors its DAG at runtime)
             - '@github.com/opencharly/layer-notebook-graph:v2026.239.1639' # data layer: seeds /workspace/notebooks/gpu-libraries-demo.py — cuGraph/cuML/PyG/graphistry demo
             - '@github.com/opencharly/layer-debug-tools:v2026.239.1629' # network/process/file inspection toolkit for debugging the deployed services in this image
