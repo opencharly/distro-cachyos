@@ -9,7 +9,7 @@ cachyos-pacstrap-builder:
         distro:
             - arch
         candy:
-            - '@github.com/opencharly/layer-pacstrap-builder:v2026.237.457'
+            - '@github.com/opencharly/layer-pacstrap-builder:v2026.239.1633'
         # No box-level check: the pacstrap/arch-install-scripts/grub/parted toolchain
         # checks live on the pacstrap-builder candy, so ONE check covers this box AND
         # arch-pacstrap-builder.
