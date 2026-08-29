@@ -7,9 +7,9 @@
 #  here or discovered under box/. This repo VENDORS its cachyos-exclusive layers
 #  locally under candy/ (resolved via the discover: block); every shared layer is
 #  an `@github.com/opencharly/<kind>-<name>:<tag>` ref to that candy's OWN repo (the
-#  candy de-submodule cutover). TWO exceptions still ref `charly/candy/...`: `charly`
-#  and `charly-mcp`, held back because repointing them surfaces the remote-candy-name
-#  conflict tracked in opencharly/charly#437. The
+#  candy de-submodule cutover). NO exceptions remain: `charly` and `charly-mcp` were the
+#  last two, held back in #33 because repointing them then surfaced a remote-candy-name
+#  conflict, and repointed in #34 once that cleared. The
 #  Arch base/builder stack lives in the opencharly/distro-arch submodule (2026-06 box
 #  inversion).
 #
