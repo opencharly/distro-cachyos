@@ -39,7 +39,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.241.0311'
+    - arch: '@github.com/opencharly/distro-arch:v2026.241.1429'
 discover:
     - path: box
       recursive: true
@@ -76,7 +76,7 @@ check-cachyos-vm:
         # dev-tools is composed here so this canary also validates the cachyos
         # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
         add_candy:
-            - '@github.com/opencharly/charly/candy/charly:v2026.240.0831'
+            - '@github.com/opencharly/layer-charly:v2026.241.1407'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
         install_opts:
             allow_repo_changes: true
@@ -160,7 +160,7 @@ check-cachyos-gpu-vm:
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
-            - '@github.com/opencharly/charly/candy/charly:v2026.240.0831'
+            - '@github.com/opencharly/layer-charly:v2026.241.1407'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
             - nvidia-driver
         install_opts:
@@ -888,7 +888,7 @@ cachyos-gpu:
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/charly/candy/charly:v2026.240.0831'
+            - '@github.com/opencharly/layer-charly:v2026.241.1407'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
@@ -976,7 +976,7 @@ charly-cachyos-app:
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/charly/candy/charly:v2026.240.0831'
+            - '@github.com/opencharly/layer-charly:v2026.241.1407'
         install_opts:
             with_service: true
             allow_repo_changes: true

@@ -14,7 +14,7 @@ charly-marketplace:
             # The repo ROOT is not a candy — `@github.com/opencharly/charly:vTAG`
             # resolved to `unknown candy "github.com/opencharly/charly"`, so none of
             # charly's skill entities reached the corpus.
-            - '@github.com/opencharly/charly/candy/charly:v2026.240.2219'
+            - '@github.com/opencharly/layer-charly:v2026.241.1407'
             - '@github.com/opencharly/layer-charly-build:v2026.241.1216'
             - '@github.com/opencharly/layer-charly-check:v2026.241.1216'
             - '@github.com/opencharly/layer-charly-image:v2026.241.1216'
@@ -22,7 +22,7 @@ charly-marketplace:
             - '@github.com/opencharly/layer-charly-internals:v2026.241.1216'
             - '@github.com/opencharly/layer-charly-internals-extra:v2026.241.1216'
             - '@github.com/opencharly/layer-charly-kubernetes:v2026.241.1216'
-            - '@github.com/opencharly/charly/candy/charly-mcp:v2026.240.2219'
+            - '@github.com/opencharly/pod-charly-mcp:v2026.241.1219'
             - '@github.com/opencharly/pod-charly-hooks:v2026.240.2141'
             - '@github.com/opencharly/layer-ripgrep:v2026.235.1653'
             - '@github.com/opencharly/layer-supervisord:v2026.240.0121'
