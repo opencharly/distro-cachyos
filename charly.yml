@@ -99,6 +99,181 @@ check-cachyos-vm:
 # passes with an explanatory N/A when none is present — so the bed runs
 # anywhere. On a host with the cachyos-gpu-vm hostdev block added locally, the
 # same checks assert real GPU encode. See cachyos-gpu-vm in vm.yml.
+# ---------------------------------------------------------------------------
+# punktfunk — the streaming host, proved on BOTH venues because the two halves
+# of the candy cannot be proved by one.
+#
+#   check-punktfunk-pod  the CONTAINER venue: supervisord cannot use a systemd
+#                        user unit, so the host is launched by the candy's
+#                        wrapper, which waits for sway's IPC socket. This bed is
+#                        the only place the compositor path and the `punktfunk:`
+#                        verb's live dispatch are exercised.
+#   check-punktfunk-vm   the SYSTEMD venue: the PACKAGED punktfunk-host user
+#                        unit, lingering, and the management plane under a real
+#                        init — the claim a supervisord container structurally
+#                        cannot make.
+# ---------------------------------------------------------------------------
+check-punktfunk-pod:
+    pod:
+        image: punktfunk-host
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole proof of the punktfunk CONTAINER venue and of the `punktfunk:` check verb
+            against a live host. Builds punktfunk-host on cachyos, deploys it with a headless
+            sway compositor, and runs the candy's baked package/key/host.env/wrapper checks
+            plus the verb's own health, status, compositors, clients and json_path probes -
+            the status/clients probes proving the verb discovers the host-generated bearer
+            token inside the venue.
+        plan:
+            - check: the punktfunk verb reaches the management API's unauthenticated health route
+              id: pf-verb-health
+              punktfunk: health
+              stdout:
+                - contains: '"status":"ok"'
+              eventually: 90s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: the verb discovers the host-generated bearer token in the venue and reads host identity
+              id: pf-verb-status
+              punktfunk: status
+              eventually: 60s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: the verb reports the compositor backends the host can drive
+              id: pf-verb-compositors
+              punktfunk: compositors
+              context:
+                - runtime
+            - check: the verb lists paired native clients (empty on a fresh host, but authenticated)
+              id: pf-verb-clients
+              punktfunk: clients
+              context:
+                - runtime
+            - check: json_path extracts a single field instead of matching the whole document
+              id: pf-verb-jsonpath
+              punktfunk:
+                method: health
+                json_path: status
+              stdout:
+                - equals: ok
+              context:
+                - runtime
+
+# The VM this bed boots. An Arch CLOUD IMAGE rather than the cachyos pacstrap
+# bootstrap: what is under test is the systemd USER-unit path, and a prebuilt
+# qcow2 reaches a booted systemd guest in a fraction of the time without changing
+# anything about that. punktfunk's pacman repo is the same on Arch and CachyOS.
+punktfunk-vm:
+    vm:
+        source:
+            kind: cloud_image
+            url: https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2
+            checksum:
+                type: sha256
+            base_user: arch
+            distro: arch
+        backend: libvirt
+        disk_size: 20G
+        ram: 4G
+        cpu: 2
+        machine: q35
+        # BIOS: the Arch cloud image's EFI path boots a stale embedded grub.cfg and
+        # loses the console to the simpledrm->virtio takeover race. See
+        # /charly-vm:arch-cloud-vm Finding B.
+        firmware: bios
+        network:
+            mode: user
+        ssh:
+            port_auto: true
+            key_source: generate
+        cloud_init:
+            timezone: UTC
+            package:
+                - sudo
+                # curl is load-bearing, not incidental: the `punktfunk:` verb issues its
+                # management-API requests from INSIDE the venue (the API is loopback-only
+                # by punktfunk's design), and the candy's own mgmt-API check curls too.
+                - curl
+
+check-punktfunk-vm:
+    vm:
+        from: punktfunk-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole proof of the punktfunk SYSTEMD path: the candy installs from unom's signed
+            pacman repo onto a real systemd guest, lingering is enabled for the deploying
+            account, and the PACKAGED punktfunk-host user unit is enabled with the management
+            API answering - none of which a supervisord container venue can demonstrate.
+        add_candy:
+            - '@github.com/opencharly/layer-punktfunk:v2026.241.2026'
+        install_opts:
+            # REQUIRED: the candy adds a third-party pacman repo, and needs root for
+            # pacman-key, usermod and loginctl.
+            allow_repo_changes: true
+            allow_root_tasks: true
+        plan:
+            - check: systemd is the running init in the guest, so the user-unit path is the one under test
+              id: pf-vm-systemd-present
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                test -d /run/systemd/system && echo SYSTEMD-OK
+            - check: lingering is enabled for the deploying account
+              id: pf-vm-lingering
+              exit_status: 0
+              stdout:
+                - contains: "Linger=yes"
+              context:
+                - runtime
+              command: |
+                loginctl show-user "$(getent passwd 1000 | cut -d: -f1)" -p Linger
+            # The next three assertions are stated HERE rather than relied on from the
+            # punktfunk candy's own baked checks: when the candy arrives as an @github
+            # `add_candy:` ref, its baked checks are not collected into this bed's
+            # check-live run (measured: 2 steps, the bed's own). A bed has to assert what
+            # its description claims, so the load-bearing claims are restated here.
+            - check: the three punktfunk packages installed from unom's pacman repo in the guest
+              id: pf-vm-packages
+              exit_status: 0
+              stdout:
+                - contains: "PF-PKGS-OK"
+              context:
+                - runtime
+              command: |
+                pacman -Q punktfunk-host punktfunk-web punktfunk-scripting >/dev/null 2>&1 &&
+                  echo PF-PKGS-OK
+            - check: the PACKAGED punktfunk-host user unit is enabled under the lingering account
+              id: pf-vm-user-unit-enabled
+              # The claim a supervisord container structurally cannot make. Queried with
+              # `--machine=<user>@.host --user`, which is what systemd prescribes for
+              # another user's manager; `runuser -- systemctl --user` reaches no user bus.
+              exit_status: 0
+              stdout:
+                - contains: "PF-USER-UNIT-OK"
+              context:
+                - runtime
+              command: |
+                PF_USER="$(getent passwd 1000 | cut -d: -f1)"
+                systemctl --machine="$PF_USER@.host" --user is-enabled punktfunk-host.service >/dev/null 2>&1 &&
+                  echo PF-USER-UNIT-OK
+            - check: the management API answers in the guest, so the packaged unit actually reached serve
+              id: pf-vm-mgmt-api
+              # -k because the management API serves a self-signed certificate.
+              exit_status: 0
+              stdout:
+                - contains: '"status":"ok"'
+              eventually: 60s
+              retry_interval: 5s
+              context:
+                - runtime
+              command: |
+                curl -sk https://127.0.0.1:47990/api/v1/health
+
 check-cachyos-gpu-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
