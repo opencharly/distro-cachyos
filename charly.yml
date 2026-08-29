@@ -6,7 +6,10 @@
 #  beds, the charly-cachyos operator profile + its kind:local template) is inlined
 #  here or discovered under box/. This repo VENDORS its cachyos-exclusive layers
 #  locally under candy/ (resolved via the discover: block); every shared layer is
-#  an `@github.com/opencharly/charly/candy/...` ref into the main repo. The
+#  an `@github.com/opencharly/<kind>-<name>:<tag>` ref to that candy's OWN repo (the
+#  candy de-submodule cutover). TWO exceptions still ref `charly/candy/...`: `charly`
+#  and `charly-mcp`, held back because repointing them surfaces the remote-candy-name
+#  conflict tracked in opencharly/charly#437. The
 #  Arch base/builder stack lives in the opencharly/distro-arch submodule (2026-06 box
 #  inversion).
 #
