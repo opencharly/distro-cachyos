@@ -36,7 +36,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.236.0159'
+    - arch: '@github.com/opencharly/distro-arch:v2026.241.0311'
 discover:
     - path: box
       recursive: true
