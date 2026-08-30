@@ -1618,3 +1618,206 @@ check-cstream-pod:
                 command: /usr/local/bin/cstream-login-probe "$(id -un)" reject 'cstream-bed-pw-WRONG'
               stdout:
                 - contains: LOGIN-REJECTED
+            - check: the streamer builds its own graph, reaches PLAYING, and the VA encoder it picked actually OPENS
+              id: cstream-streamer-graph
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  # --probe runs the SHIPPED binary: it builds the real
+                  # waylanddisplaysrc-to-webrtcsink graph, brings it to PLAYING, and
+                  # then opens the encoder it selected. `encode: va` is what makes this
+                  # discriminating -- on a VA-capable node the streamer must report the
+                  # hardware encoder and REFUSE rather than quietly use the CPU.
+                  #
+                  # The second marker exists because registration is not capability: a
+                  # VA element is registered wherever the plugin loads, including on a
+                  # host whose render node it cannot open. Only bringing it to READY
+                  # tells those apart.
+                  #
+                  # NOT claimed here: that webrtcsink hands a frame to that encoder.
+                  # Its encoder-setup fires only once a consumer negotiates, and this
+                  # probe has no signalling server. Frames actually moving is the
+                  # separate two-way streaming gate above.
+                  CSTREAM_ENCODE=va CSTREAM_RENDER_NODE=/dev/dri/renderD128 \
+                    timeout 60 /usr/local/bin/cstream-streamer --probe
+              stdout:
+                - contains: 'CSTREAM-PIPELINE-PLAYING encoder=hardware:vah264enc'
+                - contains: 'CSTREAM-ENCODER-OPENABLE encoder=hardware:vah264enc'
+              eventually: 180s
+              retry_interval: 60s
+            - check: two windows are mapped, so focus has somewhere to move BETWEEN
+              id: wl-focus-fixture
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  set -e
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # -T sets the INITIAL title. foot rewrites its live title from the
+                  # shell prompt within a second of mapping, so `title:` selectors are
+                  # useless for automation here -- every window reports "@host:~".
+                  # initialtitle: is the stable one (measured).
+                  for n in focus-a focus-b close-keep close-target; do
+                      pgrep -f "foot -T cstream-$n" >/dev/null 2>&1 || \
+                        (WAYLAND_DISPLAY=$NEST setsid foot -T "cstream-$n" >/dev/null 2>&1 &)
+                  done
+                  for _ in $(seq 40); do
+                      [ "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4 ] && break
+                      sleep 1
+                  done
+                  test "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4
+                  echo FOCUS-FIXTURE-READY
+              stdout:
+                - contains: FOCUS-FIXTURE-READY
+              eventually: 120s
+              retry_interval: 30s
+            - check: the wl verb focuses window A on Hyprland
+              id: wl-focus-a
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-focus-a
+            - check: window A is now the active one -- the focus actually moved
+              id: wl-focus-a-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # Asserting the ACTIVE WINDOW, not the verb's exit code. A dispatcher
+                  # that silently did nothing still exits 0 -- that is the whole failure
+                  # mode this gate exists for.
+                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-a"' && echo ACTIVE-IS-A
+              stdout:
+                - contains: ACTIVE-IS-A
+              eventually: 60s
+              retry_interval: 15s
+            - check: the wl verb focuses window B on Hyprland
+              id: wl-focus-b
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-focus-b
+            - check: window B is now active -- focus moves BOTH ways, so A was not a coincidence
+              id: wl-focus-b-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-b"' && echo ACTIVE-IS-B
+              stdout:
+                - contains: ACTIVE-IS-B
+              eventually: 60s
+              retry_interval: 15s
+            - check: the wl verb minimizes window B on Hyprland
+              id: wl-minimize-b
+              context:
+                - runtime
+              wl:
+                method: minimize
+                target: initialtitle:cstream-focus-b
+            - check: window B really left for the special workspace -- Hyprland's minimize
+              id: wl-minimize-b-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # Two assertions, because either alone is satisfiable by a no-op:
+                  # the special workspace must EXIST (it is created on first use), and
+                  # B must be ON it -- a window that merely lost focus would satisfy the
+                  # first but not the second.
+                  hyprctl -j workspaces | grep -q 'special:minimized' || { echo NO-SPECIAL-WORKSPACE; exit 1; }
+                  # Plain `hyprctl clients` is one blank-line-separated paragraph per
+                  # window, so awk in paragraph mode reads the pair (initialTitle,
+                  # workspace) off the SAME window. Splitting the JSON would not:
+                  # `workspace` precedes `initialTitle` inside each object, so a naive
+                  # record split attributes one window's workspace to the next.
+                  hyprctl clients | awk -v RS= '/initialTitle: cstream-focus-b/ {for(i=1;i<=NF;i++) if($i=="workspace:"){w=$(i+2); gsub(/[()]/,"",w); print "B-WORKSPACE=" w}}'
+              stdout:
+                - contains: 'B-WORKSPACE=special:minimized'
+              eventually: 60s
+              retry_interval: 15s
+            - check: focus the window that must SURVIVE the close, so the regression can bite
+              id: wl-close-focus-keep
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-close-keep
+            - check: the wl verb closes the NAMED window, not the focused one
+              id: wl-close-target
+              context:
+                - runtime
+              wl:
+                method: close
+                target: initialtitle:cstream-close-target
+            - check: the named window is gone AND the focused one survived
+              id: wl-close-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # BOTH halves are the assertion. Measured on 0.56.2 before the fix:
+                  # hl.dsp.window.close(<selector>) ACCEPTS the selector and ignores it,
+                  # closing the ACTIVE window instead -- so "the target is gone" alone
+                  # passes while the wrong window died. The survivor is what catches it.
+                  hyprctl clients | grep -q 'initialTitle: cstream-close-target' && { echo TARGET-STILL-OPEN; exit 1; }
+                  hyprctl clients | grep -q 'initialTitle: cstream-close-keep' || { echo WRONG-WINDOW-CLOSED; exit 1; }
+                  echo CLOSED-THE-NAMED-WINDOW
+              stdout:
+                - contains: CLOSED-THE-NAMED-WINDOW
+              eventually: 60s
+              retry_interval: 15s
+            - check: the cstream verb dispatches through the provider registry and reports the gateway's readiness
+              id: cstream-verb-status
+              context:
+                - runtime
+              cstream: status
+              stdout:
+                - contains: '"ready":true'
+              eventually: 120s
+              retry_interval: 15s
+            - check: the cstream verb ACCEPTS a correct credential through the real session leader
+              id: cstream-verb-login-accept
+              context:
+                - runtime
+              cstream:
+                method: login
+                user: user
+                password: cstream-bed-pw
+                expect: accept
+              stdout:
+                - contains: LOGIN-ACCEPTED
+              eventually: 120s
+              retry_interval: 20s
+            - check: the cstream verb REFUSES a wrong credential against the same stack
+              id: cstream-verb-login-reject
+              context:
+                - runtime
+              cstream:
+                method: login
+                user: user
+                password: cstream-bed-pw-WRONG
+                expect: reject
+              stdout:
+                - contains: LOGIN-REJECTED
+              eventually: 120s
+              retry_interval: 20s
