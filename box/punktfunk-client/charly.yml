@@ -22,6 +22,20 @@ punktfunk-client:
             # non-lavapipe Vulkan ICD, which the punktfunk-client candy now installs.
             - '@github.com/opencharly/layer-supervisord:v2026.240.0121'
             - '@github.com/opencharly/pod-sway:v2026.241.2004'
+            # The renderer opens a PipeWire playback stream for the session's audio. The
+            # `pipewire` binary arrives as a dependency of punktfunk-client, but nothing
+            # STARTS it without this candy, so the client's audio thread died on every
+            # session while video decoded fine:
+            #   pf_client_core::audio: audio playback thread ended
+            #     error=pw connect (is PipeWire running in this session?)
+            # Pinned at the SAME version the host box uses. A different one would resolve
+            # this candy at two versions and add a `multiple versions` warning — advancing
+            # a single consumer inside a stale graph multiplies skew rather than removing
+            # it, which is how an earlier repin here doubled the count from 3 to 6.
+            #
+            # This removes a known-broken path; it does not PROVE client audio. Nothing in
+            # the bed asserts audio — stream-probe counts decoded VIDEO frames only.
+            - '@github.com/opencharly/pod-pipewire:v2026.239.1555'
         # plugin-punktfunk is deliberately NOT composed here. An out-of-tree verb plugin is
         # loaded by charly from the PROJECT, not from the venue image, so the `punktfunk:`
         # verb is available to this bed either way — and composing the plugin candy drags in
