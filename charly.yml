@@ -1209,6 +1209,197 @@ charly-cachyos-app:
                       echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
                     fi
                 in_container: false
+check-cstream-vm:
+    vm:
+        from: cstream-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The SYSTEMD venue for cstream. Gates what check-cstream-pod structurally
+            cannot: the daemons render as real systemd units rather than supervisord
+            [program:] entries, the session target loads, and the nested compositor
+            is installed session-scoped instead of being started at boot. logind
+            sessions, linger and cross-user PAM are what this venue EXISTS to make
+            gateable, but they are not asserted here yet -- they need the broker
+            serving and two provisioned accounts, and a description may only claim
+            what its plan actually checks.
+        add_candy:
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.2221'
+        install_opts:
+            # The candy provisions system accounts, a PAM stack and systemd units.
+            allow_root_tasks: true
+        plan:
+            - check: systemd is the running init, so the unit path is the one under test
+              id: cstream-vm-systemd
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                test -d /run/systemd/system && echo SYSTEMD-OK
+              stdout:
+                - contains: SYSTEMD-OK
+            - check: the cstream daemons rendered as REAL systemd units, not supervisord programs
+              id: cstream-vm-units-rendered
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The whole point of the two-venue split: the SAME `service:` list
+                # must render as units here and as [program:] entries in the pod.
+                # A supervisord container cannot make this assertion at all.
+                # charly names a rendered unit charly-<candy>-<service>.service --
+                # NOT the bare service name. Asserting the bare name would fail
+                # against a correctly-rendered unit, so the prefix is part of the
+                # claim: this is charly's systemd naming convention under test.
+                miss=""
+                for u in charly-cstream-cstream-parent charly-cstream-cstream-gateway; do
+                    systemctl list-unit-files 2>/dev/null | grep -q "^$u.service" || miss="$miss $u"
+                done
+                [ -z "$miss" ] || { echo "UNITS-MISSING:$miss" >&2; exit 1; }
+                echo UNITS-RENDERED
+              stdout:
+                - contains: UNITS-RENDERED
+            - check: the session target itself is a real, loadable systemd unit
+              id: cstream-vm-session-target-installed
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The target the compositor is scoped to. Asserting the file exists
+                # is not enough -- a .target with a syntax error still exists on
+                # disk while systemd refuses to load it, and the compositor's
+                # WantedBy would then point at nothing. `systemctl show` forces the
+                # load, so LoadState=loaded is the claim that actually discriminates.
+                T=/etc/systemd/system/cstream-session.target
+                test -f "$T" || { echo "TARGET-NOT-STAGED: the unit: step did not install it" >&2; exit 1; }
+                ls=$(systemctl show -p LoadState --value cstream-session.target 2>/dev/null)
+                [ "$ls" = "loaded" ] || { echo "TARGET-NOT-LOADABLE: LoadState=$ls" >&2; systemctl status cstream-session.target >&2 2>&1 | head -5; exit 1; }
+                # and it must NOT pull itself in at boot, or it re-creates the
+                # deploy-time start one level up
+                if systemctl is-enabled cstream-session.target 2>/dev/null | grep -q '^enabled$'; then
+                    echo "TARGET-WRONGLY-ENABLED-AT-BOOT: it must be pulled in by a session, not by boot" >&2; exit 1
+                fi
+                echo SESSION-TARGET-LOADED
+              stdout:
+                - contains: SESSION-TARGET-LOADED
+            - check: the compositor unit is INSTALLED but session-scoped, not started at boot
+              id: cstream-vm-compositor-session-scoped
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The WP9b claim, gated on the only venue that can express it.
+                # A nested compositor has no business in multi-user.target: it needs
+                # a parent Wayland display that does not exist at deploy time, and
+                # charly STARTS what it enables. So the unit must be rendered (the
+                # candy still declares the service) and must NOT be enabled into
+                # multi-user.target, with [Install] naming the session target instead.
+                U=/etc/systemd/system/charly-hyprland-cstream-hyprland.service
+                test -f "$U" || { echo "UNIT-NOT-RENDERED: charly did not write the compositor unit" >&2; exit 1; }
+                if [ -e /etc/systemd/system/multi-user.target.wants/charly-hyprland-cstream-hyprland.service ]; then
+                    echo "WRONGLY-ENABLED-INTO-multi-user.target: enable: false did not take" >&2; exit 1
+                fi
+                grep -q "^WantedBy=cstream-session.target" "$U" || {
+                    echo "INSTALL-SECTION-WRONG: [Install] does not name cstream-session.target" >&2; sed -n "/\[Install\]/,$ p" "$U" >&2; exit 1; }
+                echo COMPOSITOR-SESSION-SCOPED
+              stdout:
+                - contains: COMPOSITOR-SESSION-SCOPED
+            - check: the streamer binary installed on the systemd venue too
+              id: cstream-vm-streamer-installed
+              context:
+                - runtime
+              file:
+                file: /usr/local/bin/cstream-streamer
+                exists: true
+
+cstream-vm:
+    vm:
+        # The SYSTEMD venue for cstream. It exists to carry the claims the pod bed
+        # structurally CANNOT make:
+        #
+        #   * the cstream daemons render as REAL systemd units rather than
+        #     supervisord [program:] entries. One `service:` list, two renderings;
+        #     only this venue exercises the systemd one.
+        #   * CROSS-USER PAM -- the reason this entity exists, and still ungated
+        #     (see the bed's description). In a rootless pod `pam_unix` delegates to the setuid
+        #     helper `unix_chkpwd`, which verifies only the CALLING user's own
+        #     account -- measured: uid 1000 asking about another account fails for
+        #     a RIGHT password exactly as it does for a wrong one, so a reject leg
+        #     there proves nothing. That is why the pod bed authenticates only the
+        #     account it runs as, and why cross-user auth is this bed's gate.
+        #   * logind sessions, linger, and per-user `user@UID.service` trees.
+        #
+        # A FULL spec, not a derivation: VM entities do not inherit (`from:` is
+        # bed-only), so this mirrors cachyos-vm's pacstrap bootstrap and raises
+        # only what the desktop needs -- the guest compiles a Rust streamer and
+        # runs a nested compositor, neither of which fits 2 CPU / 4G.
+        source:
+            kind: bootstrap
+            builder: pacstrap
+            builder_image: cachyos-pacstrap-builder
+            distro: cachyos
+            package:
+                - sudo
+                - openssh
+                - qemu-guest-agent
+                - cloud-init
+                - grub
+                - efibootmgr
+                # btrfs-progs supplies fsck.btrfs. Without a helper for the root
+                # filesystem mkinitcpio warns "No fsck helpers found", and its
+                # warnings escalate to "errors were encountered during the build"
+                # -> `error: command failed to execute correctly`, which trips
+                # charly's log-diagnostic gate on EVERY package install that fires
+                # the initcpio hook. Fixing the cause rather than allowlisting the
+                # line, per the arch bootstrap block's own precedent.
+                - btrfs-progs
+            rootfs: btrfs
+            kernel_args: console=tty0 console=ttyS0,115200
+        disk_size: 40G
+        ram: 8G
+        cpu: 4
+        machine: q35
+        firmware: uefi-insecure
+        network:
+            mode: user
+        ssh:
+            user: cachy
+            port_auto: true
+            key_source: generate
+        libvirt:
+            devices:
+                # accel3d is load-bearing, not decoration: gst-wayland-display
+                # creates the zwp_linux_dmabuf_v1 global ONLY on a hardware render
+                # target, and Aquamarine's Wayland backend hard-requires it. Without
+                # a real render node the nested Hyprland cannot start at all -- the
+                # same rule the pod bed satisfies with the host's iGPU render node.
+                # accel3d makes the renderer emit virtio-vga-gl, which REQUIRES a
+                # GL-capable display backend. With the default headless display
+                # qemu refuses to start: "The display backend does not have OpenGL
+                # support enabled" -- measured, a 7-second vm-create failure.
+                # egl-headless is that backend, and charly already emits
+                # <gl rendernode=.../> for it (the plan's Spike 3 configuration).
+                graphics:
+                    - type: egl-headless
+                video:
+                    - model: virtio
+                      accel3d: true
+        # NO cloud_init: block -- it would be INERT here, and that is measured,
+        # not assumed. cloud-init seeding is a `kind: cloud_image` feature
+        # (plugin-vm/vm_cloud_image.go). For this `kind: bootstrap` guest charly
+        # BUILDS output/qcow2/cstream-vm/seed.iso and then never attaches it:
+        # `virsh dumpxml` shows no <disk device='cdrom'> at all, and the guest
+        # reports `cloud-init status: error / No instance datasource found`,
+        # with /var/lib/cloud/instance/scripts/runcmd absent entirely.
+        #
+        # A pacstrapped guest is configured in the CHROOT instead -- charly's
+        # arch bootstrap already runs `arch-chroot systemctl enable sshd
+        # qemu-guest-agent cloud-init-*`. That is the only reason ssh works
+        # here, and it is exactly what makes an inert runcmd list look like it
+        # works: the two lines everyone copies are already done by the chroot.
+        #
+        # Confirmed NOT caused by this entity's `libvirt:` block -- removing
+        # that and re-creating the domain still yields zero cdrom devices.
 cachyos-vm:
     vm:
         # Bootstrap-from-scratch via cachyos-pacstrap-builder (local). The cachyos
