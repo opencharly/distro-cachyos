@@ -1725,13 +1725,19 @@ check-punktfunk-fleet:
                 # CAP_SYS_ADMIN. punktfunk uses ScreenCast, never Documents, and granting
                 # that capability would trade real privilege for a portal nothing calls —
                 # so this asserts the interface that IS needed instead.
+                # NOTE the bare `$XDG_RUNTIME_DIR`, not `${XDG_RUNTIME_DIR:-/tmp}`. Brace
+                # form is charly's CANDY-VAR syntax, so the step does not fail — it SKIPS,
+                # reporting `unresolved variables: XDG_RUNTIME_DIR`, and check-live still
+                # says PASS. A decorative check that cannot fail is the exact disease this
+                # bed was built to cure, and it was caught only because this change was run
+                # on its own instead of batched.
                 - check: the ScreenCast portal interface is live, so the host can capture
                   id: pf-fleet-host-screencast
                   context:
                     - runtime
                   command:
                     command: >-
-                        S="${XDG_RUNTIME_DIR:-/tmp}/dbus-session"; [ -S "$S" ] || S=/tmp/dbus-session;
+                        S="$XDG_RUNTIME_DIR/dbus-session"; [ -S "$S" ] || S=/tmp/dbus-session;
                         DBUS_SESSION_BUS_ADDRESS="unix:path=$S" busctl --user introspect
                         org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop
                         | grep -q org.freedesktop.portal.ScreenCast
