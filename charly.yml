@@ -1537,3 +1537,80 @@ pixel9a-endpoint:
             host: 127.0.0.1:${HOST_PORT:5037}
         serial: emulator-5554
         device: pixel_9a
+check-cstream-pod:
+    pod:
+        image: cstream
+        disposable: true
+        lifecycle: dev
+        security:
+            group_add:
+                - keep-groups
+        description: >-
+            The WP9 pod bed for cstream. Proves the stack STREAMS rather than merely
+            starts: frames pulled through the pipeline must change when a client
+            window maps, and hardware H.264 must actually produce a stream.
+        plan:
+            - check: the Wayland parent service is running
+              id: cstream-parent-service
+              context:
+                - runtime
+              service:
+                service: cstream-parent
+            - check: the gateway service is running
+              id: cstream-gateway-service
+              context:
+                - runtime
+              service:
+                service: cstream-gateway
+            - check: the gateway reports ready only when a render node AND a compositor socket exist
+              id: cstream-gateway-ready
+              context:
+                - runtime
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8080}/healthz
+                status: 200
+                body:
+                    - contains: '"ready":true'
+              eventually: 120s
+              retry_interval: 10s
+            - check: the GWD pipeline carries LIVE compositor content (frames change when the desktop changes)
+              id: cstream-stream-live
+              context:
+                - runtime
+              command:
+                command: /usr/local/bin/stream-probe
+                in_container: true
+              stdout:
+                - contains: STREAM-CLIENT-MAPPED
+                - contains: STREAM-LIVE-OK
+              eventually: 600s
+              retry_interval: 150s
+            - check: hardware H.264 encode actually produces a stream (no silent CPU fallback)
+              id: cstream-encoder-hardware
+              context:
+                - runtime
+              command:
+                command: /usr/local/bin/encoder-probe
+                in_container: true
+              stdout:
+                - contains: ENCODER-VA-OK
+              eventually: 300s
+              retry_interval: 120s
+            - check: a real PAM login through the session leader is ACCEPTED for a correct password
+              id: cstream-login-accepted
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: /usr/local/bin/cstream-login-probe "$(id -un)" accept 'cstream-bed-pw'
+              stdout:
+                - contains: LOGIN-ACCEPTED
+            - check: a WRONG password is REJECTED by the same stack that just accepted the right one
+              id: cstream-login-rejected
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: /usr/local/bin/cstream-login-probe "$(id -un)" reject 'cstream-bed-pw-WRONG'
+              stdout:
+                - contains: LOGIN-REJECTED
