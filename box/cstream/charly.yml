@@ -13,7 +13,7 @@ cstream:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.1505'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.1606'
         # No box-level check: every binary this box installs belongs to a member
         # candy, and each already checks its own (R3). The box's claim -- that the
         # composition STREAMS -- is not a build-time property and is asserted by
