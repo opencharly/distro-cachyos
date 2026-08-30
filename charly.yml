@@ -1778,6 +1778,31 @@ check-punktfunk-fleet:
                     method: pair
                     host: charly-punktfunk-fleet-1-host
                     pin_file: /pfshare/pin
+                # The renderer opens a PipeWire playback stream for the session's audio, and
+                # NOTHING here asserted that, so the client shipped for weeks with its audio
+                # thread dying on every session while video decoded fine:
+                #   pf_client_core::audio: audio playback thread ended
+                #     error=pw connect (is PipeWire running in this session?)
+                # The binary arrives as a dependency of punktfunk-client, so its presence
+                # proves nothing — what matters is that a SESSION is running with a sink to
+                # play into. Without this the same regression returns silently, because
+                # stream-probe counts decoded VIDEO frames only and would still pass.
+                #
+                # Bare $XDG_RUNTIME_DIR, never ${...}: brace form is charly's CANDY-VAR
+                # syntax and makes the step SKIP with `unresolved variables` while the phase
+                # still reports PASS — a check that cannot fail.
+                - check: the client has a live PipeWire sink for the renderer to play into
+                  id: pf-fleet-client-audio
+                  context:
+                    - runtime
+                  command:
+                    command: >-
+                        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"; [ -n "$XDG_RUNTIME_DIR" ] || XDG_RUNTIME_DIR=/tmp;
+                        export XDG_RUNTIME_DIR;
+                        pgrep -x pipewire >/dev/null || { echo "pipewire is not running in this venue" >&2; exit 1; };
+                        n=$(pw-dump 2>/dev/null | grep -c "Audio/Sink");
+                        [ "$n" -ge 1 ] || { echo "pipewire is running but exposes no Audio/Sink" >&2; exit 1; };
+                        echo "pipewire up with $n Audio/Sink"
                 - check: the host is now a saved host on the client
                   id: pf-fleet-client-knows-host
                   context:
