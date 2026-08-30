@@ -1711,6 +1711,30 @@ check-punktfunk-fleet:
                     - runtime
                   punktfunk:
                     method: health
+                # The CAPTURE prerequisite, asserted rather than assumed. A session
+                # resolves to `capture: Portal`, so without this interface on the bus the
+                # host pairs, negotiates a codec and then fails every session at pipeline
+                # build — while every other control-plane check still passes. That is the
+                # exact combination that let this bed report green while nothing streamed.
+                #
+                # It also settles the one warning a clean run still emits. The Documents
+                # portal cannot mount its FUSE store here:
+                #   fusermount3: mount failed: Operation not permitted
+                #   error: fuse init failed: Can't mount path /tmp/doc
+                # `/dev/fuse` IS present; rootless containers deny mount(2) without
+                # CAP_SYS_ADMIN. punktfunk uses ScreenCast, never Documents, and granting
+                # that capability would trade real privilege for a portal nothing calls —
+                # so this asserts the interface that IS needed instead.
+                - check: the ScreenCast portal interface is live, so the host can capture
+                  id: pf-fleet-host-screencast
+                  context:
+                    - runtime
+                  command:
+                    command: >-
+                        S="${XDG_RUNTIME_DIR:-/tmp}/dbus-session"; [ -S "$S" ] || S=/tmp/dbus-session;
+                        DBUS_SESSION_BUS_ADDRESS="unix:path=$S" busctl --user introspect
+                        org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop
+                        | grep -q org.freedesktop.portal.ScreenCast
                 # NO host-side "has a paired client" check here, and the reason is the bed's
                 # own ordering. charly runs one `check live` per node, parent first
                 # (bed_run.go's checkLiveTree), so the host's pass completes BEFORE the
