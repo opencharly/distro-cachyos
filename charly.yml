@@ -1215,9 +1215,14 @@ check-cstream-vm:
         disposable: true
         lifecycle: dev
         description: >-
-            The SYSTEMD venue for cstream. Proves what check-cstream-pod structurally
+            The SYSTEMD venue for cstream. Gates what check-cstream-pod structurally
             cannot: the daemons render as real systemd units rather than supervisord
-            programs, and the guest carries a real init with logind and linger.
+            [program:] entries, the session target loads, and the nested compositor
+            is installed session-scoped instead of being started at boot. logind
+            sessions, linger and cross-user PAM are what this venue EXISTS to make
+            gateable, but they are not asserted here yet -- they need the broker
+            serving and two provisioned accounts, and a description may only claim
+            what its plan actually checks.
         add_candy:
             - '@github.com/opencharly/layer-cstream-desktop:v2026.242.1712'
         install_opts:
@@ -1315,7 +1320,8 @@ cstream-vm:
         #   * the cstream daemons render as REAL systemd units rather than
         #     supervisord [program:] entries. One `service:` list, two renderings;
         #     only this venue exercises the systemd one.
-        #   * CROSS-USER PAM. In a rootless pod `pam_unix` delegates to the setuid
+        #   * CROSS-USER PAM -- the reason this entity exists, and still ungated
+        #     (see the bed's description). In a rootless pod `pam_unix` delegates to the setuid
         #     helper `unix_chkpwd`, which verifies only the CALLING user's own
         #     account -- measured: uid 1000 asking about another account fails for
         #     a RIGHT password exactly as it does for a wrong one, so a reject leg
