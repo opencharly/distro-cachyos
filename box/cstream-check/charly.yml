@@ -16,11 +16,11 @@ cstream-check:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.1424'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.1505'
             - cstream-probe-account
             # plugin-cstream serves the `cstream:` check verb OUT OF PROCESS, and charly
             # reads its `primary:` declaration off candies in scan range -- so without it
             # here the bed's `cstream: status` step fails to parse with
             # "plugin verb cstream takes a MAP input". It belongs to the WITNESS box, not
             # to `cstream`: a shipped desktop box has no business carrying a check plugin.
-            - '@github.com/opencharly/plugin-cstream/candy/plugin-cstream:v2026.242.1148'
+            - '@github.com/opencharly/plugin-cstream/candy/plugin-cstream:v2026.242.1502'
