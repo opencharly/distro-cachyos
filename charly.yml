@@ -1255,7 +1255,7 @@ check-cstream-vm:
                 for u in charly-cstream-cstream-parent charly-cstream-cstream-gateway; do
                     systemctl list-unit-files 2>/dev/null | grep -q "^$u.service" || miss="$miss $u"
                 done
-                [ -z "$miss" ] || { echo "UNITS-MISSING:$miss"; exit 1; }
+                [ -z "$miss" ] || { echo "UNITS-MISSING:$miss" >&2; exit 1; }
                 echo UNITS-RENDERED
               stdout:
                 - contains: UNITS-RENDERED
@@ -1271,13 +1271,13 @@ check-cstream-vm:
                 # WantedBy would then point at nothing. `systemctl show` forces the
                 # load, so LoadState=loaded is the claim that actually discriminates.
                 T=/etc/systemd/system/cstream-session.target
-                test -f "$T" || { echo "TARGET-NOT-STAGED"; exit 1; }
+                test -f "$T" || { echo "TARGET-NOT-STAGED: the unit: step did not install it" >&2; exit 1; }
                 ls=$(systemctl show -p LoadState --value cstream-session.target 2>/dev/null)
-                [ "$ls" = "loaded" ] || { echo "TARGET-NOT-LOADABLE:$ls"; systemctl status cstream-session.target 2>&1 | head -5; exit 1; }
+                [ "$ls" = "loaded" ] || { echo "TARGET-NOT-LOADABLE: LoadState=$ls" >&2; systemctl status cstream-session.target >&2 2>&1 | head -5; exit 1; }
                 # and it must NOT pull itself in at boot, or it re-creates the
                 # deploy-time start one level up
                 if systemctl is-enabled cstream-session.target 2>/dev/null | grep -q '^enabled$'; then
-                    echo "TARGET-WRONGLY-ENABLED-AT-BOOT"; exit 1
+                    echo "TARGET-WRONGLY-ENABLED-AT-BOOT: it must be pulled in by a session, not by boot" >&2; exit 1
                 fi
                 echo SESSION-TARGET-LOADED
               stdout:
@@ -1295,12 +1295,12 @@ check-cstream-vm:
                 # candy still declares the service) and must NOT be enabled into
                 # multi-user.target, with [Install] naming the session target instead.
                 U=/etc/systemd/system/charly-hyprland-cstream-hyprland.service
-                test -f "$U" || { echo "UNIT-NOT-RENDERED"; exit 1; }
+                test -f "$U" || { echo "UNIT-NOT-RENDERED: charly did not write the compositor unit" >&2; exit 1; }
                 if [ -e /etc/systemd/system/multi-user.target.wants/charly-hyprland-cstream-hyprland.service ]; then
-                    echo "WRONGLY-ENABLED-INTO-multi-user.target"; exit 1
+                    echo "WRONGLY-ENABLED-INTO-multi-user.target: enable: false did not take" >&2; exit 1
                 fi
                 grep -q "^WantedBy=cstream-session.target" "$U" || {
-                    echo "INSTALL-SECTION-WRONG"; sed -n "/\[Install\]/,$ p" "$U"; exit 1; }
+                    echo "INSTALL-SECTION-WRONG: [Install] does not name cstream-session.target" >&2; sed -n "/\[Install\]/,$ p" "$U" >&2; exit 1; }
                 echo COMPOSITOR-SESSION-SCOPED
               stdout:
                 - contains: COMPOSITOR-SESSION-SCOPED
@@ -1384,16 +1384,22 @@ cstream-vm:
                 video:
                     - model: virtio
                       accel3d: true
-        cloud_init:
-            runcmd:
-                - systemctl enable --now sshd
-                - systemctl enable --now qemu-guest-agent
-                # The second half of the same mkinitcpio problem: the sd-vconsole
-                # build hook warns when /etc/vconsole.conf is absent, and that
-                # warning is one of the two that escalate the hook to a failure.
-                # A one-line keymap is the whole fix.
-                - sh -c 'test -s /etc/vconsole.conf || echo KEYMAP=us > /etc/vconsole.conf'
-
+        # NO cloud_init: block -- it would be INERT here, and that is measured,
+        # not assumed. cloud-init seeding is a `kind: cloud_image` feature
+        # (plugin-vm/vm_cloud_image.go). For this `kind: bootstrap` guest charly
+        # BUILDS output/qcow2/cstream-vm/seed.iso and then never attaches it:
+        # `virsh dumpxml` shows no <disk device='cdrom'> at all, and the guest
+        # reports `cloud-init status: error / No instance datasource found`,
+        # with /var/lib/cloud/instance/scripts/runcmd absent entirely.
+        #
+        # A pacstrapped guest is configured in the CHROOT instead -- charly's
+        # arch bootstrap already runs `arch-chroot systemctl enable sshd
+        # qemu-guest-agent cloud-init-*`. That is the only reason ssh works
+        # here, and it is exactly what makes an inert runcmd list look like it
+        # works: the two lines everyone copies are already done by the chroot.
+        #
+        # Confirmed NOT caused by this entity's `libvirt:` block -- removing
+        # that and re-creating the domain still yields zero cdrom devices.
 cachyos-vm:
     vm:
         # Bootstrap-from-scratch via cachyos-pacstrap-builder (local). The cachyos
