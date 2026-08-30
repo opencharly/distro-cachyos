@@ -128,7 +128,8 @@ check-punktfunk-pod:
         plan:
             - check: the punktfunk verb reaches the management API's unauthenticated health route
               id: pf-verb-health
-              punktfunk: health
+              punktfunk:
+                method: health
               stdout:
                 - contains: '"status":"ok"'
               eventually: 90s
@@ -137,19 +138,22 @@ check-punktfunk-pod:
                 - runtime
             - check: the verb discovers the host-generated bearer token in the venue and reads host identity
               id: pf-verb-status
-              punktfunk: status
+              punktfunk:
+                method: status
               eventually: 60s
               retry_interval: 5s
               context:
                 - runtime
             - check: the verb reports the compositor backends the host can drive
               id: pf-verb-compositors
-              punktfunk: compositors
+              punktfunk:
+                method: compositors
               context:
                 - runtime
             - check: the verb lists paired native clients (empty on a fresh host, but authenticated)
               id: pf-verb-clients
-              punktfunk: clients
+              punktfunk:
+                method: clients
               context:
                 - runtime
             - check: json_path extracts a single field instead of matching the whole document
