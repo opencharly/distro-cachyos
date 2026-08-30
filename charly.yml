@@ -1821,3 +1821,21 @@ check-cstream-pod:
                 - contains: LOGIN-REJECTED
               eventually: 120s
               retry_interval: 20s
+            # The ONLY check in this bed that can fail on an encoding or transport
+            # defect. cstream-stream-live reads the producer's own tap and the wl-*
+            # checks read the compositor, so both pass happily while not one byte
+            # reaches a consumer -- which is exactly what happened while webrtcbin
+            # was missing from the image.
+            #
+            # artifact_not_uniform is the assertion that matters: a stream that
+            # negotiates and then sends black, or a placeholder, is the failure this
+            # check exists to catch, and a byte count alone would pass it.
+            - check: a frame pulled back THROUGH the negotiated WebRTC track has real content
+              id: cstream-frame-through-webrtc
+              context:
+                - runtime
+              cstream:
+                  method: frame
+                  artifact: /tmp/cstream-frame.jpg
+                  artifact_min_bytes: 5000
+                  artifact_not_uniform: true
