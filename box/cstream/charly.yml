@@ -1,0 +1,20 @@
+cstream:
+    candy:
+        # The streamed Hyprland desktop on the CachyOS (Arch) base. One member:
+        # layer-cstream-desktop composes the transport spine (pod-cstream) with the
+        # nested compositor (pod-hyprland), in that order, because Hyprland cannot
+        # run without a parent that advertises zwp_linux_dmabuf_v1 and binds
+        # xdg_wm_base at 6.
+        base: cachyos
+        builder:
+            cargo: arch.arch-builder
+        build:
+            - pac
+        platform:
+            - linux/amd64
+        candy:
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.0422'
+        # No box-level check: every binary this box installs belongs to a member
+        # candy, and each already checks its own (R3). The box's claim -- that the
+        # composition STREAMS -- is not a build-time property and is asserted by
+        # check-cstream-pod at runtime.

@@ -1,0 +1,20 @@
+cstream-check:
+    candy:
+        # The WITNESS box for check-cstream-pod: the production cstream box plus the
+        # login fixture, and nothing else.
+        #
+        # It exists so `cstream` itself never carries a credential. The login gate
+        # needs an account whose password is known; baking that into the shipped box
+        # would hand the same password to every consumer of it. Composing the fixture
+        # HERE keeps the production box credential-free while still letting the bed
+        # authenticate for real.
+        base: cachyos
+        builder:
+            cargo: arch.arch-builder
+        build:
+            - pac
+        platform:
+            - linux/amd64
+        candy:
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.0422'
+            - cstream-probe-account
