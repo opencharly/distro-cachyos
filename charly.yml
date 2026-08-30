@@ -1839,3 +1839,42 @@ check-cstream-pod:
                   artifact: /tmp/cstream-frame.jpg
                   artifact_min_bytes: 5000
                   artifact_not_uniform: true
+            # The `wl:` verb against the nested compositor. These are the first
+            # checks to exercise it here: the binaries it shells out to
+            # (wl-clipboard, wtype, wlr-randr) reached this image only when
+            # pod-hyprland shipped them beside grim, so the verbs previously failed
+            # on `command not found` rather than on anything about the desktop.
+            #
+            # DELIBERATELY NOT GATED: `wl: resolution`. It SETS the output through
+            # wlr-randr, a second writer to a property the cstream control socket
+            # owns. Measured on this bed: it moved the compositor to 1280x720 while
+            # the streamer's capsfilter stayed at 640x480 -- encoder and compositor
+            # desynced with no error anywhere. Resize goes through the control
+            # socket (the cstream-resize-* checks above) only.
+            # Tracked as opencharly/pod-cstream#11.
+            - check: the clipboard accepts a value through the wl verb
+              id: wl-clipboard-set
+              context:
+                - runtime
+              wl:
+                method: clipboard
+                action: set
+                text: cstream-clipboard-canary
+            - check: the clipboard returns EXACTLY what was set -- a set alone passes against a clipboard that swallows writes
+              id: wl-clipboard-roundtrip
+              context:
+                - runtime
+              wl:
+                method: clipboard
+                action: get
+              stdout:
+                - contains: cstream-clipboard-canary
+            - check: a wl screenshot of the nested desktop has real, non-uniform content
+              id: wl-screenshot-content
+              context:
+                - runtime
+              wl:
+                method: screenshot
+                artifact: /tmp/wl-desktop.png
+                artifact_min_bytes: 5000
+                artifact_not_uniform: true
