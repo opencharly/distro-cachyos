@@ -1224,7 +1224,7 @@ check-cstream-vm:
             serving and two provisioned accounts, and a description may only claim
             what its plan actually checks.
         add_candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.1712'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.242.2221'
         install_opts:
             # The candy provisions system accounts, a PAM stack and systemd units.
             allow_root_tasks: true
