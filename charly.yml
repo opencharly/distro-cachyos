@@ -1539,7 +1539,7 @@ pixel9a-endpoint:
         device: pixel_9a
 check-cstream-pod:
     pod:
-        image: cstream
+        image: cstream-check
         disposable: true
         lifecycle: dev
         security:
