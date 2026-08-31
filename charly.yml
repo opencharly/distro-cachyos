@@ -657,6 +657,168 @@ check-selkies-labwc-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof of the CPU labwc selkies streaming desktop building from the cachyos→arch-builder pixi path — the labwc compositor variant (no wl probe) and the base box for android-emulator. Builds (pixi pixelflux + AUR chrome/wlrctl multistage) and deploys the selkies-labwc pod, then runs the inherited selkies-desktop baked checks — labwc/waybar/swaync/pavucontrol/chrome package+service probes, the selkies HTTPS :3000 UI probe, and chrome-devtools-mcp probes.
+check-cardwire-vm:
+    vm:
+        # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+        # on the build host's /tmp (charly vm builds the disk there); redirect the build
+        # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR (see plan §2.3).
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            R10 bed for plugin-cardwire + plugin-bpf facts on the REAL VFIO surface: a
+            CachyOS pacstrap VM receiving the passed-through NVIDIA GPU (auto-allocated
+            hostdev via requires_exclusive: [nvidia-gpu]) with a SPICE terminal (sway +
+            ghostty on the virtio head, host-side plugin-spice probes) and cardwire
+            installed from the OGC pacman repo with defaults. T1 (always): guest bpf LSM
+            active, cardwired active, CLI + config defaults. T2 (this host): NVIDIA
+            0x10de present in-guest; cardwire exposes it as the block target and the
+            mode/block gates are asserted as cardwire's REAL upstream contract on this
+            2-GPU topology (set manual REFUSED with the Laptop-classification message;
+            per-GPU block REFUSED with the manual-mode-only message; the blocked flag
+            stays clear), plus config persistence across daemon restart via the toml.
+            The block->ENOENT->unblock->open-OK semantics are proven by the Phase-0
+            spike on a Manual-classified guest (docs, not replayed here). The bed
+            REQUIRES the nvidia-gpu token (auto-allocate or fail hard), so the full
+            tier always runs here.
+        requires_exclusive: [nvidia-gpu]
+        add_candy:
+            - nvidia-driver
+            - wheel-nopasswd
+            - ghostty
+            - cardwire-seat
+            - '@github.com/opencharly/plugin-cardwire/candy/plugin-cardwire:v2026.243.1202'
+            - '@github.com/opencharly/plugin-cardwire/candy/cardwire-install:v2026.243.1202'
+            - '@github.com/opencharly/plugin-bpf/candy/plugin-bpf:v2026.243.1059'
+        install_opts:
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+            verify: true
+        plan:
+            # ---- T1 (always) ----
+            - check: guest bpf LSM active (the eBPF blocker's gate, /sys/kernel/security/lsm)
+              id: t1-bpf-lsm-active
+              exit_status: 0
+              stdout:
+                - contains: bpf
+              context: [runtime]
+              command: cat /sys/kernel/security/lsm
+            - check: cardwired is active after install
+              id: t1-cardwired-active
+              exit_status: 0
+              stdout:
+                - contains: active
+              context: [runtime]
+              command: systemctl is-active cardwired
+            - check: the cardwire CLI is installed at /usr/bin/cardwire
+              id: t1-cardwire-cli
+              file:
+                file: /usr/bin/cardwire
+                exists: true
+              context: [runtime]
+            - check: the cardwire defaults config carries experimental_nvidia_block=true
+              id: t1-cardwire-config-defaults
+              file:
+                file: /etc/cardwire/cardwire.toml
+                contains: 'experimental_nvidia_block = true'
+              context: [runtime]
+            - check: the SPICE terminal seat is up (sway compositor + ghostty)
+              id: t1-seat-up
+              exit_status: 0
+              stdout:
+                - contains: sway
+              context: [runtime]
+              command: pgrep -af 'sway --unsupported-gpu' | head -1
+            # ---- T2 (in-guest NVIDIA driver present — full tier on this host) ----
+            - check: the passed-through NVIDIA GPU is visible in-guest (vendor 0x10de)
+              id: t2-nvidia-visible
+              exit_status: 0
+              stdout:
+                - contains: NVIDIA
+              context: [runtime]
+              command: lspci | grep -i nvidia | head -1
+            - check: cardwire list exposes the NVIDIA GPU as the block target (non-default id)
+              id: t2-nvidia-nondefault
+              exit_status: 0
+              stdout:
+                - matches: '.*NVIDIA.*'
+              context: [runtime]
+              command: sudo -n cardwire list | grep -i NVIDIA
+            - check: the mode gate contract — on this 2-GPU Laptop-classified topology set manual is REFUSED by upstream design and hybrid still applies
+              id: t2-mode-gate
+              exit_status: 0
+              stdout:
+                - contains: T2-MANUAL-GATE-REFUSED
+                - contains: T2-MODE-SET-HYBRID
+              context: [runtime]
+              command: |
+                set -e
+                out=$(sudo -n cardwire set manual 2>&1) && { echo "T2-MANUAL-UNEXPECTED-OK: $out"; exit 1; } || true
+                echo "$out" | grep -q 'Manual mode is only available' && echo 'T2-MANUAL-GATE-REFUSED'
+                sudo -n cardwire set hybrid >/dev/null 2>&1 && echo 'T2-MODE-SET-HYBRID'
+            - check: the block-surface contract — per-GPU block is manual-mode-only upstream; on this topology both gates REFUSE, the blocked flag stays clear, and the block->ENOENT->unblock->OK semantics are Phase-0-spike-proven on a Manual-classified guest
+              id: t2-block-surface-gate
+              exit_status: 0
+              stdout:
+                - contains: T2-BLOCK-SURFACE-GATED
+                - contains: T2-MANUAL-GATE-STILL-REFUSED
+                - contains: T2-BLOCKED-FLAG-CLEAR
+              context: [runtime]
+              command: |
+                set -e
+                nvidia_id=$(sudo -n cardwire list | awk '/NVIDIA/{print $1}' | head -1)
+                if [ -z "$nvidia_id" ]; then echo 'T2-NO-NVIDIA (portable N/A)'; exit 0; fi
+                out=$(sudo -n cardwire gpu "$nvidia_id" --block 2>&1) && { echo "T2-BLOCK-UNEXPECTED-OK: $out"; exit 1; } || true
+                echo "$out" | grep -q 'Per GPU block is only available on manual mode' && echo 'T2-BLOCK-SURFACE-GATED'
+                m=$(sudo -n cardwire set manual 2>&1) || true
+                echo "$m" | grep -q 'Manual mode is only available' && echo 'T2-MANUAL-GATE-STILL-REFUSED'
+                f=$(sudo -n cardwire list | awk -v id="$nvidia_id" '$1==id{print $NF}' | head -1)
+                echo "blocked-flag: $f"
+                echo "$f" | grep -q false && echo 'T2-BLOCKED-FLAG-CLEAR'
+            - check: config persistence across daemon restart (auto-apply-gpu-state survives cardwired restart via the toml)
+              id: t2-mode-persistence
+              exit_status: 0
+              stdout:
+                - contains: T2-CONFIG-PERSISTED
+                - contains: T2-CONFIG-PERSISTED-2
+              context: [runtime]
+              command: |
+                set -e
+                sudo -n cardwire config auto-apply-gpu-state false
+                sudo -n systemctl restart cardwired
+                sleep 2
+                out=$(sudo -n cardwire config auto-apply-gpu-state)
+                echo "after-restart: $out"
+                echo "$out" | grep -qi 'false' && echo 'T2-CONFIG-PERSISTED'
+                sudo -n cardwire config auto-apply-gpu-state true
+                sudo -n systemctl restart cardwired
+                sleep 2
+                out2=$(sudo -n cardwire config auto-apply-gpu-state)
+                echo "restored: $out2"
+                echo "$out2" | grep -qi 'true' && echo 'T2-CONFIG-PERSISTED-2'
+            # ---- SPICE terminal probes (host-side, plugin-spice) ----
+            - check: spice=status — the SPICE wire is connected to the guest seat
+              id: spice-connected
+              spice: status
+              stdout: {contains: display}
+              context: [runtime]
+            - check: spice=screenshot — the seat renders (non-uniform frame)
+              id: spice-renders
+              spice:
+                method: screenshot
+                artifact: /tmp/cardwire-seat.png
+                artifact_min_bytes: 4096
+                artifact_min_dimensions: 640x480
+                artifact_not_uniform: true
+              context: [runtime]
+            - check: spice=type — keystrokes reach the ghostty terminal on the seat
+              id: spice-terminal-type
+              spice:
+                method: type
+                text: 'cardwire seat ok'
+              context: [runtime]
 check-selkies-labwc-nvidia-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
