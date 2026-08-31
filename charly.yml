@@ -1651,6 +1651,18 @@ cachyos-gpu-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
+                # Without a helper mkinitcpio warns "No fsck helpers found", its
+                # warnings escalate to "errors were encountered during the build"
+                # -> `error: command failed to execute correctly`, and charly's
+                # log-diagnostic gate then fails the step even though deploy-add
+                # itself exits 0. Measured on check-cstream-gpu-vm.
+                #
+                # The charly#400 allowlist covers the BUILD-phase chroot occurrence
+                # only; the deploy-phase one is not allowlistable and should not be
+                # -- the cause is a missing package. Same fix as cstream-vm and
+                # cachyos-vm.
+                - btrfs-progs
             rootfs: btrfs
             # modprobe.blacklist=nouveau: blacklist the in-tree driver at early
             # boot so the open NVIDIA module binds the passed-through GPU (no
