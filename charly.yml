@@ -1918,6 +1918,20 @@ check-cstream-pod:
         image: cstream-check
         disposable: true
         lifecycle: dev
+        add_candy:
+            # plugin-cstream serves the `cstream:` verb these steps authors. Nothing in this
+            # bed's image closure requires it, so it rides in here and the host check runner
+            # loads it — the same mechanism distro-arch uses for plugin-spice and
+            # distro-omarchy for plugin-wl.
+            #
+            # It is also what makes the SCALAR shorthand (`cstream: status`) parse. That
+            # desugars at PARSE time from the primary charly's prescan registers off a plugin
+            # candy manifest's `plugin: primary:` block, and the prescan can only read a
+            # manifest it can REACH — i.e. one pinned from a file it walks. Unpinned, this
+            # bed parsed here (where its file is the root) and failed the moment charly
+            # composed it as box/cachyos, with "declares no primary field for the scalar
+            # shorthand". That took `charly box validate` on charly's main to exit 1.
+            - '@github.com/opencharly/plugin-cstream/candy/plugin-cstream:v2026.242.1502'
         security:
             group_add:
                 - keep-groups
