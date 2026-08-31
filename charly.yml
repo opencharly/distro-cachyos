@@ -2534,24 +2534,6 @@ check-cstream-pod:
                 - contains: LOGIN-REJECTED
               eventually: 120s
               retry_interval: 20s
-            # The ONLY check in this bed that can fail on an encoding or transport
-            # defect. cstream-stream-live reads the producer's own tap and the wl-*
-            # checks read the compositor, so both pass happily while not one byte
-            # reaches a consumer -- which is exactly what happened while webrtcbin
-            # was missing from the image.
-            #
-            # artifact_not_uniform is the assertion that matters: a stream that
-            # negotiates and then sends black, or a placeholder, is the failure this
-            # check exists to catch, and a byte count alone would pass it.
-            - check: a frame pulled back THROUGH the negotiated WebRTC track has real content
-              id: cstream-frame-through-webrtc
-              context:
-                - runtime
-              cstream:
-                  method: frame
-                  artifact: /tmp/cstream-frame.jpg
-                  artifact_min_bytes: 5000
-                  artifact_not_uniform: true
             # The `wl:` verb against the nested compositor. These are the first
             # checks to exercise it here: the binaries it shells out to
             # (wl-clipboard, wtype, wlr-randr) reached this image only when
@@ -2591,6 +2573,77 @@ check-cstream-pod:
                 artifact: /tmp/wl-desktop.png
                 artifact_min_bytes: 5000
                 artifact_not_uniform: true
+            # WP5 lock/idle -- the last three checks of this bed, IN THIS ORDER, and
+            # nothing may be appended after them.
+            #
+            # The desktop locks itself once no consumer has been connected for
+            # CSTREAM_LOCK_AFTER (10s in pod-cstream). hyprlock takes an
+            # ext-session-lock, and a lock client that is killed rather than
+            # authenticated leaves the compositor locked with no client -- so once
+            # this fires, every later `wl:` check would be reading a lock screen
+            # instead of the desktop. That is why the WebRTC frame check moved down
+            # here: it is the only check that connects a consumer, and its departure
+            # is what starts the countdown.
+            #
+            # The ONLY check in this bed that can fail on an encoding or transport
+            # defect. cstream-stream-live reads the producer's own tap and the wl-*
+            # checks read the compositor, so both pass happily while not one byte
+            # reaches a consumer -- which is exactly what happened while webrtcbin
+            # was missing from the image.
+            #
+            # artifact_not_uniform is the assertion that matters: a stream that
+            # negotiates and then sends black, or a placeholder, is the failure this
+            # check exists to catch, and a byte count alone would pass it.
+            - check: nothing has locked the desktop yet -- the lock is a CONSEQUENCE, not the resting state
+              id: cstream-lock-idle-only
+              context:
+                - runtime
+              command:
+                command: |
+                  # No viewer has connected at any point above, so the countdown has
+                  # never started. Without this, the check below passes for free against
+                  # an arming bug that locked at STARTUP -- which looks identical from
+                  # outside and would ALSO be the reason every wl- check above failed.
+                  if pgrep -x hyprlock >/dev/null 2>&1; then
+                      echo "LOCK-HELD-EARLY: hyprlock is running before any viewer has ever connected" >&2
+                      exit 1
+                  fi
+                  echo UNLOCKED-WHILE-UNWATCHED
+                in_container: true
+              stdout:
+                - contains: UNLOCKED-WHILE-UNWATCHED
+            - check: a frame pulled back THROUGH the negotiated WebRTC track has real content
+              id: cstream-frame-through-webrtc
+              context:
+                - runtime
+              cstream:
+                  method: frame
+                  artifact: /tmp/cstream-frame.jpg
+                  artifact_min_bytes: 5000
+                  artifact_not_uniform: true
+            - check: the desktop locks itself once the last viewer has gone
+              id: cstream-lock-after-detach
+              context:
+                - runtime
+              command:
+                command: |
+                  # The consumer above connected and left; 10s later the streamer
+                  # dispatches hyprlock INTO the nested Hyprland over its IPC socket.
+                  # A failure here is the whole WP5 path: the policy never armed, the
+                  # signals never fired, the socket was not found, or the Lua dispatcher
+                  # name is wrong -- all of which look like "no hyprlock" from here.
+                  pgrep -x hyprlock >/dev/null 2>&1 || {
+                      echo "NO-LOCK-YET: hyprlock is not running" >&2
+                      exit 1
+                  }
+                  echo "DESKTOP-LOCKED-AFTER-DETACH pid=$(pgrep -x hyprlock | head -1)"
+                in_container: true
+              stdout:
+                - contains: DESKTOP-LOCKED-AFTER-DETACH
+              # charly's own bounded retry, not a sleep: it stops the moment the lock
+              # appears and fails if it never does.
+              eventually: 60s
+              retry_interval: 5s
 
 check-punktfunk-client:
     pod:
