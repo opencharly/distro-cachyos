@@ -213,7 +213,7 @@ check-punktfunk-vm:
             account, and the PACKAGED punktfunk-host user unit is enabled with the management
             API answering - none of which a supervisord container venue can demonstrate.
         add_candy:
-            - '@github.com/opencharly/layer-punktfunk:v2026.241.2026'
+            - '@github.com/opencharly/layer-punktfunk:v2026.242.0831'
         install_opts:
             # REQUIRED: the candy adds a third-party pacman repo, and needs root for
             # pacman-key, usermod and loginctl.
