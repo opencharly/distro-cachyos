@@ -1209,6 +1209,354 @@ charly-cachyos-app:
                       echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
                     fi
                 in_container: false
+check-cstream-gpu-vm:
+    # HOST REQUIREMENT, inherited from cachyos-gpu-vm: the bootstrap disk build needs
+    # ~100 GiB of free space where charly builds it -- `<project>/output/qcow2/` AND
+    # `$TMPDIR/charly-priv-N`. Both default to /tmp; on a host whose /tmp is a tmpfs
+    # (this one: 62G) BOTH must be redirected with TMPDIR + CHARLY_VM_STATE_DIR or the
+    # build dies with 'insufficient free space'.
+    vm:
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The GPU venue for cstream. Increment 1: it establishes that the card is
+            really passed through and MEASURES the VA capability inventory, which is
+            the premise every later encoder claim depends on. It deliberately does
+            not yet gate encoder selection -- see the plan note in the checks below.
+        # Auto-allocated hostdev: the token maps to a vendor selector (0x10de) and
+        # charly writes THIS host's whole-IOMMU-group <hostdev> block, so no
+        # host-specific PCI address is committed. Without a matching card the bed
+        # SKIPS rather than fails, which is what makes it safe in CI.
+        requires_exclusive: [nvidia-gpu]
+        add_candy:
+            - '@github.com/opencharly/pod-qemu-guest-agent:v2026.239.1632'
+            - nvidia-driver
+            - cstream-gpu-va-tooling
+        install_opts:
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+        plan:
+            - check: the passed-through NVIDIA card is visible to the guest
+              id: cstream-gpu-passthrough
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The whole venue rests on this. If the hostdev did not attach, every
+                # check below would report something true about a GPU-less guest.
+                lspci -nn 2>/dev/null | grep -qi "10de:" || {
+                    echo "GPU-NOT-PASSED-THROUGH: no 0x10de device in the guest" >&2
+                    lspci -nn 2>/dev/null | head -20 >&2
+                    exit 1; }
+                echo GPU-PASSTHROUGH-OK
+              stdout:
+                - contains: GPU-PASSTHROUGH-OK
+            - check: the guest render-node inventory, which encoder selection reads
+              id: cstream-gpu-render-nodes
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # Reports the inventory rather than asserting a count: how many nodes a
+                # VFIO guest exposes depends on whether virtio-gpu is also present, and
+                # guessing that number is how a gate ends up asserting the host's shape
+                # instead of the guest's.
+                nodes=$(ls -1 /dev/dri/render* 2>/dev/null | tr '\n' ' ')
+                test -n "$nodes" || {
+                    echo "NO-RENDER-NODE: /dev/dri has no render* -- encoder selection has nothing to pick from" >&2
+                    ls -la /dev/dri 2>&1 | head -10 >&2
+                    exit 1; }
+                echo "RENDER-NODES: $nodes"
+                echo RENDER-NODE-INVENTORY-OK
+              stdout:
+                - contains: RENDER-NODE-INVENTORY-OK
+            - check: no render node offers VA H.264 EncSlice -- the plan's premise, asserted
+              id: cstream-gpu-va-encslice
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # THE measurement this bed exists for -- now an ASSERTION, not a report.
+                #
+                # The first version printed one marker in EVERY branch, including the
+                # branch where vainfo was missing, so it passed having determined
+                # nothing. And charly retains only the PASS line for a passing check,
+                # so the inventory it "recorded" was unreadable afterwards. Both halves
+                # are fixed here: the cstream-gpu-va-tooling fixture supplies vainfo,
+                # and the finding is asserted. A check that gathers information it
+                # cannot surface is not a measurement.
+                #
+                # The plan states "a passed-through 4080 has no VA EncSlice" and builds
+                # three encoder claims on it -- `encode: va` must fail loudly on this
+                # venue, `encode: auto` must land on software. Asserting it here is what
+                # stops that premise from silently ceasing to be true.
+                command -v vainfo >/dev/null 2>&1 || {
+                    echo "VA-TOOLING-ABSENT: vainfo missing -- the cstream-gpu-va-tooling fixture did not land, so this bed cannot answer the question it exists to ask" >&2
+                    exit 1; }
+                probed=0
+                offenders=""
+                for n in /dev/dri/render*; do
+                    test -e "$n" || continue
+                    probed=$((probed + 1))
+                    out=$(vainfo --display drm --device "$n" 2>&1 || true)
+                    printf '%s\n' "$out" | grep -qE "VAProfileH264.*VAEntrypointEncSlice" && offenders="$offenders $n"
+                done
+                test "$probed" -gt 0 || {
+                    echo "NO-RENDER-NODE-PROBED: nothing under /dev/dri/render* -- see cstream-gpu-render-nodes" >&2
+                    exit 1; }
+                if [ -n "$offenders" ]; then
+                    echo "VA-ENCSLICE-PRESENT on:$offenders" >&2
+                    echo "The PREMISE HAS CHANGED -- this is NOT a cstream regression. The guest" >&2
+                    echo "now offers a VA H.264 encode entrypoint the plan assumed absent, so the" >&2
+                    echo "encoder gates must be re-decided before this check is relaxed." >&2
+                    for n in $offenders; do
+                        echo "--- $n ---" >&2
+                        vainfo --display drm --device "$n" 2>&1 | grep -E "VAProfile|Driver version" >&2
+                    done
+                    exit 1
+                fi
+                echo "NO-VA-H264-ENCSLICE across $probed render node(s) -- the premise holds"
+              stdout:
+                - contains: NO-VA-H264-ENCSLICE
+
+check-cstream-vm:
+    vm:
+        from: cstream-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The SYSTEMD venue for cstream. Gates what check-cstream-pod structurally
+            cannot: the daemons render as real systemd units rather than supervisord
+            [program:] entries, the session target loads, and the nested compositor
+            is installed session-scoped instead of being started at boot. logind
+            sessions, linger and cross-user PAM are what this venue EXISTS to make
+            gateable, but they are not asserted here yet -- they need the broker
+            serving and two provisioned accounts, and a description may only claim
+            what its plan actually checks.
+        add_candy:
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.0331'
+            # BED FIXTURE: the second account. Cross-user PAM is the reason this
+            # venue exists, and it needs an account that is NOT the deploy user.
+            - cstream-vm-probe-account
+        install_opts:
+            # The candy provisions system accounts, a PAM stack and systemd units.
+            allow_root_tasks: true
+        plan:
+            - check: systemd is the running init, so the unit path is the one under test
+              id: cstream-vm-systemd
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                test -d /run/systemd/system && echo SYSTEMD-OK
+              stdout:
+                - contains: SYSTEMD-OK
+            - check: the cstream daemons rendered as REAL systemd units, not supervisord programs
+              id: cstream-vm-units-rendered
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The whole point of the two-venue split: the SAME `service:` list
+                # must render as units here and as [program:] entries in the pod.
+                # A supervisord container cannot make this assertion at all.
+                # charly names a rendered unit charly-<candy>-<service>.service --
+                # NOT the bare service name. Asserting the bare name would fail
+                # against a correctly-rendered unit, so the prefix is part of the
+                # claim: this is charly's systemd naming convention under test.
+                miss=""
+                for u in charly-cstream-cstream-parent charly-cstream-cstream-gateway; do
+                    systemctl list-unit-files 2>/dev/null | grep -q "^$u.service" || miss="$miss $u"
+                done
+                [ -z "$miss" ] || { echo "UNITS-MISSING:$miss" >&2; exit 1; }
+                echo UNITS-RENDERED
+              stdout:
+                - contains: UNITS-RENDERED
+            - check: the session target itself is a real, loadable systemd unit
+              id: cstream-vm-session-target-installed
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The target the compositor is scoped to. Asserting the file exists
+                # is not enough -- a .target with a syntax error still exists on
+                # disk while systemd refuses to load it, and the compositor's
+                # WantedBy would then point at nothing. `systemctl show` forces the
+                # load, so LoadState=loaded is the claim that actually discriminates.
+                T=/etc/systemd/system/cstream-session.target
+                test -f "$T" || { echo "TARGET-NOT-STAGED: the unit: step did not install it" >&2; exit 1; }
+                ls=$(systemctl show -p LoadState --value cstream-session.target 2>/dev/null)
+                [ "$ls" = "loaded" ] || { echo "TARGET-NOT-LOADABLE: LoadState=$ls" >&2; systemctl status cstream-session.target >&2 2>&1 | head -5; exit 1; }
+                # and it must NOT pull itself in at boot, or it re-creates the
+                # deploy-time start one level up
+                if systemctl is-enabled cstream-session.target 2>/dev/null | grep -q '^enabled$'; then
+                    echo "TARGET-WRONGLY-ENABLED-AT-BOOT: it must be pulled in by a session, not by boot" >&2; exit 1
+                fi
+                echo SESSION-TARGET-LOADED
+              stdout:
+                - contains: SESSION-TARGET-LOADED
+            - check: the compositor unit is INSTALLED but session-scoped, not started at boot
+              id: cstream-vm-compositor-session-scoped
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The WP9b claim, gated on the only venue that can express it.
+                # A nested compositor has no business in multi-user.target: it needs
+                # a parent Wayland display that does not exist at deploy time, and
+                # charly STARTS what it enables. So the unit must be rendered (the
+                # candy still declares the service) and must NOT be enabled into
+                # multi-user.target, with [Install] naming the session target instead.
+                U=/etc/systemd/system/charly-hyprland-cstream-hyprland.service
+                test -f "$U" || { echo "UNIT-NOT-RENDERED: charly did not write the compositor unit" >&2; exit 1; }
+                if [ -e /etc/systemd/system/multi-user.target.wants/charly-hyprland-cstream-hyprland.service ]; then
+                    echo "WRONGLY-ENABLED-INTO-multi-user.target: enable: false did not take" >&2; exit 1
+                fi
+                grep -q "^WantedBy=cstream-session.target" "$U" || {
+                    echo "INSTALL-SECTION-WRONG: [Install] does not name cstream-session.target" >&2; sed -n "/\[Install\]/,$ p" "$U" >&2; exit 1; }
+                echo COMPOSITOR-SESSION-SCOPED
+              stdout:
+                - contains: COMPOSITOR-SESSION-SCOPED
+            - check: the PAM stack and session leader the login path needs are installed
+              id: cstream-vm-login-path-present
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                miss=""
+                for f in /usr/local/bin/cstream-leader /usr/local/bin/cstream-login-probe /etc/pam.d/cstream; do
+                    test -e "$f" || miss="$miss $f"
+                done
+                [ -z "$miss" ] || { echo "LOGIN-PATH-MISSING:$miss" >&2; exit 1; }
+                echo LOGIN-PATH-PRESENT
+              stdout:
+                - contains: LOGIN-PATH-PRESENT
+            - check: PAM authenticates a DIFFERENT account than the caller — the claim the pod venue structurally cannot make
+              id: cstream-vm-pam-cross-user-accept
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The guard IS the claim. In a rootless pod pam_unix delegates to
+                # unix_chkpwd, which only verifies the CALLING user's own account --
+                # so an accept leg that happened to target the caller would pass
+                # there too and would prove nothing about cross-user auth. Assert
+                # the target is somebody else BEFORE authenticating.
+                me=$(id -un)
+                [ "$me" != cstreamprobe ] || { echo "NOT-CROSS-USER: running as the target account ($me)" >&2; exit 1; }
+                sudo -n /usr/local/bin/cstream-login-probe cstreamprobe accept 'cstream-vm-probe-pw'
+              stdout:
+                - contains: LOGIN-ACCEPTED
+            - check: a WRONG password for that same other account is REFUSED
+              id: cstream-vm-pam-cross-user-reject
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # Without this leg the accept leg is vacuous: a PAM stack that
+                # admits anything passes it. Same account, same caller, wrong
+                # credential -- the only variable is the password.
+                sudo -n /usr/local/bin/cstream-login-probe cstreamprobe reject 'cstream-vm-probe-pw-WRONG'
+              stdout:
+                - contains: LOGIN-REJECTED
+            - check: the streamer binary installed on the systemd venue too
+              id: cstream-vm-streamer-installed
+              context:
+                - runtime
+              file:
+                file: /usr/local/bin/cstream-streamer
+                exists: true
+
+cstream-vm:
+    vm:
+        # The SYSTEMD venue for cstream. It exists to carry the claims the pod bed
+        # structurally CANNOT make:
+        #
+        #   * the cstream daemons render as REAL systemd units rather than
+        #     supervisord [program:] entries. One `service:` list, two renderings;
+        #     only this venue exercises the systemd one.
+        #   * CROSS-USER PAM -- the reason this entity exists, and still ungated
+        #     (see the bed's description). In a rootless pod `pam_unix` delegates to the setuid
+        #     helper `unix_chkpwd`, which verifies only the CALLING user's own
+        #     account -- measured: uid 1000 asking about another account fails for
+        #     a RIGHT password exactly as it does for a wrong one, so a reject leg
+        #     there proves nothing. That is why the pod bed authenticates only the
+        #     account it runs as, and why cross-user auth is this bed's gate.
+        #   * logind sessions, linger, and per-user `user@UID.service` trees.
+        #
+        # A FULL spec, not a derivation: VM entities do not inherit (`from:` is
+        # bed-only), so this mirrors cachyos-vm's pacstrap bootstrap and raises
+        # only what the desktop needs -- the guest compiles a Rust streamer and
+        # runs a nested compositor, neither of which fits 2 CPU / 4G.
+        source:
+            kind: bootstrap
+            builder: pacstrap
+            builder_image: cachyos-pacstrap-builder
+            distro: cachyos
+            package:
+                - sudo
+                - openssh
+                - qemu-guest-agent
+                - cloud-init
+                - grub
+                - efibootmgr
+                # btrfs-progs supplies fsck.btrfs. Without a helper for the root
+                # filesystem mkinitcpio warns "No fsck helpers found", and its
+                # warnings escalate to "errors were encountered during the build"
+                # -> `error: command failed to execute correctly`, which trips
+                # charly's log-diagnostic gate on EVERY package install that fires
+                # the initcpio hook. Fixing the cause rather than allowlisting the
+                # line, per the arch bootstrap block's own precedent.
+                - btrfs-progs
+            rootfs: btrfs
+            kernel_args: console=tty0 console=ttyS0,115200
+        disk_size: 40G
+        ram: 8G
+        cpu: 4
+        machine: q35
+        firmware: uefi-insecure
+        network:
+            mode: user
+        ssh:
+            user: cachy
+            port_auto: true
+            key_source: generate
+        libvirt:
+            devices:
+                # accel3d is load-bearing, not decoration: gst-wayland-display
+                # creates the zwp_linux_dmabuf_v1 global ONLY on a hardware render
+                # target, and Aquamarine's Wayland backend hard-requires it. Without
+                # a real render node the nested Hyprland cannot start at all -- the
+                # same rule the pod bed satisfies with the host's iGPU render node.
+                # accel3d makes the renderer emit virtio-vga-gl, which REQUIRES a
+                # GL-capable display backend. With the default headless display
+                # qemu refuses to start: "The display backend does not have OpenGL
+                # support enabled" -- measured, a 7-second vm-create failure.
+                # egl-headless is that backend, and charly already emits
+                # <gl rendernode=.../> for it (the plan's Spike 3 configuration).
+                graphics:
+                    - type: egl-headless
+                video:
+                    - model: virtio
+                      accel3d: true
+        # NO cloud_init: block -- it would be INERT here, and that is measured,
+        # not assumed. cloud-init seeding is a `kind: cloud_image` feature
+        # (plugin-vm/vm_cloud_image.go). For this `kind: bootstrap` guest charly
+        # BUILDS output/qcow2/cstream-vm/seed.iso and then never attaches it:
+        # `virsh dumpxml` shows no <disk device='cdrom'> at all, and the guest
+        # reports `cloud-init status: error / No instance datasource found`,
+        # with /var/lib/cloud/instance/scripts/runcmd absent entirely.
+        #
+        # A pacstrapped guest is configured in the CHROOT instead -- charly's
+        # arch bootstrap already runs `arch-chroot systemctl enable sshd
+        # qemu-guest-agent cloud-init-*`. That is the only reason ssh works
+        # here, and it is exactly what makes an inert runcmd list look like it
+        # works: the two lines everyone copies are already done by the chroot.
+        #
+        # Confirmed NOT caused by this entity's `libvirt:` block -- removing
+        # that and re-creating the domain still yields zero cdrom devices.
 cachyos-vm:
     vm:
         # Bootstrap-from-scratch via cachyos-pacstrap-builder (local). The cachyos
@@ -1226,6 +1574,18 @@ cachyos-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
+                # Without a helper mkinitcpio warns "No fsck helpers found", and
+                # its warnings escalate to "errors were encountered during the
+                # build" -> `error: command failed to execute correctly`, which
+                # trips charly's log-diagnostic gate on EVERY package install that
+                # fires the initcpio hook. Measured on check-cstream-gpu-vm: the
+                # deploy exits 0 and the gate fails the step on the error line.
+                #
+                # The charly#400 allowlist covers the BUILD-phase chroot noise
+                # only; the deploy occurrence is not allowlistable, and should not
+                # be -- the cause is a missing package. Same fix as cstream-vm.
+                - btrfs-progs
             rootfs: btrfs
             kernel_args: console=tty0 console=ttyS0,115200
         disk_size: 25G
@@ -1309,6 +1669,18 @@ cachyos-gpu-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
+                # Without a helper mkinitcpio warns "No fsck helpers found", its
+                # warnings escalate to "errors were encountered during the build"
+                # -> `error: command failed to execute correctly`, and charly's
+                # log-diagnostic gate then fails the step even though deploy-add
+                # itself exits 0. Measured on check-cstream-gpu-vm.
+                #
+                # The charly#400 allowlist covers the BUILD-phase chroot occurrence
+                # only; the deploy-phase one is not allowlistable and should not be
+                # -- the cause is a missing package. Same fix as cstream-vm and
+                # cachyos-vm.
+                - btrfs-progs
             rootfs: btrfs
             # modprobe.blacklist=nouveau: blacklist the in-tree driver at early
             # boot so the open NVIDIA module binds the passed-through GPU (no
@@ -1546,6 +1918,20 @@ check-cstream-pod:
         image: cstream-check
         disposable: true
         lifecycle: dev
+        add_candy:
+            # plugin-cstream serves the `cstream:` verb these steps authors. Nothing in this
+            # bed's image closure requires it, so it rides in here and the host check runner
+            # loads it — the same mechanism distro-arch uses for plugin-spice and
+            # distro-omarchy for plugin-wl.
+            #
+            # It is also what makes the SCALAR shorthand (`cstream: status`) parse. That
+            # desugars at PARSE time from the primary charly's prescan registers off a plugin
+            # candy manifest's `plugin: primary:` block, and the prescan can only read a
+            # manifest it can REACH — i.e. one pinned from a file it walks. Unpinned, this
+            # bed parsed here (where its file is the root) and failed the moment charly
+            # composed it as box/cachyos, with "declares no primary field for the scalar
+            # shorthand". That took `charly box validate` on charly's main to exit 1.
+            - '@github.com/opencharly/plugin-cstream/candy/plugin-cstream:v2026.242.1502'
         security:
             group_add:
                 - keep-groups
@@ -1618,19 +2004,432 @@ check-cstream-pod:
                 command: /usr/local/bin/cstream-login-probe "$(id -un)" reject 'cstream-bed-pw-WRONG'
               stdout:
                 - contains: LOGIN-REJECTED
+            - check: the streamer builds its own graph, reaches PLAYING, and the VA encoder it picked actually OPENS
+              id: cstream-streamer-graph
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  # --probe runs the SHIPPED binary: it builds the real
+                  # waylanddisplaysrc-to-webrtcsink graph, brings it to PLAYING, and
+                  # then opens the encoder it selected. `encode: va` is what makes this
+                  # discriminating -- on a VA-capable node the streamer must report the
+                  # hardware encoder and REFUSE rather than quietly use the CPU.
+                  #
+                  # The second marker exists because registration is not capability: a
+                  # VA element is registered wherever the plugin loads, including on a
+                  # host whose render node it cannot open. Only bringing it to READY
+                  # tells those apart.
+                  #
+                  # NOT claimed here: that webrtcsink hands a frame to that encoder.
+                  # Its encoder-setup fires only once a consumer negotiates, and this
+                  # probe has no signalling server. Frames actually moving is the
+                  # separate two-way streaming gate above.
+                  CSTREAM_ENCODE=va CSTREAM_RENDER_NODE=/dev/dri/renderD128 \
+                    timeout 60 /usr/local/bin/cstream-streamer --probe
+              stdout:
+                - contains: 'CSTREAM-PIPELINE-PLAYING encoder=hardware:vah264enc'
+                - contains: 'CSTREAM-ENCODER-OPENABLE encoder=hardware:vah264enc'
+              eventually: 180s
+              retry_interval: 60s
+            - check: a terminal is mapped for keyboard input to be delivered INTO
+              id: wl-input-fixture
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  set -e
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # A DEDICATED terminal: the focus/close fixtures' windows are
+                  # targets of dispatchers that move or destroy them, and typing
+                  # into one of those would race those gates.
+                  pgrep -f "foot -T cstream-input" >/dev/null 2>&1 || \
+                    (WAYLAND_DISPLAY=$NEST setsid foot -T cstream-input >/dev/null 2>&1 &)
+                  for _ in $(seq 40); do
+                      hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' && break
+                      sleep 1
+                  done
+                  hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' || {
+                      echo "INPUT-FIXTURE-NO-WINDOW: foot never mapped" >&2; exit 1; }
+                  echo INPUT-FIXTURE-READY
+              stdout:
+                - contains: INPUT-FIXTURE-READY
+              eventually: 120s
+              retry_interval: 30s
+            - check: the wl verb focuses the input terminal, so keystrokes have a destination
+              id: wl-input-focus
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-input
+            - check: the input terminal is now the active window -- typing will reach IT
+              id: wl-input-focus-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-input"' && echo ACTIVE-IS-INPUT
+              stdout:
+                - contains: ACTIVE-IS-INPUT
+              eventually: 60s
+              retry_interval: 5s
+            - check: wl type sends a command line to the focused client
+              id: wl-type-command
+              context:
+                - runtime
+              wl:
+                method: type
+                text: sleep 313
+            - check: wl key Return submits it
+              id: wl-key-return
+              context:
+                - runtime
+              wl:
+                method: key
+                key: Return
+            - check: the typed line actually RAN -- the process exists
+              id: wl-type-observed
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # The whole point of the pair: `wl: type` and `wl: key` both exit 0
+                  # even when nothing is delivered. A live process with the exact
+                  # argument that was typed is the only thing that proves the
+                  # keystrokes crossed the compositor, reached the focused client,
+                  # and were executed by its shell.
+                  pgrep -f 'sleep 313' >/dev/null || {
+                      echo "TYPE-NOT-DELIVERED: no 'sleep 313' process -- keystrokes did not reach the shell" >&2; exit 1; }
+                  echo TYPE-DELIVERED
+              stdout:
+                - contains: TYPE-DELIVERED
+              eventually: 60s
+              retry_interval: 5s
+            - check: wl key-combo sends ctrl+c to the same client
+              id: wl-keycombo-interrupt
+              context:
+                - runtime
+              wl:
+                method: key-combo
+                combo: ctrl+c
+            - check: ctrl+c actually interrupted it -- the process is GONE
+              id: wl-keycombo-observed
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # A modifier that never reached the client leaves the sleep running,
+                  # and `wl: key-combo` still exits 0. Absence of the process is the
+                  # observation; the preceding check proved it was there to begin with,
+                  # so this cannot pass vacuously.
+                  if pgrep -f 'sleep 313' >/dev/null; then
+                      echo "KEYCOMBO-NOT-DELIVERED: 'sleep 313' still running after ctrl+c" >&2; exit 1
+                  fi
+                  echo KEYCOMBO-DELIVERED
+              stdout:
+                - contains: KEYCOMBO-DELIVERED
+              eventually: 60s
+              retry_interval: 5s
+            # The GWD half of "dual-sided" is NOT re-checked here. It is already
+            # gated by layer-gst-wayland-display's own `gwd-keymap-properties`
+            # (gst-inspect asserting xkb-layout / xkb-variant / xkb-options),
+            # which is the right owner: the layer builds the plugin, so it is
+            # what can tell a patched fork from upstream. A copy here was written
+            # and removed -- the bed ran both and reported the same id twice.
+            - check: the compositor keyboard starts on the default layout, so a switch is observable
+              id: hypr-keymap-baseline
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # Without this the next observation is vacuous: if the layout were
+                  # already "de", asserting "de" after the switch would prove nothing.
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  dev=$(hyprctl -j devices 2>&1)
+                  printf '%s' "$dev" | grep -q '"layout": *"de"' && {
+                      echo "KEYMAP-BASELINE-ALREADY-DE: the switch below would prove nothing" >&2; exit 1; }
+                  echo KEYMAP-BASELINE-NOT-DE
+              stdout:
+                - contains: KEYMAP-BASELINE-NOT-DE
+            - check: wl hypr-eval switches the compositor keymap to de
+              id: hypr-keymap-set
+              context:
+                - runtime
+              wl:
+                method: hypr-eval
+                command: hl.config({ input = { kb_layout = "de" } })
+            - check: the compositor REPORTS the new layout -- the eval actually applied
+              id: hypr-keymap-observed
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # Half two of "dual-sided", and the reason this is an observation
+                  # rather than an exit-code check: `hyprctl eval` answers "ok" for
+                  # ANY expression -- valid, invalid or no-op -- so the verb's
+                  # success says nothing about whether the config changed. Only the
+                  # compositor's own device report does.
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  dev=$(hyprctl -j devices 2>&1)
+                  printf '%s' "$dev" | grep -q '"layout": *"de"' || {
+                      echo "KEYMAP-NOT-APPLIED: no keyboard reports layout de" >&2
+                      printf '%s' "$dev" | grep -A6 -i 'keyboards' | head -30 >&2
+                      exit 1; }
+                  echo KEYMAP-APPLIED-DE
+              stdout:
+                - contains: KEYMAP-APPLIED-DE
+              eventually: 60s
+              retry_interval: 5s
+            - check: two windows are mapped, so focus has somewhere to move BETWEEN
+              id: wl-focus-fixture
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  set -e
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # -T sets the INITIAL title. foot rewrites its live title from the
+                  # shell prompt within a second of mapping, so `title:` selectors are
+                  # useless for automation here -- every window reports "@host:~".
+                  # initialtitle: is the stable one (measured).
+                  for n in focus-a focus-b close-keep close-target; do
+                      pgrep -f "foot -T cstream-$n" >/dev/null 2>&1 || \
+                        (WAYLAND_DISPLAY=$NEST setsid foot -T "cstream-$n" >/dev/null 2>&1 &)
+                  done
+                  for _ in $(seq 40); do
+                      [ "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4 ] && break
+                      sleep 1
+                  done
+                  test "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4
+                  echo FOCUS-FIXTURE-READY
+              stdout:
+                - contains: FOCUS-FIXTURE-READY
+              eventually: 120s
+              retry_interval: 30s
+            - check: the wl verb focuses window A on Hyprland
+              id: wl-focus-a
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-focus-a
+            - check: window A is now the active one -- the focus actually moved
+              id: wl-focus-a-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # Asserting the ACTIVE WINDOW, not the verb's exit code. A dispatcher
+                  # that silently did nothing still exits 0 -- that is the whole failure
+                  # mode this gate exists for.
+                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-a"' && echo ACTIVE-IS-A
+              stdout:
+                - contains: ACTIVE-IS-A
+              eventually: 60s
+              retry_interval: 15s
+            - check: the wl verb focuses window B on Hyprland
+              id: wl-focus-b
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-focus-b
+            - check: window B is now active -- focus moves BOTH ways, so A was not a coincidence
+              id: wl-focus-b-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-b"' && echo ACTIVE-IS-B
+              stdout:
+                - contains: ACTIVE-IS-B
+              eventually: 60s
+              retry_interval: 15s
+            - check: the wl verb minimizes window B on Hyprland
+              id: wl-minimize-b
+              context:
+                - runtime
+              wl:
+                method: minimize
+                target: initialtitle:cstream-focus-b
+            - check: window B really left for the special workspace -- Hyprland's minimize
+              id: wl-minimize-b-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # Two assertions, because either alone is satisfiable by a no-op:
+                  # the special workspace must EXIST (it is created on first use), and
+                  # B must be ON it -- a window that merely lost focus would satisfy the
+                  # first but not the second.
+                  hyprctl -j workspaces | grep -q 'special:minimized' || { echo NO-SPECIAL-WORKSPACE; exit 1; }
+                  # Plain `hyprctl clients` is one blank-line-separated paragraph per
+                  # window, so awk in paragraph mode reads the pair (initialTitle,
+                  # workspace) off the SAME window. Splitting the JSON would not:
+                  # `workspace` precedes `initialTitle` inside each object, so a naive
+                  # record split attributes one window's workspace to the next.
+                  hyprctl clients | awk -v RS= '/initialTitle: cstream-focus-b/ {for(i=1;i<=NF;i++) if($i=="workspace:"){w=$(i+2); gsub(/[()]/,"",w); print "B-WORKSPACE=" w}}'
+              stdout:
+                - contains: 'B-WORKSPACE=special:minimized'
+              eventually: 60s
+              retry_interval: 15s
+            - check: focus the window that must SURVIVE the close, so the regression can bite
+              id: wl-close-focus-keep
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-close-keep
+            - check: the wl verb closes the NAMED window, not the focused one
+              id: wl-close-target
+              context:
+                - runtime
+              wl:
+                method: close
+                target: initialtitle:cstream-close-target
+            - check: the named window is gone AND the focused one survived
+              id: wl-close-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # BOTH halves are the assertion. Measured on 0.56.2 before the fix:
+                  # hl.dsp.window.close(<selector>) ACCEPTS the selector and ignores it,
+                  # closing the ACTIVE window instead -- so "the target is gone" alone
+                  # passes while the wrong window died. The survivor is what catches it.
+                  hyprctl clients | grep -q 'initialTitle: cstream-close-target' && { echo TARGET-STILL-OPEN; exit 1; }
+                  hyprctl clients | grep -q 'initialTitle: cstream-close-keep' || { echo WRONG-WINDOW-CLOSED; exit 1; }
+                  echo CLOSED-THE-NAMED-WINDOW
+              stdout:
+                - contains: CLOSED-THE-NAMED-WINDOW
+              eventually: 60s
+              retry_interval: 15s
+            - check: the cstream verb dispatches through the provider registry and reports the gateway's readiness
+              id: cstream-verb-status
+              context:
+                - runtime
+              cstream: status
+              stdout:
+                - contains: '"ready":true'
+              eventually: 120s
+              retry_interval: 15s
+            - check: the cstream verb ACCEPTS a correct credential through the real session leader
+              id: cstream-verb-login-accept
+              context:
+                - runtime
+              cstream:
+                method: login
+                user: user
+                password: cstream-bed-pw
+                expect: accept
+              stdout:
+                - contains: LOGIN-ACCEPTED
+              eventually: 120s
+              retry_interval: 20s
+            - check: the cstream verb REFUSES a wrong credential against the same stack
+              id: cstream-verb-login-reject
+              context:
+                - runtime
+              cstream:
+                method: login
+                user: user
+                password: cstream-bed-pw-WRONG
+                expect: reject
+              stdout:
+                - contains: LOGIN-REJECTED
+              eventually: 120s
+              retry_interval: 20s
+            # The ONLY check in this bed that can fail on an encoding or transport
+            # defect. cstream-stream-live reads the producer's own tap and the wl-*
+            # checks read the compositor, so both pass happily while not one byte
+            # reaches a consumer -- which is exactly what happened while webrtcbin
+            # was missing from the image.
+            #
+            # artifact_not_uniform is the assertion that matters: a stream that
+            # negotiates and then sends black, or a placeholder, is the failure this
+            # check exists to catch, and a byte count alone would pass it.
+            - check: a frame pulled back THROUGH the negotiated WebRTC track has real content
+              id: cstream-frame-through-webrtc
+              context:
+                - runtime
+              cstream:
+                  method: frame
+                  artifact: /tmp/cstream-frame.jpg
+                  artifact_min_bytes: 5000
+                  artifact_not_uniform: true
+            # The `wl:` verb against the nested compositor. These are the first
+            # checks to exercise it here: the binaries it shells out to
+            # (wl-clipboard, wtype, wlr-randr) reached this image only when
+            # pod-hyprland shipped them beside grim, so the verbs previously failed
+            # on `command not found` rather than on anything about the desktop.
+            #
+            # DELIBERATELY NOT GATED: `wl: resolution`. It SETS the output through
+            # wlr-randr, a second writer to a property the cstream control socket
+            # owns. Measured on this bed: it moved the compositor to 1280x720 while
+            # the streamer's capsfilter stayed at 640x480 -- encoder and compositor
+            # desynced with no error anywhere. Resize goes through the control
+            # socket (the cstream-resize-* checks above) only.
+            # Tracked as opencharly/pod-cstream#11.
+            - check: the clipboard accepts a value through the wl verb
+              id: wl-clipboard-set
+              context:
+                - runtime
+              wl:
+                method: clipboard
+                action: set
+                text: cstream-clipboard-canary
+            - check: the clipboard returns EXACTLY what was set -- a set alone passes against a clipboard that swallows writes
+              id: wl-clipboard-roundtrip
+              context:
+                - runtime
+              wl:
+                method: clipboard
+                action: get
+              stdout:
+                - contains: cstream-clipboard-canary
+            - check: a wl screenshot of the nested desktop has real, non-uniform content
+              id: wl-screenshot-content
+              context:
+                - runtime
+              wl:
+                method: screenshot
+                artifact: /tmp/wl-desktop.png
+                artifact_min_bytes: 5000
+                artifact_not_uniform: true
 
-rca467-overlay-probe:
-    pod:
-        image: punktfunk-host
-        disposable: true
-        lifecycle: dev
-        description: >-
-            Throwaway RCA probe for charly#467 — overlays the virtualization candy (a pacman
-            install with pacman-key) onto a cachyos-based image so the GENERATED overlay
-            Containerfile can be read. Not committed anywhere; exists to inspect USER ordering.
-        add_candy:
-            - '@github.com/opencharly/layer-agentteams-snapshot:v2026.239.1618'
-            - '@github.com/opencharly/pod-virtualization:v2026.239.1635'
 check-punktfunk-client:
     pod:
         image: punktfunk-client
@@ -1852,3 +2651,4 @@ check-punktfunk-fleet:
                     # fails outright on zero frames, so this only asserts the success shape.
                     - contains: "streamed:"
                   timeout: 120s
+

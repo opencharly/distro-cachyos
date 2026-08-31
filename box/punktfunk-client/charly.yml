@@ -35,7 +35,7 @@ punktfunk-client:
             #
             # This removes a known-broken path; it does not PROVE client audio. Nothing in
             # the bed asserts audio — stream-probe counts decoded VIDEO frames only.
-            - '@github.com/opencharly/pod-pipewire:v2026.239.1555'
+            - '@github.com/opencharly/pod-pipewire:v2026.243.0508'
         # plugin-punktfunk is deliberately NOT composed here. An out-of-tree verb plugin is
         # loaded by charly from the PROJECT, not from the venue image, so the `punktfunk:`
         # verb is available to this bed either way — and composing the plugin candy drags in

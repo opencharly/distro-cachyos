@@ -45,7 +45,7 @@ punktfunk-host:
             #   org.freedesktop.portal.Desktop was not provided by any .service files
             # xdg-portal needs no service entry — it ships D-Bus activation files and
             # respawns on demand (verified by killing it and watching the PID change).
-            - '@github.com/opencharly/layer-xdg-portal:v2026.242.1648'
-            - '@github.com/opencharly/pod-pipewire:v2026.239.1555'
-            - punktfunk
-            - '@github.com/opencharly/plugin-punktfunk/candy/plugin-punktfunk:v2026.241.1930'
+            - '@github.com/opencharly/layer-xdg-portal:v2026.243.1016'
+            - '@github.com/opencharly/pod-pipewire:v2026.243.0508'
+            - '@github.com/opencharly/layer-punktfunk:v2026.242.1658'
+            - '@github.com/opencharly/plugin-punktfunk/candy/plugin-punktfunk:v2026.243.0603'

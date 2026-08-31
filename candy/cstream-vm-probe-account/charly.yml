@@ -1,0 +1,65 @@
+cstream-vm-probe-account:
+    candy:
+        version: 2026.243.0010
+        description: |
+            BED FIXTURE ONLY -- never composed into a shipped box.
+
+            The SECOND account, and the whole point of it is that it is not the
+            one the bed runs as.
+
+            `cstream-probe-account` (the pod fixture) sets a password on the
+            container's OWN runtime account, and its description explains why it
+            has no choice: pam_unix delegates to the setuid helper `unix_chkpwd`
+            whenever euid is not 0, and that helper only verifies the CALLING
+            user's own account. In a rootless pod, authenticating any other user
+            fails with "Authentication service cannot retrieve authentication
+            info" for a RIGHT password exactly as it does for a wrong one -- so
+            both legs of a cross-user gate would fail, and a reject leg that
+            passes for the wrong reason is worse than no gate at all.
+
+            That is a property of the venue, not of PAM. On a real machine the
+            broker runs as root, euid IS 0, and pam_unix reads /etc/shadow
+            directly -- so a different account can be authenticated, which is the
+            only thing the production login path ever does. This fixture creates
+            that different account so the systemd venue can gate it.
+
+            The account is deliberately NOT the deploy user: the bed asserts
+            `id -un` differs from it before authenticating, because an accept leg
+            that happened to target the caller would pass in a rootless pod too
+            and would therefore prove nothing about cross-user auth.
+
+            The credential is in the clear for the same reason the pod fixture's
+            is: it exists so a disposable guest can prove PAM accepts the right
+            password and refuses a wrong one. It must never be composed into an
+            image anyone deploys, which is why it lives beside the bed.
+        plan:
+            # NOT context: [runtime] -- an install-timeline step. A candy whose
+            # only run: step is runtime-scoped installs nothing and charly rejects
+            # it ("must have at least one install file"). On the systemd venue the
+            # install timeline runs during the deploy walk, as root, which is
+            # exactly when this account needs to exist.
+            - run: create the cross-user probe account
+              command: |
+                set -e
+                # Runs as root on the systemd venue (install_opts.allow_root_tasks).
+                # useradd is idempotent here only because the bed is disposable; a
+                # re-run against a live guest would fail loudly rather than silently
+                # reset someone's password, which is the safer direction.
+                if ! id cstreamprobe >/dev/null 2>&1; then
+                    useradd --create-home --shell /usr/bin/bash cstreamprobe
+                fi
+                echo 'cstreamprobe:cstream-vm-probe-pw' | chpasswd
+                echo VM-PROBE-ACCOUNT-READY
+              run_as: root
+            - check: the cross-user probe account exists with a home to open a session into
+              id: vm-probe-account-exists
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                getent passwd cstreamprobe >/dev/null || { echo "PROBE-ACCOUNT-MISSING: the fixture run: step did not create it" >&2; exit 1; }
+                h=$(getent passwd cstreamprobe | cut -d: -f6)
+                test -d "$h" || { echo "PROBE-ACCOUNT-NO-HOME: $h" >&2; exit 1; }
+                echo VM-PROBE-ACCOUNT-OK
+              stdout:
+                - contains: VM-PROBE-ACCOUNT-OK
