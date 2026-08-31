@@ -1992,6 +1992,81 @@ check-cstream-pod:
                 - contains: KEYCOMBO-DELIVERED
               eventually: 60s
               retry_interval: 5s
+            - check: the INSTALLED GWD carries the keymap properties -- the fork, not upstream
+              id: gwd-keymap-properties
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # Half one of "dual-sided". These three properties exist only in
+                  # the opencharly fork (patch 2); stock gst-wayland-display has
+                  # none of them. Asserting them is how the bed proves the pinned
+                  # fork is what actually got built into the image, rather than a
+                  # tarball that silently resolved to upstream.
+                  out=$(gst-inspect-1.0 waylanddisplaysrc 2>&1) || {
+                      echo "GST-INSPECT-FAILED: $out" >&2; exit 1; }
+                  miss=""
+                  for prop in xkb-layout xkb-variant xkb-options; do
+                      printf '%s' "$out" | grep -q "$prop" || miss="$miss $prop"
+                  done
+                  [ -z "$miss" ] || {
+                      echo "GWD-KEYMAP-PROPS-MISSING:$miss -- the installed plugin is not the patched fork" >&2
+                      exit 1; }
+                  echo GWD-KEYMAP-PROPS-PRESENT
+              stdout:
+                - contains: GWD-KEYMAP-PROPS-PRESENT
+            - check: the compositor keyboard starts on the default layout, so a switch is observable
+              id: hypr-keymap-baseline
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # Without this the next observation is vacuous: if the layout were
+                  # already "de", asserting "de" after the switch would prove nothing.
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  dev=$(hyprctl -j devices 2>&1)
+                  printf '%s' "$dev" | grep -q '"layout": *"de"' && {
+                      echo "KEYMAP-BASELINE-ALREADY-DE: the switch below would prove nothing" >&2; exit 1; }
+                  echo KEYMAP-BASELINE-NOT-DE
+              stdout:
+                - contains: KEYMAP-BASELINE-NOT-DE
+            - check: wl hypr-eval switches the compositor keymap to de
+              id: hypr-keymap-set
+              context:
+                - runtime
+              wl:
+                method: hypr-eval
+                command: hl.config({ input = { kb_layout = "de" } })
+            - check: the compositor REPORTS the new layout -- the eval actually applied
+              id: hypr-keymap-observed
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # Half two of "dual-sided", and the reason this is an observation
+                  # rather than an exit-code check: `hyprctl eval` answers "ok" for
+                  # ANY expression -- valid, invalid or no-op -- so the verb's
+                  # success says nothing about whether the config changed. Only the
+                  # compositor's own device report does.
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  dev=$(hyprctl -j devices 2>&1)
+                  printf '%s' "$dev" | grep -q '"layout": *"de"' || {
+                      echo "KEYMAP-NOT-APPLIED: no keyboard reports layout de" >&2
+                      printf '%s' "$dev" | grep -A6 -i 'keyboards' | head -30 >&2
+                      exit 1; }
+                  echo KEYMAP-APPLIED-DE
+              stdout:
+                - contains: KEYMAP-APPLIED-DE
+              eventually: 60s
+              retry_interval: 5s
             - check: two windows are mapped, so focus has somewhere to move BETWEEN
               id: wl-focus-fixture
               context:
