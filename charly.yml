@@ -1992,31 +1992,12 @@ check-cstream-pod:
                 - contains: KEYCOMBO-DELIVERED
               eventually: 60s
               retry_interval: 5s
-            - check: the INSTALLED GWD carries the keymap properties -- the fork, not upstream
-              id: gwd-keymap-properties
-              context:
-                - runtime
-              exit_status: 0
-              command:
-                in_container: true
-                command: |
-                  # Half one of "dual-sided". These three properties exist only in
-                  # the opencharly fork (patch 2); stock gst-wayland-display has
-                  # none of them. Asserting them is how the bed proves the pinned
-                  # fork is what actually got built into the image, rather than a
-                  # tarball that silently resolved to upstream.
-                  out=$(gst-inspect-1.0 waylanddisplaysrc 2>&1) || {
-                      echo "GST-INSPECT-FAILED: $out" >&2; exit 1; }
-                  miss=""
-                  for prop in xkb-layout xkb-variant xkb-options; do
-                      printf '%s' "$out" | grep -q "$prop" || miss="$miss $prop"
-                  done
-                  [ -z "$miss" ] || {
-                      echo "GWD-KEYMAP-PROPS-MISSING:$miss -- the installed plugin is not the patched fork" >&2
-                      exit 1; }
-                  echo GWD-KEYMAP-PROPS-PRESENT
-              stdout:
-                - contains: GWD-KEYMAP-PROPS-PRESENT
+            # The GWD half of "dual-sided" is NOT re-checked here. It is already
+            # gated by layer-gst-wayland-display's own `gwd-keymap-properties`
+            # (gst-inspect asserting xkb-layout / xkb-variant / xkb-options),
+            # which is the right owner: the layer builds the plugin, so it is
+            # what can tell a patched fork from upstream. A copy here was written
+            # and removed -- the bed ran both and reported the same id twice.
             - check: the compositor keyboard starts on the default layout, so a switch is observable
               id: hypr-keymap-baseline
               context:
