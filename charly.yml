@@ -2488,8 +2488,17 @@ check-punktfunk-fleet:
                 # and charly has no way to carry a step's output into another step's input. So
                 # both members mount one path and the PIN travels as a file — the automation of
                 # a human reading it off one screen and typing it into the other.
+                # A BIND to /tmp, not a named volume and not a personal path.
+                # charly namespaces named volumes PER MEMBER
+                # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
+                # member its own and the PIN never crosses -- verified: the client saw
+                # "pin file /pfshare/pin is missing or empty". A bind needs a host path
+                # that already exists, because podman will not create one, so it is /tmp
+                # rather than a subdirectory nobody has made. The file name is
+                # bed-specific so mounting a shared /tmp cannot collide.
                 - name: punktfunk-pair-share
-                  type: volume
+                  type: bind
+                  host: /tmp
                   path: /pfshare
             plan:
                 # Mutating, so a `run:` step — the verb refuses a mutating method in a check.
@@ -2502,7 +2511,7 @@ check-punktfunk-fleet:
                     - runtime
                   punktfunk:
                     method: pair-arm
-                    pin_out: /pfshare/pin
+                    pin_out: /pfshare/charly-punktfunk-fleet.pin
                 - check: the management API answers, so the client has something to pair with
                   id: pf-fleet-host-live
                   context:
@@ -2560,8 +2569,17 @@ check-punktfunk-fleet:
                 the stream measurement run from OUTSIDE the host, which is the only place they
                 can be observed honestly.
             volume:
+                # A BIND to /tmp, not a named volume and not a personal path.
+                # charly namespaces named volumes PER MEMBER
+                # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
+                # member its own and the PIN never crosses -- verified: the client saw
+                # "pin file /pfshare/pin is missing or empty". A bind needs a host path
+                # that already exists, because podman will not create one, so it is /tmp
+                # rather than a subdirectory nobody has made. The file name is
+                # bed-specific so mounting a shared /tmp cannot collide.
                 - name: punktfunk-pair-share
-                  type: volume
+                  type: bind
+                  host: /tmp
                   path: /pfshare
             plan:
                 # Runs at this member's bring-up, after the host member armed. pin_file keeps
@@ -2574,7 +2592,7 @@ check-punktfunk-fleet:
                   punktfunk:
                     method: pair
                     host: charly-punktfunk-fleet-1-host
-                    pin_file: /pfshare/pin
+                    pin_file: /pfshare/charly-punktfunk-fleet.pin
                 # The renderer opens a PipeWire playback stream for the session's audio, and
                 # NOTHING here asserted that, so the client shipped for weeks with its audio
                 # thread dying on every session while video decoded fine:
