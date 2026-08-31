@@ -1498,7 +1498,7 @@ check-cstream-vm:
             serving and two provisioned accounts, and a description may only claim
             what its plan actually checks.
         add_candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.1812'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.1831'
             # BED FIXTURE: the second account. Cross-user PAM is the reason this
             # venue exists, and it needs an account that is NOT the deploy user.
             - cstream-vm-probe-account
