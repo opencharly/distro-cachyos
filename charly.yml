@@ -2489,8 +2489,7 @@ check-punktfunk-fleet:
                 # both members mount one path and the PIN travels as a file — the automation of
                 # a human reading it off one screen and typing it into the other.
                 - name: punktfunk-pair-share
-                  type: bind
-                  host: ${PUNKTFUNK_PAIR_SHARE:/tmp/charly-punktfunk-pair}
+                  type: volume
                   path: /pfshare
             plan:
                 # Mutating, so a `run:` step — the verb refuses a mutating method in a check.
@@ -2562,8 +2561,7 @@ check-punktfunk-fleet:
                 can be observed honestly.
             volume:
                 - name: punktfunk-pair-share
-                  type: bind
-                  host: ${PUNKTFUNK_PAIR_SHARE:/tmp/charly-punktfunk-pair}
+                  type: volume
                   path: /pfshare
             plan:
                 # Runs at this member's bring-up, after the host member armed. pin_file keeps
