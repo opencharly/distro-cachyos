@@ -16,7 +16,7 @@ cstream-check:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.0331'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.1831'
             - cstream-probe-account
             # plugin-cstream serves the `cstream:` check verb OUT OF PROCESS, and charly
             # reads its `primary:` declaration off candies in scan range -- so without it

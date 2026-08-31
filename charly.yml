@@ -39,7 +39,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.241.1429'
+    - arch: '@github.com/opencharly/distro-arch:v2026.243.1842'
 discover:
     - path: box
       recursive: true
@@ -76,7 +76,7 @@ check-cachyos-vm:
         # dev-tools is composed here so this canary also validates the cachyos
         # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
         add_candy:
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
         install_opts:
             allow_repo_changes: true
@@ -213,7 +213,7 @@ check-punktfunk-vm:
             account, and the PACKAGED punktfunk-host user unit is enabled with the management
             API answering - none of which a supervisord container venue can demonstrate.
         add_candy:
-            - '@github.com/opencharly/layer-punktfunk:v2026.241.2026'
+            - '@github.com/opencharly/layer-punktfunk:v2026.242.1658'
         install_opts:
             # REQUIRED: the candy adds a third-party pacman repo, and needs root for
             # pacman-key, usermod and loginctl.
@@ -322,14 +322,14 @@ check-cachyos-gpu-vm:
             # in-guest layer here — it runs as the nested selkies-kde pod below
             # (kde-selkies moved into the selkies-kde-nvidia image). This mirrors the
             # workstation's dual-desktop split: bare-metal seat + headless stream.
-            - '@github.com/opencharly/pod-kde-desktop:v2026.239.1635'
+            - '@github.com/opencharly/pod-kde-desktop:v2026.243.1806'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
             # deploy-scope checks for BOTH the bed and the operator VM (R3).
             - cachyos-gpu-desktop-check
             - '@github.com/opencharly/layer-fonts-extended:v2026.240.0218'
-            - '@github.com/opencharly/layer-desktop-media:v2026.239.1628'
+            - '@github.com/opencharly/layer-desktop-media:v2026.243.1041'
             - '@github.com/opencharly/layer-cachyos-extras:v2026.239.1610'
             # charly (→ charly layer) exercises the charly-layer-on-VM-deploy path: on
             # this Arch/CachyOS guest the charly layer's localpkg builds the charly
@@ -339,7 +339,7 @@ check-cachyos-gpu-vm:
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
             - nvidia-driver
         install_opts:
@@ -1204,32 +1204,32 @@ cachyos-gpu:
             - '@github.com/opencharly/layer-yay:v2026.240.0121'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
             - '@github.com/opencharly/layer-gh:v2026.239.1624'
-            - '@github.com/opencharly/layer-pre-commit:v2026.239.1552'
+            - '@github.com/opencharly/layer-pre-commit:v2026.243.0409'
             - '@github.com/opencharly/layer-tmux:v2026.240.0202'
-            - '@github.com/opencharly/layer-direnv:v2026.239.1629'
+            - '@github.com/opencharly/layer-direnv:v2026.242.1147'
             - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
             - '@github.com/opencharly/layer-keepassxc:v2026.239.1624'
             - keepassxc-keyring
             - '@github.com/opencharly/layer-tailscale:v2026.240.0121'
-            - '@github.com/opencharly/layer-tailscale-up:v2026.240.0201'
+            - '@github.com/opencharly/layer-tailscale-up:v2026.243.0410'
             - '@github.com/opencharly/layer-build-toolchain:v2026.239.1636'
             - '@github.com/opencharly/layer-golang:v2026.239.1614'
             - '@github.com/opencharly/layer-rust:v2026.239.1627'
             - '@github.com/opencharly/layer-nodejs:v2026.239.1624'
             - '@github.com/opencharly/layer-uv:v2026.239.1631'
             - '@github.com/opencharly/layer-claude-code:v2026.239.1626'
-            - '@github.com/opencharly/layer-codex:v2026.239.1634'
-            - '@github.com/opencharly/layer-gemini:v2026.239.1621'
-            - '@github.com/opencharly/layer-oracle:v2026.239.1637'
-            - '@github.com/opencharly/layer-forgecode:v2026.239.1636'
-            - '@github.com/opencharly/layer-devops-tools:v2026.239.1640'
+            - '@github.com/opencharly/layer-codex:v2026.243.0408'
+            - '@github.com/opencharly/layer-gemini:v2026.243.0409'
+            - '@github.com/opencharly/layer-oracle:v2026.243.0409'
+            - '@github.com/opencharly/layer-forgecode:v2026.243.0408'
+            - '@github.com/opencharly/layer-devops-tools:v2026.243.0408'
             - '@github.com/opencharly/layer-docker-ce:v2026.239.1626'
-            - '@github.com/opencharly/layer-kubernetes:v2026.240.0201'
+            - '@github.com/opencharly/layer-kubernetes:v2026.241.0654'
             - '@github.com/opencharly/layer-vscode:v2026.239.1631'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
@@ -1239,14 +1239,14 @@ cachyos-gpu:
             # (real NVENC, :3000) deployed as a persistent in-guest quadlet — see
             # `nested:` below, NOT an in-guest layer. The bare-metal SDDM Plasma
             # seat (kde-desktop) drives the physical RTX monitors.
-            - '@github.com/opencharly/pod-kde-desktop:v2026.239.1635'
+            - '@github.com/opencharly/pod-kde-desktop:v2026.243.1806'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
             # deploy-scope checks for BOTH the bed and the operator VM (R3).
             - cachyos-gpu-desktop-check
             - '@github.com/opencharly/layer-fonts-extended:v2026.240.0218'
-            - '@github.com/opencharly/layer-desktop-media:v2026.239.1628'
+            - '@github.com/opencharly/layer-desktop-media:v2026.243.1041'
             - '@github.com/opencharly/layer-cachyos-extras:v2026.239.1610'
             # (in-guest kde-selkies layer REMOVED — the WebRTC streaming desktop is
             # the nested selkies-kde-nvidia pod below; podman is its in-guest substrate.)
@@ -1292,32 +1292,32 @@ charly-cachyos-app:
             - '@github.com/opencharly/layer-yay:v2026.240.0121'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
             - '@github.com/opencharly/layer-gh:v2026.239.1624'
-            - '@github.com/opencharly/layer-pre-commit:v2026.239.1552'
+            - '@github.com/opencharly/layer-pre-commit:v2026.243.0409'
             - '@github.com/opencharly/layer-tmux:v2026.240.0202'
-            - '@github.com/opencharly/layer-direnv:v2026.239.1629'
+            - '@github.com/opencharly/layer-direnv:v2026.242.1147'
             - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
             - '@github.com/opencharly/layer-keepassxc:v2026.239.1624'
             - keepassxc-keyring
             - '@github.com/opencharly/layer-tailscale:v2026.240.0121'
-            - '@github.com/opencharly/layer-tailscale-up:v2026.240.0201'
+            - '@github.com/opencharly/layer-tailscale-up:v2026.243.0410'
             - '@github.com/opencharly/layer-build-toolchain:v2026.239.1636'
             - '@github.com/opencharly/layer-golang:v2026.239.1614'
             - '@github.com/opencharly/layer-rust:v2026.239.1627'
             - '@github.com/opencharly/layer-nodejs:v2026.239.1624'
             - '@github.com/opencharly/layer-uv:v2026.239.1631'
             - '@github.com/opencharly/layer-claude-code:v2026.239.1626'
-            - '@github.com/opencharly/layer-codex:v2026.239.1634'
-            - '@github.com/opencharly/layer-gemini:v2026.239.1621'
-            - '@github.com/opencharly/layer-oracle:v2026.239.1637'
-            - '@github.com/opencharly/layer-forgecode:v2026.239.1636'
-            - '@github.com/opencharly/layer-devops-tools:v2026.239.1640'
+            - '@github.com/opencharly/layer-codex:v2026.243.0408'
+            - '@github.com/opencharly/layer-gemini:v2026.243.0409'
+            - '@github.com/opencharly/layer-oracle:v2026.243.0409'
+            - '@github.com/opencharly/layer-forgecode:v2026.243.0408'
+            - '@github.com/opencharly/layer-devops-tools:v2026.243.0408'
             - '@github.com/opencharly/layer-docker-ce:v2026.239.1626'
-            - '@github.com/opencharly/layer-kubernetes:v2026.240.0201'
+            - '@github.com/opencharly/layer-kubernetes:v2026.241.0654'
             - '@github.com/opencharly/layer-vscode:v2026.239.1631'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
         install_opts:
             with_service: true
             allow_repo_changes: true
@@ -1498,7 +1498,7 @@ check-cstream-vm:
             serving and two provisioned accounts, and a description may only claim
             what its plan actually checks.
         add_candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.0331'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.1831'
             # BED FIXTURE: the second account. Cross-user PAM is the reason this
             # venue exists, and it needs an account that is NOT the deploy user.
             - cstream-vm-probe-account
