@@ -1209,6 +1209,118 @@ charly-cachyos-app:
                       echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
                     fi
                 in_container: false
+check-cstream-gpu-vm:
+    # HOST REQUIREMENT, inherited from cachyos-gpu-vm: the bootstrap disk build needs
+    # ~100 GiB of free space where charly builds it -- `<project>/output/qcow2/` AND
+    # `$TMPDIR/charly-priv-N`. Both default to /tmp; on a host whose /tmp is a tmpfs
+    # (this one: 62G) BOTH must be redirected with TMPDIR + CHARLY_VM_STATE_DIR or the
+    # build dies with 'insufficient free space'.
+    vm:
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The GPU venue for cstream. Increment 1: it establishes that the card is
+            really passed through and MEASURES the VA capability inventory, which is
+            the premise every later encoder claim depends on. It deliberately does
+            not yet gate encoder selection -- see the plan note in the checks below.
+        # Auto-allocated hostdev: the token maps to a vendor selector (0x10de) and
+        # charly writes THIS host's whole-IOMMU-group <hostdev> block, so no
+        # host-specific PCI address is committed. Without a matching card the bed
+        # SKIPS rather than fails, which is what makes it safe in CI.
+        requires_exclusive: [nvidia-gpu]
+        add_candy:
+            - '@github.com/opencharly/pod-qemu-guest-agent:v2026.239.1632'
+            - nvidia-driver
+            - cstream-gpu-va-tooling
+        install_opts:
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+        plan:
+            - check: the passed-through NVIDIA card is visible to the guest
+              id: cstream-gpu-passthrough
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The whole venue rests on this. If the hostdev did not attach, every
+                # check below would report something true about a GPU-less guest.
+                lspci -nn 2>/dev/null | grep -qi "10de:" || {
+                    echo "GPU-NOT-PASSED-THROUGH: no 0x10de device in the guest" >&2
+                    lspci -nn 2>/dev/null | head -20 >&2
+                    exit 1; }
+                echo GPU-PASSTHROUGH-OK
+              stdout:
+                - contains: GPU-PASSTHROUGH-OK
+            - check: the guest render-node inventory, which encoder selection reads
+              id: cstream-gpu-render-nodes
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # Reports the inventory rather than asserting a count: how many nodes a
+                # VFIO guest exposes depends on whether virtio-gpu is also present, and
+                # guessing that number is how a gate ends up asserting the host's shape
+                # instead of the guest's.
+                nodes=$(ls -1 /dev/dri/render* 2>/dev/null | tr '\n' ' ')
+                test -n "$nodes" || {
+                    echo "NO-RENDER-NODE: /dev/dri has no render* -- encoder selection has nothing to pick from" >&2
+                    ls -la /dev/dri 2>&1 | head -10 >&2
+                    exit 1; }
+                echo "RENDER-NODES: $nodes"
+                echo RENDER-NODE-INVENTORY-OK
+              stdout:
+                - contains: RENDER-NODE-INVENTORY-OK
+            - check: no render node offers VA H.264 EncSlice -- the plan's premise, asserted
+              id: cstream-gpu-va-encslice
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # THE measurement this bed exists for -- now an ASSERTION, not a report.
+                #
+                # The first version printed one marker in EVERY branch, including the
+                # branch where vainfo was missing, so it passed having determined
+                # nothing. And charly retains only the PASS line for a passing check,
+                # so the inventory it "recorded" was unreadable afterwards. Both halves
+                # are fixed here: the cstream-gpu-va-tooling fixture supplies vainfo,
+                # and the finding is asserted. A check that gathers information it
+                # cannot surface is not a measurement.
+                #
+                # The plan states "a passed-through 4080 has no VA EncSlice" and builds
+                # three encoder claims on it -- `encode: va` must fail loudly on this
+                # venue, `encode: auto` must land on software. Asserting it here is what
+                # stops that premise from silently ceasing to be true.
+                command -v vainfo >/dev/null 2>&1 || {
+                    echo "VA-TOOLING-ABSENT: vainfo missing -- the cstream-gpu-va-tooling fixture did not land, so this bed cannot answer the question it exists to ask" >&2
+                    exit 1; }
+                probed=0
+                offenders=""
+                for n in /dev/dri/render*; do
+                    test -e "$n" || continue
+                    probed=$((probed + 1))
+                    out=$(vainfo --display drm --device "$n" 2>&1 || true)
+                    printf '%s\n' "$out" | grep -qE "VAProfileH264.*VAEntrypointEncSlice" && offenders="$offenders $n"
+                done
+                test "$probed" -gt 0 || {
+                    echo "NO-RENDER-NODE-PROBED: nothing under /dev/dri/render* -- see cstream-gpu-render-nodes" >&2
+                    exit 1; }
+                if [ -n "$offenders" ]; then
+                    echo "VA-ENCSLICE-PRESENT on:$offenders" >&2
+                    echo "The PREMISE HAS CHANGED -- this is NOT a cstream regression. The guest" >&2
+                    echo "now offers a VA H.264 encode entrypoint the plan assumed absent, so the" >&2
+                    echo "encoder gates must be re-decided before this check is relaxed." >&2
+                    for n in $offenders; do
+                        echo "--- $n ---" >&2
+                        vainfo --display drm --device "$n" 2>&1 | grep -E "VAProfile|Driver version" >&2
+                    done
+                    exit 1
+                fi
+                echo "NO-VA-H264-ENCSLICE across $probed render node(s) -- the premise holds"
+              stdout:
+                - contains: NO-VA-H264-ENCSLICE
+
 check-cstream-vm:
     vm:
         from: cstream-vm
@@ -1462,6 +1574,18 @@ cachyos-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
+                # Without a helper mkinitcpio warns "No fsck helpers found", and
+                # its warnings escalate to "errors were encountered during the
+                # build" -> `error: command failed to execute correctly`, which
+                # trips charly's log-diagnostic gate on EVERY package install that
+                # fires the initcpio hook. Measured on check-cstream-gpu-vm: the
+                # deploy exits 0 and the gate fails the step on the error line.
+                #
+                # The charly#400 allowlist covers the BUILD-phase chroot noise
+                # only; the deploy occurrence is not allowlistable, and should not
+                # be -- the cause is a missing package. Same fix as cstream-vm.
+                - btrfs-progs
             rootfs: btrfs
             kernel_args: console=tty0 console=ttyS0,115200
         disk_size: 25G
@@ -1545,6 +1669,18 @@ cachyos-gpu-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
+                # Without a helper mkinitcpio warns "No fsck helpers found", its
+                # warnings escalate to "errors were encountered during the build"
+                # -> `error: command failed to execute correctly`, and charly's
+                # log-diagnostic gate then fails the step even though deploy-add
+                # itself exits 0. Measured on check-cstream-gpu-vm.
+                #
+                # The charly#400 allowlist covers the BUILD-phase chroot occurrence
+                # only; the deploy-phase one is not allowlistable and should not be
+                # -- the cause is a missing package. Same fix as cstream-vm and
+                # cachyos-vm.
+                - btrfs-progs
             rootfs: btrfs
             # modprobe.blacklist=nouveau: blacklist the in-tree driver at early
             # boot so the open NVIDIA module binds the passed-through GPU (no
