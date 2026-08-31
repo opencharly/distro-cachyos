@@ -1225,6 +1225,9 @@ check-cstream-vm:
             what its plan actually checks.
         add_candy:
             - '@github.com/opencharly/layer-cstream-desktop:v2026.242.2221'
+            # BED FIXTURE: the second account. Cross-user PAM is the reason this
+            # venue exists, and it needs an account that is NOT the deploy user.
+            - cstream-vm-probe-account
         install_opts:
             # The candy provisions system accounts, a PAM stack and systemd units.
             allow_root_tasks: true
@@ -1304,6 +1307,48 @@ check-cstream-vm:
                 echo COMPOSITOR-SESSION-SCOPED
               stdout:
                 - contains: COMPOSITOR-SESSION-SCOPED
+            - check: the PAM stack and session leader the login path needs are installed
+              id: cstream-vm-login-path-present
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                miss=""
+                for f in /usr/local/bin/cstream-leader /usr/local/bin/cstream-login-probe /etc/pam.d/cstream; do
+                    test -e "$f" || miss="$miss $f"
+                done
+                [ -z "$miss" ] || { echo "LOGIN-PATH-MISSING:$miss" >&2; exit 1; }
+                echo LOGIN-PATH-PRESENT
+              stdout:
+                - contains: LOGIN-PATH-PRESENT
+            - check: PAM authenticates a DIFFERENT account than the caller — the claim the pod venue structurally cannot make
+              id: cstream-vm-pam-cross-user-accept
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The guard IS the claim. In a rootless pod pam_unix delegates to
+                # unix_chkpwd, which only verifies the CALLING user's own account --
+                # so an accept leg that happened to target the caller would pass
+                # there too and would prove nothing about cross-user auth. Assert
+                # the target is somebody else BEFORE authenticating.
+                me=$(id -un)
+                [ "$me" != cstreamprobe ] || { echo "NOT-CROSS-USER: running as the target account ($me)" >&2; exit 1; }
+                sudo -n /usr/local/bin/cstream-login-probe cstreamprobe accept 'cstream-vm-probe-pw'
+              stdout:
+                - contains: LOGIN-ACCEPTED
+            - check: a WRONG password for that same other account is REFUSED
+              id: cstream-vm-pam-cross-user-reject
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # Without this leg the accept leg is vacuous: a PAM stack that
+                # admits anything passes it. Same account, same caller, wrong
+                # credential -- the only variable is the password.
+                sudo -n /usr/local/bin/cstream-login-probe cstreamprobe reject 'cstream-vm-probe-pw-WRONG'
+              stdout:
+                - contains: LOGIN-REJECTED
             - check: the streamer binary installed on the systemd venue too
               id: cstream-vm-streamer-installed
               context:
