@@ -2591,3 +2591,242 @@ check-cstream-pod:
                 artifact: /tmp/wl-desktop.png
                 artifact_min_bytes: 5000
                 artifact_not_uniform: true
+
+check-punktfunk-client:
+    pod:
+        image: punktfunk-client
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Proves the punktfunk CLIENT half live: the client package installs from the
+            signed repo, its headless CLI runs, and the punktfunk verb's NEW client methods
+            execute through it in the venue. Deliberately host-free — pairing and streaming
+            need a second system and belong to check-punktfunk-fleet; this bed exists so the
+            client methods are proven to run before anything depends on them.
+        plan:
+            - check: the verb's client method lists saved hosts through the real CLI
+              id: pf-client-hosts-list
+              context:
+                - runtime
+              punktfunk:
+                method: hosts-list
+            - check: the verb's client method reads stream profiles through the real CLI
+              id: pf-client-profiles
+              context:
+                - runtime
+              punktfunk:
+                method: profiles-list
+
+check-punktfunk-fleet:
+    group:
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The two-system punktfunk bed: a host member and a client member as siblings in one
+            group, so the client actually pairs with the host and pulls a stream. Every
+            single-node punktfunk bed before this one proved installation and the control
+            plane only — they would all still pass if punktfunk could not stream a frame,
+            because no client had ever paired (`clients` returned `[]` and that was recorded
+            as a PASS). This bed exists to be able to fail for that reason.
+    # The `1-` / `2-` prefixes are LOAD-BEARING, not decoration. charly runs one
+    # `check live` per node and orders members by SORTED KEY
+    # (spec/fleet.BedCheckLiveRefs -> SortedNestedKeys); there is no priority or
+    # depends-on for members. Named plainly, `client` sorts before `host`, so the client
+    # tried to pair before the host had armed and the PIN file did not exist yet:
+    #   punktfunk: pin file /pfshare/pin is missing or empty
+    # The ordinal makes the required order explicit instead of leaving it to a coincidence
+    # of spelling.
+    punktfunk-fleet-1-host:
+        pod:
+            image: punktfunk-host
+            description: >-
+                The streaming host: cachyos + headless sway + punktfunk-host. Its own candy
+                checks (packages, repo key trust, host.env, the management API and web console
+                answering in-venue) come along composed, so this member re-proves the
+                single-node claims as a side effect.
+            volume:
+                # The PIN channel. The host GENERATES the pairing PIN and ignores a
+                # caller-supplied one (verified against 0.33.0-1), only the CLIENT can use it,
+                # and charly has no way to carry a step's output into another step's input. So
+                # both members mount one path and the PIN travels as a file — the automation of
+                # a human reading it off one screen and typing it into the other.
+                # A BIND to /tmp, not a named volume and not a personal path.
+                # charly namespaces named volumes PER MEMBER
+                # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
+                # member its own and the PIN never crosses -- verified: the client saw
+                # "pin file /pfshare/pin is missing or empty". A bind needs a host path
+                # that already exists, because podman will not create one, so it is /tmp
+                # rather than a subdirectory nobody has made. The file name is
+                # bed-specific so mounting a shared /tmp cannot collide.
+                - name: punktfunk-pair-share
+                  type: bind
+                  host: /tmp
+                  path: /pfshare
+            plan:
+                # Mutating, so a `run:` step — the verb refuses a mutating method in a check.
+                # This executes at the member's bring-up, BEFORE any check-live, which is the
+                # only ordering charly offers: a member's checks cannot interleave with a
+                # sibling's (bed_run.go issues one `check live` per node, parent first).
+                - run: arm pairing and drop the host-generated PIN where the client can read it
+                  id: pf-fleet-arm-pairing
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: pair-arm
+                    pin_out: /pfshare/charly-punktfunk-fleet.pin
+                - check: the management API answers, so the client has something to pair with
+                  id: pf-fleet-host-live
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: health
+                # The CAPTURE prerequisite, asserted rather than assumed. A session
+                # resolves to `capture: Portal`, so without this interface on the bus the
+                # host pairs, negotiates a codec and then fails every session at pipeline
+                # build — while every other control-plane check still passes. That is the
+                # exact combination that let this bed report green while nothing streamed.
+                #
+                # It also settles the one warning a clean run still emits. The Documents
+                # portal cannot mount its FUSE store here:
+                #   fusermount3: mount failed: Operation not permitted
+                #   error: fuse init failed: Can't mount path /tmp/doc
+                # `/dev/fuse` IS present; rootless containers deny mount(2) without
+                # CAP_SYS_ADMIN. punktfunk uses ScreenCast, never Documents, and granting
+                # that capability would trade real privilege for a portal nothing calls —
+                # so this asserts the interface that IS needed instead.
+                # NOTE the bare `$XDG_RUNTIME_DIR`, not `${XDG_RUNTIME_DIR:-/tmp}`. Brace
+                # form is charly's CANDY-VAR syntax, so the step does not fail — it SKIPS,
+                # reporting `unresolved variables: XDG_RUNTIME_DIR`, and check-live still
+                # says PASS. A decorative check that cannot fail is the exact disease this
+                # bed was built to cure, and it was caught only because this change was run
+                # on its own instead of batched.
+                - check: the ScreenCast portal interface is live, so the host can capture
+                  id: pf-fleet-host-screencast
+                  context:
+                    - runtime
+                  command:
+                    command: >-
+                        S="$XDG_RUNTIME_DIR/dbus-session"; [ -S "$S" ] || S=/tmp/dbus-session;
+                        DBUS_SESSION_BUS_ADDRESS="unix:path=$S" busctl --user introspect
+                        org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop
+                        | grep -q org.freedesktop.portal.ScreenCast
+                # NO host-side "has a paired client" check here, and the reason is the bed's
+                # own ordering. charly runs one `check live` per node, parent first
+                # (bed_run.go's checkLiveTree), so the host's pass completes BEFORE the
+                # client's begins — the client cannot have paired yet. An `eventually: 120s`
+                # poll here does not fix that, it deadlocks: the host waits two minutes for a
+                # pairing that can only happen after it stops waiting, and the armed PIN
+                # (expires_in_secs: 119) dies in the meantime, so the client then gets
+                # "Pairing isn't armed on the host".
+                #
+                # Enrolment is therefore asserted on the CLIENT, where it is observable in the
+                # right order: `hosts-list` only names a host after a pairing succeeded, and
+                # the host's own log carries "pairing complete — client trusted".
+    punktfunk-fleet-2-client:
+        pod:
+            image: punktfunk-client
+            description: >-
+                The second system: punktfunk-client and its headless CLI, no compositor. This
+                is the member that makes the bed a fleet rather than a self-probe — pairing and
+                the stream measurement run from OUTSIDE the host, which is the only place they
+                can be observed honestly.
+            volume:
+                # A BIND to /tmp, not a named volume and not a personal path.
+                # charly namespaces named volumes PER MEMBER
+                # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
+                # member its own and the PIN never crosses -- verified: the client saw
+                # "pin file /pfshare/pin is missing or empty". A bind needs a host path
+                # that already exists, because podman will not create one, so it is /tmp
+                # rather than a subdirectory nobody has made. The file name is
+                # bed-specific so mounting a shared /tmp cannot collide.
+                - name: punktfunk-pair-share
+                  type: bind
+                  host: /tmp
+                  path: /pfshare
+            plan:
+                # Runs at this member's bring-up, after the host member armed. pin_file keeps
+                # the PIN out of the manifest and out of argv — the venue's own shell pipes the
+                # file into `punktfunk pair --pin -`.
+                - run: pair with the host using the PIN it generated
+                  id: pf-fleet-pair
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: pair
+                    host: charly-punktfunk-fleet-1-host
+                    pin_file: /pfshare/charly-punktfunk-fleet.pin
+                # The renderer opens a PipeWire playback stream for the session's audio, and
+                # NOTHING here asserted that, so the client shipped for weeks with its audio
+                # thread dying on every session while video decoded fine:
+                #   pf_client_core::audio: audio playback thread ended
+                #     error=pw connect (is PipeWire running in this session?)
+                # The binary arrives as a dependency of punktfunk-client, so its presence
+                # proves nothing — what matters is that a SESSION is running with a sink to
+                # play into. Without this the same regression returns silently, because
+                # stream-probe counts decoded VIDEO frames only and would still pass.
+                #
+                # Bare $XDG_RUNTIME_DIR, never ${...}: brace form is charly's CANDY-VAR
+                # syntax and makes the step SKIP with `unresolved variables` while the phase
+                # still reports PASS — a check that cannot fail.
+                - check: the client has a live PipeWire sink for the renderer to play into
+                  id: pf-fleet-client-audio
+                  context:
+                    - runtime
+                  command:
+                    command: >-
+                        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"; [ -n "$XDG_RUNTIME_DIR" ] || XDG_RUNTIME_DIR=/tmp;
+                        export XDG_RUNTIME_DIR;
+                        pgrep -x pipewire >/dev/null || { echo "pipewire is not running in this venue" >&2; exit 1; };
+                        n=$(pw-dump 2>/dev/null | grep -c "Audio/Sink");
+                        [ "$n" -ge 1 ] || { echo "pipewire is running but exposes no Audio/Sink" >&2; exit 1; };
+                        echo "pipewire up with $n Audio/Sink"
+                - check: the host is now a saved host on the client
+                  id: pf-fleet-client-knows-host
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: hosts-list
+                  stdout:
+                    # `paired`, not the member name: the client files a host under the
+                    # ADDRESS it paired with, so `hosts list` reads
+                    #   10.89.0.160  10.89.0.160:9777  paired  -
+                    # and the name never appears. `paired` is also the word that carries the
+                    # claim — an unpaired entry would read differently.
+                    - contains: paired
+                # THE streaming assertion, and the one this bed lacked while reporting
+                # green. Everything above is control plane: packages, repo, mgmt API,
+                # pairing. All of it passes on a host that can never send a frame.
+                #
+                # `speed-test` is NOT this check, though it looks like it. It runs on
+                # `punktfunk`, which links libgcc/libm/libc and nothing else, so it
+                # advertises codec 0x00 and the host correctly refuses:
+                #   no shared video codec: client advertised 0x00, host can emit 0x01
+                # The decoder lives in `punktfunk-client` (libvulkan, libwayland-*, libdrm,
+                # libgbm), which `launch` spawns — so stream-probe runs a real bounded
+                # session through the renderer and counts frames.
+                #
+                # What breaking punktfunk makes this report:
+                #   host cannot capture       -> connects, then "no frame decoded"
+                #   client has no hardware ICD -> "advertised 0x00" in the carried output
+                #   no compositor in the venue -> exit 4, naming the missing display
+                #   host unreachable on 9777   -> exit 2
+                - check: the client decodes real video from the host
+                  id: pf-fleet-stream
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: stream-probe
+                    host: charly-punktfunk-fleet-1-host
+                    # Long enough for the handshake, the decoder and the adaptive-bitrate
+                    # probe (which alone takes ~800ms and only starts after the first frame).
+                    stream_for: 25s
+                  stdout:
+                    # The PREFIX both success shapes share. A bounded probe usually reports
+                    # "streamed: width=… height=… path=…" because the client prints a frame
+                    # TOTAL only when the host ends the session; a host-ended session reports
+                    # "streamed: N frames decoded (…)". Matching "frames decoded" failed a
+                    # working stream on the singular "first frame decoded" — the verb already
+                    # fails outright on zero frames, so this only asserts the success shape.
+                    - contains: "streamed:"
+                  timeout: 120s
+
