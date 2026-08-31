@@ -2490,7 +2490,7 @@ check-punktfunk-fleet:
                 # a human reading it off one screen and typing it into the other.
                 - name: punktfunk-pair-share
                   type: bind
-                  host: /home/atrawog/Sync/Atrapub/coder/claude/work/pfshare
+                  host: ${PUNKTFUNK_PAIR_SHARE:/tmp/charly-punktfunk-pair}
                   path: /pfshare
             plan:
                 # Mutating, so a `run:` step — the verb refuses a mutating method in a check.
@@ -2563,7 +2563,7 @@ check-punktfunk-fleet:
             volume:
                 - name: punktfunk-pair-share
                   type: bind
-                  host: /home/atrawog/Sync/Atrapub/coder/claude/work/pfshare
+                  host: ${PUNKTFUNK_PAIR_SHARE:/tmp/charly-punktfunk-pair}
                   path: /pfshare
             plan:
                 # Runs at this member's bring-up, after the host member armed. pin_file keeps
