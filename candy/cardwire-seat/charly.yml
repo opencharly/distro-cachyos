@@ -1,0 +1,67 @@
+cardwire-seat:
+    candy:
+        version: 2026.240.1943
+        description: |
+            Thin SPICE seat for the check-cardwire-vm bed — a sway (wlroots)
+            compositor session rendering a ghostty terminal on the virtio-gpu
+            head of the cachyos-gpu-vm substrate, so the host-side plugin-spice
+            probes (status / screenshot / type) drive the "SPICE terminal"
+            surface the plan's Phase 3 calls for. No KDE — the minimal seat that
+            makes the SPICE terminal real: an operator-visible, typeable terminal
+            on the SPICE display. require:s plugin-spice so the bed's host-side
+            `spice:` check verbs resolve (mirrors candy/cachyos-gpu-desktop-check).
+        distro:
+            arch:
+                package:
+                    - sway
+                    - seatd
+        require:
+            - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.237.1428'
+        plan:
+            - run: enable seatd + seat group for the login user (sway needs a seat)
+              id: seatd-enable
+              run_as: root
+              command: |
+                systemctl enable --now seatd
+                u="$(getent passwd 1000 | cut -d: -f1)"
+                [ -n "$u" ] && usermod -aG seat "$u" || true
+            - run: launch the sway + ghostty SPICE-terminal session for the login user
+              id: sway-session-launch
+              run_as: root
+              command: |
+                u="$(getent passwd 1000 | cut -d: -f1)"
+                if [ -n "$u" ]; then
+                mkdir -p "/run/user/1000" && chown 1000:1000 /run/user/1000 && chmod 700 /run/user/1000
+                mkdir -p "/home/$u/.config/sway"
+                printf 'exec ghostty -e tmux new -A -s cardwire\n' > "/home/$u/.config/sway/config"
+                chown -R "1000:1000" "/home/$u/.config"
+                cat > "/etc/systemd/system/cardwire-seat.service" <<'EOF'
+                [Unit]
+                After=seatd.service
+                [Service]
+                Type=simple
+                RemainAfterExit=yes
+                Environment=XDG_RUNTIME_DIR=/run/user/1000
+                Environment=WLR_BACKENDS=drm
+                Environment=WLR_RENDERER=pixman
+                Environment=WLR_NO_HARDWARE_CURSORS=1
+                ExecStart=/usr/bin/sway --unsupported-gpu
+                User=1000
+                [Install]
+                WantedBy=multi-user.target
+                EOF
+                systemctl daemon-reload
+                systemctl enable --now cardwire-seat.service
+                fi
+            - check: the sway seat is running (the SPICE terminal's compositor)
+              id: seat-sway-running
+              exit_status: 0
+              stdout:
+                - contains: sway
+              context: [runtime]
+              command: pgrep -af 'sway --unsupported-gpu' | head -1
+            - check: ghostty is present (the SPICE terminal)
+              id: seat-ghostty-present
+              file:
+                file: /usr/bin/ghostty
+                exists: true
