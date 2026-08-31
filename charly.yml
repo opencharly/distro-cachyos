@@ -1232,6 +1232,7 @@ check-cstream-gpu-vm:
         add_candy:
             - '@github.com/opencharly/pod-qemu-guest-agent:v2026.239.1632'
             - nvidia-driver
+            - cstream-gpu-va-tooling
         install_opts:
             allow_repo_changes: true
             allow_root_tasks: true
@@ -1271,37 +1272,54 @@ check-cstream-gpu-vm:
                 echo RENDER-NODE-INVENTORY-OK
               stdout:
                 - contains: RENDER-NODE-INVENTORY-OK
-            - check: whether this GPU offers VA H.264 EncSlice -- the premise of the §5.5 contract
+            - check: no render node offers VA H.264 EncSlice -- the plan's premise, asserted
               id: cstream-gpu-va-encslice
               context:
                 - runtime
               exit_status: 0
               command: |
-                # THE measurement this increment exists for. The plan asserts "a
-                # passed-through 4080 has no VA EncSlice", and every later claim --
-                # that `encode: va` must fail loudly here, that `encode: auto` must
-                # land on software -- is built on it. It has never been measured on
-                # this venue, so it is measured here before anything depends on it.
+                # THE measurement this bed exists for -- now an ASSERTION, not a report.
                 #
-                # Either answer is a PASS: the check records the inventory and fails
-                # only if it cannot determine one. Asserting "no EncSlice" would make
-                # a driver that DOES offer it look like a cstream regression.
-                if ! command -v vainfo >/dev/null 2>&1; then
-                    echo "VA-TOOLING-ABSENT: vainfo not installed; VA capability undetermined on this guest"
-                    echo VA-INVENTORY-RECORDED
-                    exit 0
+                # The first version printed one marker in EVERY branch, including the
+                # branch where vainfo was missing, so it passed having determined
+                # nothing. And charly retains only the PASS line for a passing check,
+                # so the inventory it "recorded" was unreadable afterwards. Both halves
+                # are fixed here: the cstream-gpu-va-tooling fixture supplies vainfo,
+                # and the finding is asserted. A check that gathers information it
+                # cannot surface is not a measurement.
+                #
+                # The plan states "a passed-through 4080 has no VA EncSlice" and builds
+                # three encoder claims on it -- `encode: va` must fail loudly on this
+                # venue, `encode: auto` must land on software. Asserting it here is what
+                # stops that premise from silently ceasing to be true.
+                command -v vainfo >/dev/null 2>&1 || {
+                    echo "VA-TOOLING-ABSENT: vainfo missing -- the cstream-gpu-va-tooling fixture did not land, so this bed cannot answer the question it exists to ask" >&2
+                    exit 1; }
+                probed=0
+                offenders=""
+                for n in /dev/dri/render*; do
+                    test -e "$n" || continue
+                    probed=$((probed + 1))
+                    out=$(vainfo --display drm --device "$n" 2>&1 || true)
+                    printf '%s\n' "$out" | grep -qE "VAProfileH264.*VAEntrypointEncSlice" && offenders="$offenders $n"
+                done
+                test "$probed" -gt 0 || {
+                    echo "NO-RENDER-NODE-PROBED: nothing under /dev/dri/render* -- see cstream-gpu-render-nodes" >&2
+                    exit 1; }
+                if [ -n "$offenders" ]; then
+                    echo "VA-ENCSLICE-PRESENT on:$offenders" >&2
+                    echo "The PREMISE HAS CHANGED -- this is NOT a cstream regression. The guest" >&2
+                    echo "now offers a VA H.264 encode entrypoint the plan assumed absent, so the" >&2
+                    echo "encoder gates must be re-decided before this check is relaxed." >&2
+                    for n in $offenders; do
+                        echo "--- $n ---" >&2
+                        vainfo --display drm --device "$n" 2>&1 | grep -E "VAProfile|Driver version" >&2
+                    done
+                    exit 1
                 fi
-                out=$(vainfo 2>&1 || true)
-                if printf '%s' "$out" | grep -q "VAEntrypointEncSlice"; then
-                    echo "VA-ENCSLICE-PRESENT"
-                    printf '%s' "$out" | grep -E "VAProfile.*EncSlice" | head -5
-                else
-                    echo "VA-ENCSLICE-ABSENT (matches the plan's premise for a passed-through NVIDIA card)"
-                    printf '%s' "$out" | head -5
-                fi
-                echo VA-INVENTORY-RECORDED
+                echo "NO-VA-H264-ENCSLICE across $probed render node(s) -- the premise holds"
               stdout:
-                - contains: VA-INVENTORY-RECORDED
+                - contains: NO-VA-H264-ENCSLICE
 
 check-cstream-vm:
     vm:
