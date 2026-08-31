@@ -1883,6 +1883,115 @@ check-cstream-pod:
                 - contains: 'CSTREAM-ENCODER-OPENABLE encoder=hardware:vah264enc'
               eventually: 180s
               retry_interval: 60s
+            - check: a terminal is mapped for keyboard input to be delivered INTO
+              id: wl-input-fixture
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  set -e
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  # A DEDICATED terminal: the focus/close fixtures' windows are
+                  # targets of dispatchers that move or destroy them, and typing
+                  # into one of those would race those gates.
+                  pgrep -f "foot -T cstream-input" >/dev/null 2>&1 || \
+                    (WAYLAND_DISPLAY=$NEST setsid foot -T cstream-input >/dev/null 2>&1 &)
+                  for _ in $(seq 40); do
+                      hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' && break
+                      sleep 1
+                  done
+                  hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' || {
+                      echo "INPUT-FIXTURE-NO-WINDOW: foot never mapped" >&2; exit 1; }
+                  echo INPUT-FIXTURE-READY
+              stdout:
+                - contains: INPUT-FIXTURE-READY
+              eventually: 120s
+              retry_interval: 30s
+            - check: the wl verb focuses the input terminal, so keystrokes have a destination
+              id: wl-input-focus
+              context:
+                - runtime
+              wl:
+                method: focus
+                target: initialtitle:cstream-input
+            - check: the input terminal is now the active window -- typing will reach IT
+              id: wl-input-focus-observed
+              context:
+                - runtime
+              command:
+                in_container: true
+                command: |
+                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-input"' && echo ACTIVE-IS-INPUT
+              stdout:
+                - contains: ACTIVE-IS-INPUT
+              eventually: 60s
+              retry_interval: 5s
+            - check: wl type sends a command line to the focused client
+              id: wl-type-command
+              context:
+                - runtime
+              wl:
+                method: type
+                text: sleep 313
+            - check: wl key Return submits it
+              id: wl-key-return
+              context:
+                - runtime
+              wl:
+                method: key
+                key: Return
+            - check: the typed line actually RAN -- the process exists
+              id: wl-type-observed
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # The whole point of the pair: `wl: type` and `wl: key` both exit 0
+                  # even when nothing is delivered. A live process with the exact
+                  # argument that was typed is the only thing that proves the
+                  # keystrokes crossed the compositor, reached the focused client,
+                  # and were executed by its shell.
+                  pgrep -f 'sleep 313' >/dev/null || {
+                      echo "TYPE-NOT-DELIVERED: no 'sleep 313' process -- keystrokes did not reach the shell" >&2; exit 1; }
+                  echo TYPE-DELIVERED
+              stdout:
+                - contains: TYPE-DELIVERED
+              eventually: 60s
+              retry_interval: 5s
+            - check: wl key-combo sends ctrl+c to the same client
+              id: wl-keycombo-interrupt
+              context:
+                - runtime
+              wl:
+                method: key-combo
+                combo: ctrl+c
+            - check: ctrl+c actually interrupted it -- the process is GONE
+              id: wl-keycombo-observed
+              context:
+                - runtime
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  # A modifier that never reached the client leaves the sleep running,
+                  # and `wl: key-combo` still exits 0. Absence of the process is the
+                  # observation; the preceding check proved it was there to begin with,
+                  # so this cannot pass vacuously.
+                  if pgrep -f 'sleep 313' >/dev/null; then
+                      echo "KEYCOMBO-NOT-DELIVERED: 'sleep 313' still running after ctrl+c" >&2; exit 1
+                  fi
+                  echo KEYCOMBO-DELIVERED
+              stdout:
+                - contains: KEYCOMBO-DELIVERED
+              eventually: 60s
+              retry_interval: 5s
             - check: two windows are mapped, so focus has somewhere to move BETWEEN
               id: wl-focus-fixture
               context:
