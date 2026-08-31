@@ -1556,6 +1556,18 @@ cachyos-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
+                # Without a helper mkinitcpio warns "No fsck helpers found", and
+                # its warnings escalate to "errors were encountered during the
+                # build" -> `error: command failed to execute correctly`, which
+                # trips charly's log-diagnostic gate on EVERY package install that
+                # fires the initcpio hook. Measured on check-cstream-gpu-vm: the
+                # deploy exits 0 and the gate fails the step on the error line.
+                #
+                # The charly#400 allowlist covers the BUILD-phase chroot noise
+                # only; the deploy occurrence is not allowlistable, and should not
+                # be -- the cause is a missing package. Same fix as cstream-vm.
+                - btrfs-progs
             rootfs: btrfs
             kernel_args: console=tty0 console=ttyS0,115200
         disk_size: 25G
