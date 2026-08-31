@@ -15,7 +15,7 @@ keepassxc-keyring:
         require:
             - '@github.com/opencharly/layer-keepassxc:v2026.239.1624'
             - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
-            - '@github.com/opencharly/layer-direnv:v2026.239.1629'
+            - '@github.com/opencharly/layer-direnv:v2026.242.1147'
         distro:
             arch:
                 package:
