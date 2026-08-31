@@ -48,4 +48,4 @@ punktfunk-host:
             - '@github.com/opencharly/layer-xdg-portal:v2026.243.1016'
             - '@github.com/opencharly/pod-pipewire:v2026.243.0508'
             - '@github.com/opencharly/layer-punktfunk:v2026.242.1658'
-            - '@github.com/opencharly/plugin-punktfunk/candy/plugin-punktfunk:v2026.243.0603'
+            - '@github.com/opencharly/plugin-punktfunk/candy/plugin-punktfunk:v2026.243.1139'
