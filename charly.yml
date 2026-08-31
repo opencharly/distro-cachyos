@@ -1209,6 +1209,100 @@ charly-cachyos-app:
                       echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
                     fi
                 in_container: false
+check-cstream-gpu-vm:
+    # HOST REQUIREMENT, inherited from cachyos-gpu-vm: the bootstrap disk build needs
+    # ~100 GiB of free space where charly builds it -- `<project>/output/qcow2/` AND
+    # `$TMPDIR/charly-priv-N`. Both default to /tmp; on a host whose /tmp is a tmpfs
+    # (this one: 62G) BOTH must be redirected with TMPDIR + CHARLY_VM_STATE_DIR or the
+    # build dies with 'insufficient free space'.
+    vm:
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The GPU venue for cstream. Increment 1: it establishes that the card is
+            really passed through and MEASURES the VA capability inventory, which is
+            the premise every later encoder claim depends on. It deliberately does
+            not yet gate encoder selection -- see the plan note in the checks below.
+        # Auto-allocated hostdev: the token maps to a vendor selector (0x10de) and
+        # charly writes THIS host's whole-IOMMU-group <hostdev> block, so no
+        # host-specific PCI address is committed. Without a matching card the bed
+        # SKIPS rather than fails, which is what makes it safe in CI.
+        requires_exclusive: [nvidia-gpu]
+        add_candy:
+            - '@github.com/opencharly/pod-qemu-guest-agent:v2026.239.1632'
+            - nvidia-driver
+        install_opts:
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+        plan:
+            - check: the passed-through NVIDIA card is visible to the guest
+              id: cstream-gpu-passthrough
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # The whole venue rests on this. If the hostdev did not attach, every
+                # check below would report something true about a GPU-less guest.
+                lspci -nn 2>/dev/null | grep -qi "10de:" || {
+                    echo "GPU-NOT-PASSED-THROUGH: no 0x10de device in the guest" >&2
+                    lspci -nn 2>/dev/null | head -20 >&2
+                    exit 1; }
+                echo GPU-PASSTHROUGH-OK
+              stdout:
+                - contains: GPU-PASSTHROUGH-OK
+            - check: the guest render-node inventory, which encoder selection reads
+              id: cstream-gpu-render-nodes
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # Reports the inventory rather than asserting a count: how many nodes a
+                # VFIO guest exposes depends on whether virtio-gpu is also present, and
+                # guessing that number is how a gate ends up asserting the host's shape
+                # instead of the guest's.
+                nodes=$(ls -1 /dev/dri/render* 2>/dev/null | tr '\n' ' ')
+                test -n "$nodes" || {
+                    echo "NO-RENDER-NODE: /dev/dri has no render* -- encoder selection has nothing to pick from" >&2
+                    ls -la /dev/dri 2>&1 | head -10 >&2
+                    exit 1; }
+                echo "RENDER-NODES: $nodes"
+                echo RENDER-NODE-INVENTORY-OK
+              stdout:
+                - contains: RENDER-NODE-INVENTORY-OK
+            - check: whether this GPU offers VA H.264 EncSlice -- the premise of the §5.5 contract
+              id: cstream-gpu-va-encslice
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                # THE measurement this increment exists for. The plan asserts "a
+                # passed-through 4080 has no VA EncSlice", and every later claim --
+                # that `encode: va` must fail loudly here, that `encode: auto` must
+                # land on software -- is built on it. It has never been measured on
+                # this venue, so it is measured here before anything depends on it.
+                #
+                # Either answer is a PASS: the check records the inventory and fails
+                # only if it cannot determine one. Asserting "no EncSlice" would make
+                # a driver that DOES offer it look like a cstream regression.
+                if ! command -v vainfo >/dev/null 2>&1; then
+                    echo "VA-TOOLING-ABSENT: vainfo not installed; VA capability undetermined on this guest"
+                    echo VA-INVENTORY-RECORDED
+                    exit 0
+                fi
+                out=$(vainfo 2>&1 || true)
+                if printf '%s' "$out" | grep -q "VAEntrypointEncSlice"; then
+                    echo "VA-ENCSLICE-PRESENT"
+                    printf '%s' "$out" | grep -E "VAProfile.*EncSlice" | head -5
+                else
+                    echo "VA-ENCSLICE-ABSENT (matches the plan's premise for a passed-through NVIDIA card)"
+                    printf '%s' "$out" | head -5
+                fi
+                echo VA-INVENTORY-RECORDED
+              stdout:
+                - contains: VA-INVENTORY-RECORDED
+
 check-cstream-vm:
     vm:
         from: cstream-vm
