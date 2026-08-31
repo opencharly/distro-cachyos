@@ -4,12 +4,12 @@ ollama:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.239.1607'
-            - '@github.com/opencharly/pod-ollama:v2026.239.1635'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
+            - '@github.com/opencharly/pod-ollama:v2026.243.0411'
             # The CUDA backend is composed HERE, not required by the ollama candy:
             # this box sits on the NVIDIA base, so it opts into the GPU backend while
             # a CPU consumer of the same candy (openclaw-desktop) pays nothing for it.
             # On Arch this resolves to the split `ollama-cuda` package, which depends
             # on `ollama` and drops its backend into the same runner directory.
-            - '@github.com/opencharly/layer-ollama-cuda:v2026.239.1600'
-            - '@github.com/opencharly/pod-dbus:v2026.239.1555'
+            - '@github.com/opencharly/layer-ollama-cuda:v2026.243.1754'
+            - '@github.com/opencharly/pod-dbus:v2026.243.1831'
