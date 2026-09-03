@@ -64,7 +64,7 @@ charly-marketplace:
             - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
             - '@github.com/opencharly/pod-qemu-guest-agent:v2026.239.1632'
             - '@github.com/opencharly/layer-gocryptfs:v2026.239.1626'
-            - '@github.com/opencharly/layer-gogcli:v2026.243.0409'
+            - '@github.com/opencharly/layer-gogcli:v2026.246.1816'
             - '@github.com/opencharly/pod-redis:v2026.239.1639'
             - '@github.com/opencharly/layer-google-cloud:v2026.241.0656'
             - '@github.com/opencharly/layer-goplaces:v2026.243.0409'
