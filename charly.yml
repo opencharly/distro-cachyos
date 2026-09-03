@@ -2574,6 +2574,7 @@ check-cstream-pod:
                 artifact_min_bytes: 5000
                 artifact_not_uniform: true
 
+            # WP5 lock/idle -- the last three checks of this bed, IN THIS ORDER, and
             # nothing may be appended after them.
             #
             # The desktop locks itself once no consumer has been connected for
