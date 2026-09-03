@@ -1,0 +1,43 @@
+punktfunk-client:
+    candy:
+        version: 2026.241.1845
+        description: >-
+            The punktfunk streaming CLIENT on the CachyOS base — punktfunk-client and its
+            headless CLI, plus the punktfunk verb plugin so a bed can drive the client in
+            charly verbs. No compositor: the headless CLI needs no display server, which is
+            the whole reason a client venue stays a plain container.
+        base: cachyos
+        candy:
+            - '@github.com/opencharly/layer-punktfunk-client:v2026.243.1116'
+            # pod-sway is here for the RENDERER, not for a desktop. `punktfunk launch`
+            # spawns `punktfunk-client`, which is a Wayland client (libvulkan,
+            # libwayland-*, libdrm, libgbm) and needs a surface to render into. Without a
+            # compositor it cannot start at all — the CLI's documented exit 4.
+            #
+            # It is NOT here to fix codec advertisement, which an earlier version of this
+            # comment claimed. `no shared video codec: client advertised 0x00` came from
+            # driving `punktfunk` — a CONTROL binary linking libgcc/libm/libc and nothing
+            # else — which has no decoder to advertise. A compositor changes nothing about
+            # that; using the renderer does. The hardware decode path additionally needs a
+            # non-lavapipe Vulkan ICD, which the punktfunk-client candy now installs.
+            - '@github.com/opencharly/layer-supervisord:v2026.240.0121'
+            - '@github.com/opencharly/pod-sway:v2026.241.2004'
+            # The renderer opens a PipeWire playback stream for the session's audio. The
+            # `pipewire` binary arrives as a dependency of punktfunk-client, but nothing
+            # STARTS it without this candy, so the client's audio thread died on every
+            # session while video decoded fine:
+            #   pf_client_core::audio: audio playback thread ended
+            #     error=pw connect (is PipeWire running in this session?)
+            # Pinned at the SAME version the host box uses. A different one would resolve
+            # this candy at two versions and add a `multiple versions` warning — advancing
+            # a single consumer inside a stale graph multiplies skew rather than removing
+            # it, which is how an earlier repin here doubled the count from 3 to 6.
+            #
+            # This removes a known-broken path; it does not PROVE client audio. Nothing in
+            # the bed asserts audio — stream-probe counts decoded VIDEO frames only.
+            - '@github.com/opencharly/pod-pipewire:v2026.243.0508'
+        # plugin-punktfunk is deliberately NOT composed here. An out-of-tree verb plugin is
+        # loaded by charly from the PROJECT, not from the venue image, so the `punktfunk:`
+        # verb is available to this bed either way — and composing the plugin candy drags in
+        # its own baked check, which probes the management API of a punktfunk HOST. On a
+        # client-only venue there is no host, so that check can only fail.
