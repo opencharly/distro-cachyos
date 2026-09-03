@@ -2429,3 +2429,82 @@ check-cstream-pod:
                 artifact: /tmp/wl-desktop.png
                 artifact_min_bytes: 5000
                 artifact_not_uniform: true
+
+# --- check-vm-clone: the VM-on-VM layering + bake R10 bed (cutover task 9) ---
+# Two disposable beds: check-vm-clone-base builds + provisions the cachyos VM
+# and captures a "golden" snapshot at install finalize (the check-bed
+# snapshot policy); check-vm-clone deploys a source.kind: clone entity of
+# that golden, and its plan probes the cloned guest with real ssh/command
+# verbs. This is the R10 vehicle for the clone build path and the layered
+# bake (charly vm bake) — NOT improvised disk-size heuristics.
+
+# The clone entity: a new VM built ON TOP of the cachyos base at its named
+# snapshot. from_vm keys the snapshot registry; the base bed's capture
+# (--domain check-vm-clone-base) registers the golden there, so from_vm is
+# the base BED's name (the registry key the capture wrote under).
+cachyos-vm-clone:
+    vm:
+        source:
+            kind: clone
+            from_vm: check-vm-clone-base
+            from_snapshot: golden
+        disk_size: 20G
+        ram: 4G
+        cpu: 2
+        firmware: uefi-insecure
+        backend: libvirt
+        ssh: {user: cachyos, port_auto: true, key_source: generate}
+        libvirt:
+            devices:
+                channels: [{type: unix, name: org.qemu.guest_agent.0}]
+
+# Base bed: provisions the cachyos VM and captures the golden snapshot.
+check-vm-clone-base:
+    vm:
+        from: cachyos-vm
+        disposable: true
+        lifecycle: dev
+        description: 'CachyOS VM-on-VM R10 base: provisions the cachyos VM, waits for sshd + cloud-init, captures the golden snapshot at install finalize for the clone bed.'
+        snapshot:
+            on_finalize: golden
+            mode: external
+            keep_venue: true
+        plan:
+            - check: the cachyos guest reports its hostname (in-guest command probe)
+              id: cvc-base-hostname
+              command: "uname -n"
+              stdout:
+                matches: ".+"
+              eventually: 300s
+              retry_interval: 10s
+              context: [runtime]
+            - check: the guest reports its os-release (in-guest command probe)
+              id: cvc-base-os
+              command: "cat /etc/os-release"
+              stdout:
+                contains: "ID=arch"
+              context: [runtime]
+
+# Clone bed: deploys the clone entity of golden; probes prove the cloned
+# guest boots and answers.
+check-vm-clone:
+    vm:
+        from: cachyos-vm-clone
+        disposable: true
+        lifecycle: dev
+        description: 'CachyOS VM-on-VM R10 clone: deploys the source.kind clone entity (from_vm=check-vm-clone-base@golden), probes the cloned guest with real ssh/command verbs to prove it boots and answers.'
+        plan:
+            - check: the cloned guest reports its hostname (in-guest command probe)
+              id: cvc-clone-hostname
+              command: "uname -n"
+              stdout:
+                matches: ".+"
+              eventually: 300s
+              retry_interval: 10s
+              context: [runtime]
+            - check: the cloned guest reports its os-release (in-guest command probe)
+              id: cvc-clone-os
+              command: "cat /etc/os-release"
+              stdout:
+                contains: "ID=arch"
+              context: [runtime]
