@@ -2960,4 +2960,3 @@ check-punktfunk-fleet:
                     # fails outright on zero frames, so this only asserts the success shape.
                     - contains: "streamed:"
                   timeout: 120s
-
