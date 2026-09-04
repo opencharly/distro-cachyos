@@ -1132,7 +1132,7 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-# charly-cachyos — the operator CachyOS workstation profile (target: local +
+
             # The FULL LOCAL LOOP (crabbox run --provider local-container on the nested
             # podman) and the four stretch steps are DE-SCOPED with the complete RCA
             # recorded in the beds PR: under the container-nesting recipe (userns=host
@@ -1141,6 +1141,7 @@ check-crabbox-e2e-pod:
             # postgresql candy (initdb refuses root) — a host/recipe topology
             # deadlock, not a crabbox defect. The broker surface the coordinator
             # stack provides is fully proven by the steps above.
+# charly-cachyos — the operator CachyOS workstation profile (target: local +
 # host: local). It mutates the operator's REAL MACHINE — it installs packages as
 # root and may change repo config — so it is an operator profile, NEVER a test bed.
 #
