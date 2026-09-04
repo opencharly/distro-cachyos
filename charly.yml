@@ -1359,6 +1359,40 @@ check-crabbox-e2e-pod:
             # root posture cannot lease (netavark setns EPERM on the always-emitted
             # --network bridge) — the knob makes the loop hostname-less, so bridge +
             # loopback publish work at uid-1000. See plan/crabbox-loop-cutover.md.
+            - check: stretch — workspace-archive checkpoint lifecycle on a kept local-container lease
+              id: cbx-e2e-stretch-checkpoint
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                cd /tmp/cbxw
+                crabbox warmup --provider local-container --keep --slug checkpoint-probe --ttl 15m --idle-timeout 5m
+                crabbox checkpoint create --name cbx-probe --provider local-container
+                crabbox checkpoint list
+                crabbox stop checkpoint-probe
+            - check: stretch — retained run-session handle (0.48 lease-output surface + cleanup)
+              id: cbx-e2e-stretch-artifacts
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                cd /tmp/cbxw
+                crabbox run --provider local-container --keep --no-sync --ttl 15m --idle-timeout 5m --lease-output session.json -- true
+                test -s session.json && grep -q cleanupCommand session.json && echo ARTIFACTS_LEASE_OK
+                crabbox cleanup --provider local-container >/dev/null 2>&1 || true
+            - check: stretch — pond peer group (two leases sharing a --pond label + peers)
+              id: cbx-e2e-stretch-pond
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                cd /tmp/cbxw
+                crabbox warmup --provider local-container --pond smoke --slug pond-a --ttl 15m --idle-timeout 5m
+                crabbox pond peers --pond smoke
+                crabbox stop pond-a
             - check: THE FULL LOCAL LOOP — scratch git workdir, lease via local-container, sync, run, stream, release (exit-2 acceptance)
               id: cbx-e2e-loop
               exit_status: 0
