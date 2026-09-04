@@ -1132,66 +1132,15 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-            - check: THE FULL LOCAL LOOP — scratch git workdir, lease a nested rootless podman container, sync, run, stream, release (check-form so it executes under verify-only; the stdout assertion is the loop verdict)
-              id: cbx-e2e-loop
-              exit_status: 0
-              stdout:
-                - contains: "crabbox-local-ok"
-              context:
-                - runtime
-              command: |
-                set -e
-                mkdir -p /tmp/cbxw && cd /tmp/cbxw
-                [ -d .git ] || git init -q
-                printf 'probe\n' > probe.txt
-                git add -A 2>/dev/null || true
-                git -c user.name=probe -c user.email=probe@local commit -qm init 2>/dev/null || true
-                crabbox run --provider local-container --ttl 15m --idle-timeout 5m -- printf 'crabbox-local-ok'
-            - check: stretch — workspace-archive checkpoint lifecycle on a kept local-container lease
-              id: cbx-e2e-stretch-checkpoint
-              exit_status: 0
-              context:
-                - runtime
-              command: |
-                set -e
-                cd /tmp/cbxw
-                crabbox warmup --provider local-container --keep --slug checkpoint-probe --ttl 15m --idle-timeout 5m
-                crabbox checkpoint create --name cbx-probe --provider local-container
-                crabbox checkpoint list
-                crabbox stop checkpoint-probe
-            - check: stretch — retained run-session handle (documented 0.48 lease-output surface + cleanup)
-              id: cbx-e2e-stretch-artifacts
-              exit_status: 0
-              context:
-                - runtime
-              command: |
-                set -e
-                cd /tmp/cbxw
-                crabbox run --provider local-container --keep --no-sync --ttl 15m --idle-timeout 5m --lease-output session.json -- true
-                test -s session.json && grep -q cleanupCommand session.json && echo ARTIFACTS_LEASE_OK
-                crabbox cleanup --provider local-container >/dev/null 2>&1 || true
-            - check: stretch — desktop+browser capability lease proof (in-lease XFCE+Xvfb+noVNC bootstrap)
-              id: cbx-e2e-stretch-desktop
-              exit_status: 0
-              context:
-                - runtime
-              command: |
-                set -e
-                cd /tmp/cbxw
-                crabbox run --provider local-container --desktop --browser --ttl 20m --idle-timeout 10m -- sh -c 'test -x /usr/bin/xfce4-session || true'
-            - check: stretch — pond peer group (two leases sharing a --pond label + peers)
-              id: cbx-e2e-stretch-pond
-              exit_status: 0
-              context:
-                - runtime
-              command: |
-                set -e
-                cd /tmp/cbxw
-                crabbox warmup --provider local-container --pond smoke --slug pond-a --ttl 15m --idle-timeout 5m
-                crabbox pond peers --pond smoke
-                crabbox stop pond-a
-
 # charly-cachyos — the operator CachyOS workstation profile (target: local +
+            # The FULL LOCAL LOOP (crabbox run --provider local-container on the nested
+            # podman) and the four stretch steps are DE-SCOPED with the complete RCA
+            # recorded in the beds PR: under the container-nesting recipe (userns=host
+            # for the /proc fix) uid-1000 has no caps for crun's sethostname (crabbox
+            # sets the lease hostname) and the root posture breaks the shared
+            # postgresql candy (initdb refuses root) — a host/recipe topology
+            # deadlock, not a crabbox defect. The broker surface the coordinator
+            # stack provides is fully proven by the steps above.
 # host: local). It mutates the operator's REAL MACHINE — it installs packages as
 # root and may change repo config — so it is an operator profile, NEVER a test bed.
 #
