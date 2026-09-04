@@ -8,10 +8,4 @@ crabbox-e2e:
             - '@github.com/opencharly/plugin-crabbox/candy/plugin-crabbox:v0'
             - '@github.com/opencharly/pod-crabbox:v0'
             - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
-        plan:
-            - run: bake a working resolver into the nested podman via a containers.conf drop-in file (the write verb lands it at build; the gateway resolver is host-dependent)
-              write: /home/user/.config/containers/containers.conf.d/99-crabbox-dns.conf
-              mode: "0644"
-              content: |
-                [containers]
-                dns_servers = ["9.9.9.9"]
+            - crabbox-nesting-dns
