@@ -1393,6 +1393,15 @@ check-crabbox-e2e-pod:
                 crabbox warmup --provider local-container --pond smoke --slug pond-a --ttl 15m --idle-timeout 5m
                 crabbox pond peers --pond smoke
                 crabbox stop pond-a
+            - check: stretch — the external exec-provider surface (credential-free; the full protocol flow is upstream-spec-heavy, see plan/crabbox-loop-cutover.md)
+              id: cbx-e2e-stretch-external
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                crabbox providers | grep -q external
+                echo EXTERNAL_SURFACE_OK
             - check: THE FULL LOCAL LOOP — scratch git workdir, lease via local-container, sync, run, stream, release (exit-2 acceptance)
               id: cbx-e2e-loop
               exit_status: 0
