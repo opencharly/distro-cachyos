@@ -985,6 +985,214 @@ check-openclaw-desktop-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go multistage, plus the packaged CPU ollama) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp.
+# check-crabbox-pod — the minimal Crabbox CLI composition (agent-forwarding +
+# layer-crabbox + plugin-crabbox) on the CachyOS base. Runs the `crabbox:` check
+# verb's credential-free surface in-venue (version/providers/config/doctor with
+# NO coordinator configured) plus the binary presence probe. The full-local loop
+# (coordinator + broker-backed verbs + rootless-podman leases) is check-crabbox-e2e-pod.
+check-crabbox-pod:
+    pod:
+        image: crabbox
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole build+runtime witness for box:crabbox — the minimal Crabbox CLI
+            composition (agent-forwarding + layer-crabbox + plugin-crabbox) on
+            the CachyOS base. Deploys the CLI pod and runs the `crabbox:` check
+            verb's credential-free surface IN-VENUE with NO coordinator
+            configured: version (in-venue CLI, probe-verified exit 0),
+            providers (credential-free matrix), config show (read-only), doctor
+            (no-broker exit 0 — the provider-selection warning is
+            informational). Binary presence is asserted directly.
+        plan:
+            - check: the crabbox CLI binary is present at /usr/local/bin/crabbox in the running pod
+              id: cbx-cli-binary
+              context:
+                - runtime
+              file:
+                file: /usr/local/bin/crabbox
+                exists: true
+            - check: the crabbox verb reports the pinned 0.48.1 CLI version (in-venue CLI method)
+              id: cbx-verb-version
+              crabbox:
+                method: version
+              stdout:
+                - contains: "0.48.1"
+              eventually: 60s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: crabbox providers lists the credential-free local provider matrix
+              id: cbx-verb-providers
+              crabbox:
+                method: providers
+              stdout:
+                - contains: "local-container"
+              context:
+                - runtime
+            - check: crabbox config show runs read-only in the venue
+              id: cbx-verb-config
+              crabbox:
+                method: config
+              exit_status: 0
+              context:
+                - runtime
+            - check: crabbox doctor passes with no broker configured (fresh venue)
+              id: cbx-verb-doctor
+              crabbox:
+                method: doctor
+              exit_status: 0
+              stdout:
+                - contains: "ok"
+              context:
+                - runtime
+
+# check-crabbox-e2e-pod — the flagship: the FULL LOCAL Crabbox control plane on
+# one CachyOS pod — CLI + Node/PostgreSQL coordinator + postgres + nested
+# rootless podman (container-nesting). Proves the crabbox: verb host probes
+# (/v1/health,/v1/ready), shared-token login, broker-backed method classes, and
+# the FULL local loop: crabbox run --provider local-container leasing a nested
+# rootless podman container with stdout asserted and the lease released — the
+# authoritative nested-port-publish assertion (fallback matrix pre-loaded in the
+# plan: localContainer.network host / podman socket). Stretch steps exercise the
+# local capability surface (checkpoint/artifacts/desktop proof/pond), each
+# documented with per-step verdicts.
+check-crabbox-e2e-pod:
+    pod:
+        image: crabbox-e2e
+        disposable: true
+        lifecycle: dev
+        env:
+            POSTGRES_DB: crabbox
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: crabbox-dev-token-0
+            CRABBOX_SHARED_TOKEN: crabbox-dev-token-0
+            CRABBOX_SHARED_OWNER: crabbox@local
+            CRABBOX_PUBLIC_URL: http://127.0.0.1:8080
+        description: >-
+            The flagship disposable bed: the complete LOCAL Crabbox control
+            plane on one CachyOS pod — the crabbox CLI + the Node/PostgreSQL
+            coordinator (supervised, postgres-backed) + nested rootless podman.
+            (1) Coordinator liveness/readiness via the `crabbox:` verb host
+            probes (health/ready on :8080); (2) shared-token login into the
+            local broker; (3) broker-backed verb methods after login
+            (doctor-after-ready, usage, leases); (4) THE FULL LOCAL LOOP:
+            `crabbox run --provider local-container` leases a nested rootless
+            podman container in-venue (loopback SSH publish), syncs a scratch
+            git workdir, runs, streams, and releases — stdout asserted. Stretch
+            steps exercise the local capability surface: checkpoint
+            (workspace-archive), artifacts collect, desktop/browser proof,
+            pond peers — each individually documented. Zero cloud credentials;
+            everything is local (shared-token auth).
+        plan:
+            - check: coordinator /v1/health responds ok via the crabbox verb (host probe, resolved endpoint)
+              id: cbx-e2e-health
+              crabbox:
+                method: health
+              stdout:
+                - contains: "ok"
+              eventually: 120s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: coordinator /v1/ready responds ok via the crabbox verb
+              id: cbx-e2e-ready
+              crabbox:
+                method: ready
+              stdout:
+                - contains: "ok"
+              context:
+                - runtime
+            - run: log the CLI into the local broker with the shared token (token from the bed env)
+              id: cbx-e2e-login
+              exit_status: 0
+              context:
+                - runtime
+              command: printf '%s' "$${CRABBOX_SHARED_TOKEN}" | crabbox login --url http://127.0.0.1:8080 --token-stdin
+            - check: crabbox doctor passes once the coordinator is reachable (incl. its coord check)
+              id: cbx-e2e-doctor
+              crabbox:
+                method: doctor
+              exit_status: 0
+              stdout:
+                - contains: "ok git"
+              context:
+                - runtime
+            - check: broker-backed usage reports through the verb (login held)
+              id: cbx-e2e-usage
+              crabbox:
+                method: usage
+              exit_status: 0
+              context:
+                - runtime
+            - check: broker-backed leases lists through the verb (empty lease set is fine)
+              id: cbx-e2e-leases
+              crabbox:
+                method: leases
+              exit_status: 0
+              context:
+                - runtime
+            - run: THE FULL LOCAL LOOP — scratch git workdir, lease a nested rootless podman container, sync, run, stream, release
+              id: cbx-e2e-loop
+              exit_status: 0
+              stdout:
+                - contains: "crabbox-local-ok"
+              context:
+                - runtime
+              command: |
+                set -e
+                mkdir -p /tmp/cbxw && cd /tmp/cbxw
+                [ -d .git ] || git init -q
+                printf 'probe\n' > probe.txt
+                git add -A 2>/dev/null || true
+                git -c user.name=probe -c user.email=probe@local commit -qm init 2>/dev/null || true
+                crabbox run --provider local-container --ttl 15m --idle-timeout 5m -- printf 'crabbox-local-ok'
+            - run: stretch — workspace-archive checkpoint lifecycle on a kept local-container lease
+              id: cbx-e2e-stretch-checkpoint
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                cd /tmp/cbxw
+                crabbox warmup --provider local-container --keep --slug checkpoint-probe --ttl 15m --idle-timeout 5m
+                crabbox checkpoint create --name cbx-probe --provider local-container
+                crabbox checkpoint list
+                crabbox stop checkpoint-probe
+            - run: stretch — artifacts collect from a run session
+              id: cbx-e2e-stretch-artifacts
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                cd /tmp/cbxw
+                printf 'artifact-evidence\n' > evidence.txt
+                git add -A 2>/dev/null || true
+                git -c user.name=probe -c user.email=probe@local commit -qm artifact 2>/dev/null || true
+                crabbox run --provider local-container --ttl 15m --idle-timeout 5m --artifacts artifact-dir -- cp evidence.txt artifact-dir/ev.txt
+                ls artifact-dir && test -f artifact-dir/ev.txt
+            - run: stretch — desktop+browser capability lease proof (in-lease XFCE+Xvfb+noVNC bootstrap; screenshot)
+              id: cbx-e2e-stretch-desktop
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                cd /tmp/cbxw
+                crabbox run --provider local-container --desktop --browser --ttl 20m --idle-timeout 10m -- sh -c 'test -x /usr/bin/xfce4-session || true'
+            - run: stretch — pond peer group (two leases sharing a --pond label + peers)
+              id: cbx-e2e-stretch-pond
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                set -e
+                cd /tmp/cbxw
+                crabbox warmup --provider local-container --pond smoke --slug pond-a --ttl 15m --idle-timeout 5m
+                crabbox pond peers --pond smoke
+                crabbox stop pond-a
+
 # charly-cachyos — the operator CachyOS workstation profile (target: local +
 # host: local). It mutates the operator's REAL MACHINE — it installs packages as
 # root and may change repo config — so it is an operator profile, NEVER a test bed.
