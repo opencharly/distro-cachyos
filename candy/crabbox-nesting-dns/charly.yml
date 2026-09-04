@@ -16,6 +16,8 @@ crabbox-nesting-dns:
             beds. The observable effect: podman reads the drop-in and the nested
             containers' resolv.conf names 9.9.9.9.
         plan:
+            - run: restore user ownership of the box user's cache root (a build-time root step created /home/user/.cache as root:root 755 — crabbox's local-container bootstrap then fails with permission denied)
+              command: mkdir -p /home/user/.cache && chown 1000:1000 /home/user/.cache && chmod 0755 /home/user/.cache
             - run: create the containers.conf drop-in directory for the box user
               command: mkdir -p "$HOME/.config/containers/containers.conf.d"
             - run: write the nested-podman DNS drop-in

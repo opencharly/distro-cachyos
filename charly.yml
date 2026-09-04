@@ -1087,22 +1087,20 @@ check-crabbox-e2e-pod:
             pond peers — each individually documented. Zero cloud credentials;
             everything is local (shared-token auth).
         plan:
-            - check: coordinator /v1/health responds ok via the crabbox verb (host probe, resolved endpoint)
+            - check: coordinator /v1/health responds 200 (host-side http: — host-networking pod publishes no port mapping, the coordinator binds host-localhost :8080)
               id: cbx-e2e-health
-              crabbox:
-                method: health
-              stdout:
-                - contains: "ok"
+              http:
+                http: http://127.0.0.1:8080/v1/health
+                status: 200
               eventually: 120s
               retry_interval: 5s
               context:
                 - runtime
-            - check: coordinator /v1/ready responds ok via the crabbox verb
+            - check: coordinator /v1/ready responds 200 (host-side http:)
               id: cbx-e2e-ready
-              crabbox:
-                method: ready
-              stdout:
-                - contains: "ok"
+              http:
+                http: http://127.0.0.1:8080/v1/ready
+                status: 200
               context:
                 - runtime
             - check: log the CLI into the local broker with the shared token (mutating setup under verify-only; truth = the broker-backed checks below)
