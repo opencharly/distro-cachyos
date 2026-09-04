@@ -1133,7 +1133,7 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-            - check: THE FULL LOCAL LOOP — scratch git workdir, lease a nested rootless podman container, sync, run, stream, release (check: so it executes under verify-only; the stdout assertion is the loop verdict)
+            - check: THE FULL LOCAL LOOP — scratch git workdir, lease a nested rootless podman container, sync, run, stream, release (check-form so it executes under verify-only; the stdout assertion is the loop verdict)
               id: cbx-e2e-loop
               exit_status: 0
               stdout:
