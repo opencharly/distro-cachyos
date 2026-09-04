@@ -9,6 +9,9 @@ crabbox-e2e:
             - '@github.com/opencharly/pod-crabbox:v0'
             - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
         plan:
-            - run: point the NESTED podman's containers at a working resolver — the built-in gateway resolver is HOST-dependent (baked containers.conf dns_servers; podman-inside-the-build-container cannot run in the build context, so a build-time preload pull was impossible — RCA round 4)
-              command: |
-                printf '\n[containers]\ndns_servers = ["9.9.9.9"]\n' >> "$HOME/.config/containers/containers.conf"
+            - run: bake a working resolver into the nested podman via a containers.conf DROP-IN (write: verb — emitted at build; the gateway resolver is host-dependent)
+              write: /home/user/.config/containers/containers.conf.d/99-crabbox-dns.conf
+              mode: "0644"
+              content: |
+                [containers]
+                dns_servers = ["9.9.9.9"]
