@@ -25,23 +25,21 @@ crabbox-nesting-dns:
               command: mkdir -p /home/user/.cache && chown 1000:1000 /home/user/.cache && chmod 0755 /home/user/.cache
             - run: create the containers.conf drop-in directory for the box user
               command: mkdir -p "$HOME/.config/containers/containers.conf.d"
-            - run: write the nested-podman DNS/UTS drop-in (user location)
+            - run: write the nested-podman DNS drop-in (user location)
               write: /home/user/.config/containers/containers.conf.d/99-crabbox-dns.conf
               mode: "0644"
               content: |
                 [containers]
                 dns_servers = ["9.9.9.9"]
-                utsns = "private"
-            - run: write the nested-podman drop-in (system location — root-posture boxes read /etc, not /home/user)
+            - run: write the nested-podman drop-in (system location, for root-posture consumers)
               write: /etc/containers/containers.conf.d/99-crabbox-dns.conf
               run_as: root
               mode: "0644"
               content: |
                 [containers]
                 dns_servers = ["9.9.9.9"]
-                utsns = "private"
-            - run: ensure the root user's crabbox cache root exists
-              command: mkdir -p /root/.cache
+            - run: ensure the box user's crabbox cache root exists
+              command: mkdir -p /home/user/.cache/crabbox
             - run: create the system drop-in dir
               command: mkdir -p /etc/containers/containers.conf.d
             - check: the nested-podman DNS drop-in is present in the image
