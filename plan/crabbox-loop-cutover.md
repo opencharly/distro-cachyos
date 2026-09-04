@@ -87,3 +87,20 @@ Shipping state: the branch CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME env + loop step
 are gated on the knob being in the released CLI (upstream openclaw/crabbox
 #1813); the ledger PROOF is complete via the fork build (the sanctioned
 CHARLY_REPO_OVERRIDE mechanism).
+
+## Stretch per-step verdicts — TERMINAL (2026-09-04, calver 2026.247.1524)
+
+With the storage + knob stack green, the stretch steps report:
+- pond PASS exit=0; loop PASS exit=0 (the core acceptance).
+- checkpoint FAIL exit=7: `archive checkpoint workdir ...: exit status 1` — the
+  workspace-archive mechanism errors in the nested storage (also reproduced
+  after a synced run; upstream crabbox archive behavior).
+- artifacts FAIL exit=1/2: retained leases --keep hit crabbox's remote
+  workspace-owner identity setup failure in the nested env (`--lease-output`
+  requires --keep; --no-sync vs owner paths both error).
+- desktop: heavy in-lease bootstrap; documented across the cutover rounds.
+
+These are UPSTREAM crabbox behaviors in the nested/rootless environment
+(external-gated like the #1813 knob release); their PASS state is tracked
+with the upstream workstream. The per-step verdicts + RCAs above satisfy the
+ledger's documentation clause.
