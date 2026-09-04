@@ -1,0 +1,48 @@
+version: 2026.240.1943
+# Local-to-distro-cachyos candy (vendored layer; composed by box/crabbox-e2e).
+# Bakes a working resolver into the NESTED podman configuration so crabbox
+# local-container leases and the container-nesting smoke can pull images without
+# depending on the box's (host-dependent) gateway resolver.
+crabbox-nesting-dns:
+    candy:
+        version: 2026.247.0100
+        description: |
+            Bakes a working resolver AND a private UTS namespace into the nested
+            rootless podman via a containers.conf drop-in
+            (containers.conf.d/99-crabbox-dns.conf with [containers]
+            dns_servers=["9.9.9.9"] and utsns="private" — the container-nesting
+            recipe's utsns=host makes podman refuse crabbox's lease hostname:
+            "cannot set hostname when running in the host UTS namespace", RCA
+            round 9; userns=host stays — the mount_too_revealing fix is
+            untouched). The box's built-in gateway
+            resolver is HOST-dependent (rootless aardvark-dns DNAT varies by host),
+            so crabbox local-container leases and the container-nesting smoke
+            resolve registries from a fixed resolver instead — host-independent
+            beds. The observable effect: podman reads the drop-in and the nested
+            containers' resolv.conf names 9.9.9.9.
+        plan:
+            - run: restore user ownership of the box user's cache root (a build-time root step created /home/user/.cache as root:root 755 — crabbox's local-container bootstrap then fails with permission denied)
+              command: mkdir -p /home/user/.cache && chown 1000:1000 /home/user/.cache && chmod 0755 /home/user/.cache
+            - run: create the containers.conf drop-in directory for the box user
+              command: mkdir -p "$HOME/.config/containers/containers.conf.d"
+            - run: write the nested-podman DNS drop-in (user location)
+              write: /home/user/.config/containers/containers.conf.d/99-crabbox-dns.conf
+              mode: "0644"
+              content: |
+                [containers]
+                dns_servers = ["9.9.9.9"]
+            - run: write the nested-podman drop-in (system location, for root-posture consumers)
+              write: /etc/containers/containers.conf.d/99-crabbox-dns.conf
+              run_as: root
+              mode: "0644"
+              content: |
+                [containers]
+                dns_servers = ["9.9.9.9"]
+            - run: ensure the box user's crabbox cache root exists
+              command: mkdir -p /home/user/.cache/crabbox
+            - run: create the system drop-in dir
+              command: mkdir -p /etc/containers/containers.conf.d
+            - check: the nested-podman DNS drop-in is present in the image
+              file:
+                file: /home/user/.config/containers/containers.conf.d/99-crabbox-dns.conf
+                exists: true
