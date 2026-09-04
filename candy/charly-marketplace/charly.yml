@@ -43,7 +43,7 @@ charly-marketplace:
             - '@github.com/opencharly/pod-sway:v2026.241.2004'
             - '@github.com/opencharly/layer-cuda:v2026.243.0408'
             - '@github.com/opencharly/layer-socat:v2026.240.0229'
-            - '@github.com/opencharly/pod-selkies:v2026.243.1737'
+            - '@github.com/opencharly/pod-selkies:v2026.246.2210'
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-python:v2026.243.0409'
             - '@github.com/opencharly/layer-gemini:v2026.243.0409'
