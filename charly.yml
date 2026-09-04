@@ -1366,7 +1366,7 @@ check-crabbox-e2e-pod:
                 - runtime
               command: |
                 set -e
-                cd /tmp/cbxw
+                mkdir -p /tmp/cbxw && cd /tmp/cbxw
                 crabbox warmup --provider local-container --keep --slug checkpoint-probe --ttl 15m --idle-timeout 5m
                 crabbox checkpoint create --name cbx-probe --provider local-container
                 crabbox checkpoint list
@@ -1378,7 +1378,7 @@ check-crabbox-e2e-pod:
                 - runtime
               command: |
                 set -e
-                cd /tmp/cbxw
+                mkdir -p /tmp/cbxw && cd /tmp/cbxw
                 crabbox run --provider local-container --keep --no-sync --ttl 15m --idle-timeout 5m --lease-output session.json -- true
                 test -s session.json && grep -q cleanupCommand session.json && echo ARTIFACTS_LEASE_OK
                 crabbox cleanup --provider local-container >/dev/null 2>&1 || true
@@ -1389,7 +1389,7 @@ check-crabbox-e2e-pod:
                 - runtime
               command: |
                 set -e
-                cd /tmp/cbxw
+                mkdir -p /tmp/cbxw && cd /tmp/cbxw
                 crabbox warmup --provider local-container --pond smoke --slug pond-a --ttl 15m --idle-timeout 5m
                 crabbox pond peers --pond smoke
                 crabbox stop pond-a
