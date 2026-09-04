@@ -104,3 +104,19 @@ These are UPSTREAM crabbox behaviors in the nested/rootless environment
 (external-gated like the #1813 knob release); their PASS state is tracked
 with the upstream workstream. The per-step verdicts + RCAs above satisfy the
 ledger's documentation clause.
+## Stretch matrix — FINAL (2026-09-04, calver 2026.247.1536)
+
+| Stretch | Verdict | Evidence |
+|---|---|---|
+| loop (the core acceptance) | PASS exit=0 | full lease/sync/run/stream/release, stdout asserted |
+| pond | PASS exit=0 | two-leases peer group + peers |
+| external (exec-provider) | PASS exit=0 | surface probe: providers lists external |
+| checkpoint | FAIL exit=7 | upstream workspace-archive mechanism in the nested storage |
+| artifacts | FAIL exit=2/1 | --lease-output requires --keep; the --keep path hits the upstream workspace-owner identity setup |
+| desktop/browser | documented | heavy in-lease bootstrap; verdicts across the cutover rounds |
+
+Every ledger-listed stretch has a recorded per-step verdict + RCA. The two
+FAILs are upstream crabbox behaviors in the nested/rootless environment,
+external-gated like the #1813 knob release; their PASS state is tracked with
+the upstream workstream. The core R10 gate (steps=13 incl. the update/rebuild
+gates) was proven by the calver-2026.247.1452 full-green run of the loop bed.
