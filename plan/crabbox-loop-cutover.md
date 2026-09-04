@@ -45,3 +45,45 @@ warnings, from the committed tree.
 ## Blockers
 
 None internal — the two exits above are the roadmap; no operator dependency.
+
+## Terminal blocker matrix (2026-09-04, probe-complete; host-independent within the container-nesting recipe)
+
+With the no-hostname knob in-box (0.49.0-knob2 verified live: verb dispatch,
+broker surface, coordinator all green), the loop STILL cannot provision:
+
+- (a) uid-1000 + the recipe's user storage (~/.local/share, fuse-overlayfs on
+  the box's fuse rootfs) -> crun `mkdir /tmp/crabbox-bootstrap: Operation not
+  permitted` (nested fuse-overlayfs dir-create EPERM; touch works, mkdir
+  denies).
+- (b) uid-1000 + tmpfs graphroot -> layer unpacking failed.
+- (c) uid-0 root posture + system storage (/var/lib/containers/storage volume,
+  host-kernel-overlay backed) -> mkdir OK but netavark `setns` EPERM for the
+  always-emitted `--network bridge`; network host discards the SSH publish.
+- (d) the provider cannot be given `--tmpfs /tmp` or --network omission from
+  config.
+
+The loop requires a RECIPE-level change (nested storage on the host-volume +
+a build-time image injection path for the lease/smoke images — impossible in
+the current build context) or an upstream provider knob for the bootstrap
+tmpfs. Options: (1) a container-nesting recipe workstream; (2) an upstream
+crabbox knob extending #1813; (3) keep the de-scoped ledger item with this
+evidence.
+
+## PROOF: FULL GREEN in-box (2026-09-04, calver 2026.247.1452)
+
+`charly check run check-crabbox-e2e-pod` on feat/loop-exit2 returned **steps=13,
+exit 0** with the local layer override providing the knob CLI (0.49.0-knob2,
+org-fork release) + the host-backed storage volume + the priority-1 prewarm:
+
+- [cbx-e2e-loop] PASS exit=0 — the FULL LOCAL LOOP (lease via local-container,
+  sync, run, stream, release) ran inside the venue with the no-hostname knob;
+- [nested-podman-run] PASS exit=0 (the baked --pull=never smoke found the
+  prewarmed alpine);
+- health/ready 200, login/doctor/usage/leases PASS, 0.49.0-knob2 asserted live;
+- image-build/check-image/deploy/config/start/check-live/UPDATE (R10 fresh
+  rebuild)/rebuilds/cleanup all PASS; host clean after.
+
+Shipping state: the branch CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME env + loop step
+are gated on the knob being in the released CLI (upstream openclaw/crabbox
+#1813); the ledger PROOF is complete via the fork build (the sanctioned
+CHARLY_REPO_OVERRIDE mechanism).

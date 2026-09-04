@@ -6,6 +6,9 @@ version: 2026.240.1943
 crabbox-nesting-dns:
     candy:
         version: 2026.247.0100
+        volume:
+            - name: cbx-storage
+              path: /home/user/.crabbox-storage
         description: |
             Bakes a working resolver AND a private UTS namespace into the nested
             rootless podman via a containers.conf drop-in
@@ -20,6 +23,13 @@ crabbox-nesting-dns:
             resolve registries from a fixed resolver instead — host-independent
             beds. The observable effect: podman reads the drop-in and the nested
             containers' resolv.conf names 9.9.9.9.
+        service:
+            - name: cbx-storage-prewarm
+              exec: "/bin/sh -c 'podman pull quay.io/libpod/alpine:latest >/tmp/cbx-prewarm.log 2>&1 || true'"
+              restart: on-failure
+              priority: 1
+              enable: true
+              scope: system
         plan:
             - run: restore user ownership of the box user's cache root (a build-time root step created /home/user/.cache as root:root 755 — crabbox's local-container bootstrap then fails with permission denied)
               command: mkdir -p /home/user/.cache && chown 1000:1000 /home/user/.cache && chmod 0755 /home/user/.cache
@@ -38,8 +48,24 @@ crabbox-nesting-dns:
               content: |
                 [containers]
                 dns_servers = ["9.9.9.9"]
-            - run: ensure the box user's crabbox cache root exists
-              command: mkdir -p /home/user/.cache/crabbox
+            - run: ensure the box user's crabbox cache root exists and is user-owned (the build runs as root, so the dirs land root-owned and the lease bootstrap then EPERMs — RCA 2026.247.1416)
+              command: mkdir -p /home/user/.cache/crabbox && chown -R 1000:1000 /home/user/.cache
+            - run: prepare the host-backed storage root for the box user
+              command: mkdir -p /home/user/.crabbox-storage && chown 1000:1000 /home/user/.crabbox-storage
+            - run: override the user storage graphroot to the host-backed volume — the recipe's ~/.local/share sits on the box's fuse rootfs, so nested fuse-overlayfs dir-create EPERMs (RCA matrix 2026-09-04; a volume-backed upper is single-fuse and supports mkdir)
+              write: /home/user/.config/containers/storage.conf
+              mode: "0644"
+              content: |
+                [storage]
+                driver = "overlay"
+                runroot = "/home/user/.crabbox-storage/run"
+                graphroot = "/home/user/.crabbox-storage/graph"
+                [storage.options.overlay]
+                mount_program = "/usr/bin/fuse-overlayfs"
+                mountopt = "nodev,fsync=0"
+            - run: restore /tmp to world-writable sticky — a build-time step left it 755 root and supervisord's /tmp/supervisord.log then EACCES at uid-1000 (RCA 2026.247.1406)
+              run_as: root
+              command: chmod 1777 /tmp
             - run: create the system drop-in dir
               command: mkdir -p /etc/containers/containers.conf.d
             - check: the nested-podman DNS drop-in is present in the image

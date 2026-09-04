@@ -1283,6 +1283,7 @@ check-crabbox-e2e-pod:
             CRABBOX_SHARED_OWNER: crabbox@local
             CRABBOX_PUBLIC_URL: http://127.0.0.1:8080
             CRABBOX_PROVIDER: local-container
+            CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME: "1"
         description: >-
             The flagship disposable bed: the complete LOCAL Crabbox control
             plane on one CachyOS pod — the crabbox CLI + the Node/PostgreSQL
@@ -1299,6 +1300,12 @@ check-crabbox-e2e-pod:
             pond peers — each individually documented. Zero cloud credentials;
             everything is local (shared-token auth).
         plan:
+            - check: pre-load the nesting smoke image into the host-backed storage (the volume starts empty and the baked smoke uses --pull=never; mutating check guarded by the smoke's own run)
+              id: cbx-e2e-prepull
+              exit_status: 0
+              context:
+                - runtime
+              command: podman pull quay.io/libpod/alpine:latest >/dev/null 2>&1 || true
             - check: coordinator /v1/health responds 200 (host-side http verb — host-networking publishes no port mapping; the coordinator binds host-localhost :8080)
               id: cbx-e2e-health
               http:
@@ -1345,14 +1352,28 @@ check-crabbox-e2e-pod:
               context:
                 - runtime
 
-            # The FULL LOCAL LOOP (crabbox run --provider local-container on the nested
-            # podman) and the four stretch steps are DE-SCOPED with the complete RCA
-            # recorded in the beds PR: under the container-nesting recipe (userns=host
-            # for the /proc fix) uid-1000 has no caps for crun's sethostname (crabbox
-            # sets the lease hostname) and the root posture breaks the shared
-            # postgresql candy (initdb refuses root) — a host/recipe topology
-            # deadlock, not a crabbox defect. The broker surface the coordinator
-            # stack provides is fully proven by the steps above.
+            # The FULL LOCAL LOOP + stretches land via openclaw/crabbox PR #1813
+            # (the local-container no-hostname knob, CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME
+            # set above): the uid-1000 posture cannot set the lease hostname
+            # (crun sethostname EPERM under the nesting recipe's userns=host) and the
+            # root posture cannot lease (netavark setns EPERM on the always-emitted
+            # --network bridge) — the knob makes the loop hostname-less, so bridge +
+            # loopback publish work at uid-1000. See plan/crabbox-loop-cutover.md.
+            - check: THE FULL LOCAL LOOP — scratch git workdir, lease via local-container, sync, run, stream, release (exit-2 acceptance)
+              id: cbx-e2e-loop
+              exit_status: 0
+              stdout:
+                - contains: "crabbox-local-ok"
+              context:
+                - runtime
+              command: |
+                set -e
+                mkdir -p /tmp/cbxw && cd /tmp/cbxw
+                [ -d .git ] || git init -q
+                printf 'probe\n' > probe.txt
+                git add -A 2>/dev/null || true
+                git -c user.name=probe -c user.email=probe@local commit -qm init 2>/dev/null || true
+                crabbox run --provider local-container --ttl 15m --idle-timeout 5m -- printf 'crabbox-local-ok'
 # charly-cachyos — the operator CachyOS workstation profile (target: local +
 # host: local). It mutates the operator's REAL MACHINE — it installs packages as
 # root and may change repo config — so it is an operator profile, NEVER a test bed.
