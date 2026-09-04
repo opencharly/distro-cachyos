@@ -123,3 +123,20 @@ gates) was proven by the calver-2026.247.1452 full-green run of the loop bed.
 ## Openclaw/selkies family pin hygiene — RCA + routing (2026-09-04)
 
 The multi-version warnings (pod-selkies, pod-selkies-core, layer-wl-*, layer-selkies-kde-desktop) are STRUCTURAL: the selkies box files in distro-cachyos carry a multi-version candy matrix (each box lists the family candies at several old+new tags simultaneously). A single stale-pin sweep cannot clear them safely (a regex sweep corrupted the graph once — reverted, R4). Fix = a DEDICATED matrix-alignment workstream: for each box file, collapse the family entries to the single newest tag per candy (v2026.246.2210 / v2026.246.2331 / v2026.247.1546 / v2026.243.1848 / v2026.247.0314), validate 0-warning, then the charly cachyos-import re-vendor (the parity item) can land. distro PR #64 (single-line closure fix) superseded by this workstream.
+
+## Selkies/openclaw pin hygiene — execution status (2026-09-04)
+
+- MERGED (upstream): the three single-repo pin PRs (layer-wl-record-pixelflux #8,
+  layer-wl-screenshot-pixelflux #10, pod-kde-selkies #9) — pod-selkies aligned to
+  v2026.246.2210 in those repos.
+- EXECUTED locally (not shippable while a warning survives): alignment of the
+  distro's box files + closure (pod-selkies-desktop .243.1850→.247.0314;
+  layer-openclaw-full .1954→.247.0718; closure pod-selkies/wl/core → newest). The
+  distro SOURCE is now fully clean (grep-verified).
+- RESIDUAL (transitive-external): the pod-selkies .243.1737 warning persists
+  because the resolved graph still references stale tags (cached contents of
+  layer-wl-*@.243.1823/.243.1830, pod-selkies-core@.243.1811) whose content pins
+  .1737 — sources in repos outside the distro source tree (not checked out). A
+  distro PR carrying a surviving warning would B5-block, so the local alignment
+  is recorded here (revertible) rather than shipped; the deep-transitive refs
+  are the final object of the matrix workstream.
