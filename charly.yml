@@ -1069,6 +1069,7 @@ check-crabbox-e2e-pod:
             CRABBOX_SHARED_TOKEN: crabbox-dev-token-0
             CRABBOX_SHARED_OWNER: crabbox@local
             CRABBOX_PUBLIC_URL: http://127.0.0.1:8080
+            CRABBOX_PROVIDER: local-container
         description: >-
             The flagship disposable bed: the complete LOCAL Crabbox control
             plane on one CachyOS pod — the crabbox CLI + the Node/PostgreSQL

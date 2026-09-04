@@ -9,7 +9,6 @@ crabbox-e2e:
             - '@github.com/opencharly/pod-crabbox:v0'
             - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
         plan:
-            - run: preload the lease and smoke images at BUILD time — the build network has working DNS; runtime nested pulls would depend on the box's resolver (host-dependent), so bake the images into the box storage for host-independent beds
+            - run: point the NESTED podman's containers at a working resolver — the built-in gateway resolver is HOST-dependent (baked containers.conf dns_servers; podman-inside-the-build-container cannot run at all: no unmask=/proc/* in the build context, so a build-time preload pull was impossible — RCA round 4)
               command: |
-                podman pull docker.io/library/ubuntu:26.04 >/dev/null 2>&1 || true
-                podman pull quay.io/libpod/alpine:latest >/dev/null 2>&1 || true
+                printf '\n[containers]\ndns_servers = ["9.9.9.9"]\n' >> "$HOME/.config/containers/containers.conf"
