@@ -1087,7 +1087,7 @@ check-crabbox-e2e-pod:
             pond peers — each individually documented. Zero cloud credentials;
             everything is local (shared-token auth).
         plan:
-            - check: coordinator /v1/health responds 200 (host-side http: — host-networking pod publishes no port mapping, the coordinator binds host-localhost :8080)
+            - check: coordinator /v1/health responds 200 (host-side http verb — host-networking publishes no port mapping; the coordinator binds host-localhost :8080)
               id: cbx-e2e-health
               http:
                 http: http://127.0.0.1:8080/v1/health
@@ -1096,7 +1096,7 @@ check-crabbox-e2e-pod:
               retry_interval: 5s
               context:
                 - runtime
-            - check: coordinator /v1/ready responds 200 (host-side http:)
+            - check: coordinator /v1/ready responds 200 (host-side http verb)
               id: cbx-e2e-ready
               http:
                 http: http://127.0.0.1:8080/v1/ready
