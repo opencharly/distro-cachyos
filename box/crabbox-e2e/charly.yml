@@ -1,6 +1,14 @@
 crabbox-e2e:
     candy:
         enabled: true
+        uid: 0
+        gid: 0
+        user: root
+        security:
+            cap_add: [ALL]
+            security_opt:
+                - label=disable
+                - seccomp=unconfined
         base: cachyos
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.239.1607'
