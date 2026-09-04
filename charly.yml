@@ -1119,7 +1119,34 @@ check-openclaw-pod:
         image: openclaw
         disposable: true
         lifecycle: dev
-        description: Sole build+runtime witness for box:openclaw — the MINIMAL openclaw composition (agent-forwarding + openclaw + dbus); NOT redundant with check-openclaw-full-pod because the dbus candy is composed ONLY here, never in the 27-candy box:openclaw-full meta. Builds (npm) and deploys the minimal openclaw pod on the CachyOS (Arch) base, exercising the cachyos→arch-builder npm build of the openclaw package plus the dbus/charly/socat/supervisord layer stack, and runs the inherited agent-forwarding + openclaw + dbus baked checks — the gateway CLI binary under ~/.npm-global/bin, the supervised service, and the openclaw :18789 TCP reachability.
+        description: Sole build+runtime witness for box:openclaw — the MINIMAL openclaw composition (agent-forwarding + openclaw + plugin-openclaw + dbus); NOT redundant with check-openclaw-full-pod because the dbus candy is composed ONLY here, never in the 27-candy box:openclaw-full meta. Builds (npm) and deploys the minimal openclaw pod on the CachyOS (Arch) base, exercising the cachyos→arch-builder npm build of the openclaw package plus the dbus/charly/socat/supervisord layer stack, and runs the inherited agent-forwarding + openclaw + dbus baked checks — the gateway CLI binary under ~/.npm-global/bin, the supervised service, the openclaw :18789 TCP reachability, and the /healthz liveness endpoint — plus the plugin-openclaw verb's own live dispatch (the openclaw health + ready methods against the running 2.0 gateway).
+        plan:
+            - check: the openclaw verb reaches the gateway's /healthz liveness endpoint on the running 2.0 gateway
+              id: openclaw-verb-health
+              openclaw:
+                method: health
+              stdout:
+                - contains: "ok"
+              eventually: 90s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: the openclaw verb reports the gateway ready via /readyz
+              id: openclaw-verb-ready
+              openclaw:
+                method: ready
+              eventually: 60s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: the openclaw verb reports the gateway's model status via the in-venue CLI
+              id: openclaw-verb-models
+              openclaw:
+                method: models
+              eventually: 60s
+              retry_interval: 5s
+              context:
+                - runtime
 # check-openclaw-full-pod deploys the maximal headless openclaw-full on the
 # CachyOS (Arch) base — a non-browser gateway (no chrome/chrome-cdp). Exercises
 # the tool stack incl. gogcli@latest (Arch go 1.26.x) and the ffmpeg/sqlite
@@ -1130,7 +1157,18 @@ check-openclaw-full-pod:
         image: openclaw-full
         disposable: true
         lifecycle: dev
-        description: Sole proof the maximal headless openclaw-full non-browser gateway + tool stack (gogcli@latest go-install on Arch go 1.26.x, ffmpeg/sqlite) composes and runs on the CachyOS (Arch) base. Builds (npm + go install multistage) and deploys the openclaw-full pod, then runs the inherited agent-forwarding + openclaw-full baked checks asserting gogcli, ffmpeg, sqlite, and the gateway/tool stack present.
+        description: Sole proof the maximal headless openclaw-full non-browser gateway + tool stack (gogcli@latest go-install on Arch go 1.26.x, ffmpeg/sqlite) composes and runs on the CachyOS (Arch) base. Builds (npm + go install multistage) and deploys the openclaw-full pod, then runs the inherited agent-forwarding + openclaw-full baked checks asserting gogcli, ffmpeg, sqlite, and the gateway/tool stack present, plus the openclaw verb's health probe against the running 2.0 gateway.
+        plan:
+            - check: the openclaw verb reaches the gateway's /healthz liveness endpoint on the running 2.0 gateway
+              id: openclaw-full-verb-health
+              openclaw:
+                method: health
+              stdout:
+                - contains: "ok"
+              eventually: 90s
+              retry_interval: 5s
+              context:
+                - runtime
 # check-openclaw-desktop-pod deploys the all-in-one openclaw-desktop image on
 # the CachyOS (Arch) base — the selkies streaming desktop fused with the
 # openclaw-full gateway/tool stack (claude-code/codex/gemini), a CPU ollama,
@@ -1146,7 +1184,18 @@ check-openclaw-desktop-pod:
         image: openclaw-desktop
         disposable: true
         lifecycle: dev
-        description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go multistage, plus the packaged CPU ollama) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp.
+        description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go multistage, plus the packaged CPU ollama) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp, and the openclaw verb's health probe against the running 2.0 gateway.
+        plan:
+            - check: the openclaw verb reaches the gateway's /healthz liveness endpoint on the running 2.0 gateway
+              id: openclaw-desktop-verb-health
+              openclaw:
+                method: health
+              stdout:
+                - contains: "ok"
+              eventually: 90s
+              retry_interval: 5s
+              context:
+                - runtime
 # charly-cachyos — the operator CachyOS workstation profile (target: local +
 # host: local). It mutates the operator's REAL MACHINE — it installs packages as
 # root and may change repo config — so it is an operator profile, NEVER a test bed.
