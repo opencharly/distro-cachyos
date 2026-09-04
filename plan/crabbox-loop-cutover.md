@@ -68,3 +68,22 @@ the current build context) or an upstream provider knob for the bootstrap
 tmpfs. Options: (1) a container-nesting recipe workstream; (2) an upstream
 crabbox knob extending #1813; (3) keep the de-scoped ledger item with this
 evidence.
+
+## PROOF: FULL GREEN in-box (2026-09-04, calver 2026.247.1452)
+
+`charly check run check-crabbox-e2e-pod` on feat/loop-exit2 returned **steps=13,
+exit 0** with the local layer override providing the knob CLI (0.49.0-knob2,
+org-fork release) + the host-backed storage volume + the priority-1 prewarm:
+
+- [cbx-e2e-loop] PASS exit=0 — the FULL LOCAL LOOP (lease via local-container,
+  sync, run, stream, release) ran inside the venue with the no-hostname knob;
+- [nested-podman-run] PASS exit=0 (the baked --pull=never smoke found the
+  prewarmed alpine);
+- health/ready 200, login/doctor/usage/leases PASS, 0.49.0-knob2 asserted live;
+- image-build/check-image/deploy/config/start/check-live/UPDATE (R10 fresh
+  rebuild)/rebuilds/cleanup all PASS; host clean after.
+
+Shipping state: the branch CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME env + loop step
+are gated on the knob being in the released CLI (upstream openclaw/crabbox
+#1813); the ledger PROOF is complete via the fork build (the sanctioned
+CHARLY_REPO_OVERRIDE mechanism).
