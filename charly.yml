@@ -1159,7 +1159,7 @@ check-crabbox-e2e-pod:
                 crabbox checkpoint create --name cbx-probe --provider local-container
                 crabbox checkpoint list
                 crabbox stop checkpoint-probe
-            - check: stretch — retained run-session handle (documented 0.48 surface: --lease-output session.json + cleanup)
+            - check: stretch — retained run-session handle (documented 0.48 lease-output surface + cleanup)
               id: cbx-e2e-stretch-artifacts
               exit_status: 0
               context:
