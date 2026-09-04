@@ -1062,6 +1062,7 @@ check-crabbox-e2e-pod:
         image: crabbox-e2e
         disposable: true
         lifecycle: dev
+        network: host
         env:
             POSTGRES_DB: crabbox
             POSTGRES_USER: postgres

@@ -5,7 +5,7 @@ crabbox-e2e:
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.239.1607'
             - '@github.com/opencharly/layer-crabbox:v2026.247.0855'
-            - '@github.com/opencharly/plugin-crabbox/candy/plugin-crabbox:v0'
-            - '@github.com/opencharly/pod-crabbox:v0'
+            - '@github.com/opencharly/plugin-crabbox/candy/plugin-crabbox:v2026.247.1021'
+            - '@github.com/opencharly/pod-crabbox:v2026.247.1016'
             - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
             - crabbox-nesting-dns
