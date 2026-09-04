@@ -45,3 +45,26 @@ warnings, from the committed tree.
 ## Blockers
 
 None internal — the two exits above are the roadmap; no operator dependency.
+
+## Terminal blocker matrix (2026-09-04, probe-complete; host-independent within the container-nesting recipe)
+
+With the no-hostname knob in-box (0.49.0-knob2 verified live: verb dispatch,
+broker surface, coordinator all green), the loop STILL cannot provision:
+
+- (a) uid-1000 + the recipe's user storage (~/.local/share, fuse-overlayfs on
+  the box's fuse rootfs) -> crun `mkdir /tmp/crabbox-bootstrap: Operation not
+  permitted` (nested fuse-overlayfs dir-create EPERM; touch works, mkdir
+  denies).
+- (b) uid-1000 + tmpfs graphroot -> layer unpacking failed.
+- (c) uid-0 root posture + system storage (/var/lib/containers/storage volume,
+  host-kernel-overlay backed) -> mkdir OK but netavark `setns` EPERM for the
+  always-emitted `--network bridge`; network host discards the SSH publish.
+- (d) the provider cannot be given `--tmpfs /tmp` or --network omission from
+  config.
+
+The loop requires a RECIPE-level change (nested storage on the host-volume +
+a build-time image injection path for the lease/smoke images — impossible in
+the current build context) or an upstream provider knob for the bootstrap
+tmpfs. Options: (1) a container-nesting recipe workstream; (2) an upstream
+crabbox knob extending #1813; (3) keep the de-scoped ledger item with this
+evidence.
