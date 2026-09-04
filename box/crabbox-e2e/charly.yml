@@ -1,9 +1,6 @@
 crabbox-e2e:
     candy:
         enabled: true
-        volume:
-            - name: cbx-storage
-              path: /home/user/.crabbox-storage
         base: cachyos
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'

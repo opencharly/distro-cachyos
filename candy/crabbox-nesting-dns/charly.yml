@@ -6,6 +6,9 @@ version: 2026.240.1943
 crabbox-nesting-dns:
     candy:
         version: 2026.247.0100
+        volume:
+            - name: cbx-storage
+              path: /home/user/.crabbox-storage
         description: |
             Bakes a working resolver AND a private UTS namespace into the nested
             rootless podman via a containers.conf drop-in
