@@ -23,6 +23,13 @@ crabbox-nesting-dns:
             resolve registries from a fixed resolver instead — host-independent
             beds. The observable effect: podman reads the drop-in and the nested
             containers' resolv.conf names 9.9.9.9.
+        service:
+            - name: cbx-storage-prewarm
+              exec: "/bin/sh -c 'podman pull quay.io/libpod/alpine:latest >/tmp/cbx-prewarm.log 2>&1 || true'"
+              restart: on-failure
+              priority: 1
+              enable: true
+              scope: system
         plan:
             - run: restore user ownership of the box user's cache root (a build-time root step created /home/user/.cache as root:root 755 — crabbox's local-container bootstrap then fails with permission denied)
               command: mkdir -p /home/user/.cache && chown 1000:1000 /home/user/.cache && chmod 0755 /home/user/.cache
