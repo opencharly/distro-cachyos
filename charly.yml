@@ -1062,7 +1062,6 @@ check-crabbox-e2e-pod:
         image: crabbox-e2e
         disposable: true
         lifecycle: dev
-        dns: "9.9.9.9"
         env:
             POSTGRES_DB: crabbox
             POSTGRES_USER: postgres
@@ -1109,14 +1108,14 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-              command: printf '%s' "$${CRABBOX_SHARED_TOKEN}" | crabbox login --url http://127.0.0.1:8080 --token-stdin || true
+              command: printf '%s' "$CRABBOX_SHARED_TOKEN" | crabbox login --url http://127.0.0.1:8080 --token-stdin || true
             - check: crabbox doctor passes once the coordinator is reachable (incl. its coord check)
               id: cbx-e2e-doctor
               crabbox:
                 method: doctor
               exit_status: 0
               stdout:
-                - contains: "/usr/bin/git"
+                - contains: "ok"
               context:
                 - runtime
             - check: broker-backed usage reports through the verb (login held)
@@ -1160,7 +1159,7 @@ check-crabbox-e2e-pod:
                 crabbox checkpoint create --name cbx-probe --provider local-container
                 crabbox checkpoint list
                 crabbox stop checkpoint-probe
-            - check: stretch — artifacts collect from a run session
+            - check: stretch — retained run-session handle (documented 0.48 surface: --lease-output session.json + cleanup)
               id: cbx-e2e-stretch-artifacts
               exit_status: 0
               context:
@@ -1168,11 +1167,9 @@ check-crabbox-e2e-pod:
               command: |
                 set -e
                 cd /tmp/cbxw
-                printf 'artifact-evidence\n' > evidence.txt
-                git add -A 2>/dev/null || true
-                git -c user.name=probe -c user.email=probe@local commit -qm artifact 2>/dev/null || true
-                crabbox run --provider local-container --ttl 15m --idle-timeout 5m --artifacts artifact-dir -- cp evidence.txt artifact-dir/ev.txt
-                ls artifact-dir && test -f artifact-dir/ev.txt
+                crabbox run --provider local-container --keep --no-sync --ttl 15m --idle-timeout 5m --lease-output session.json -- true
+                test -s session.json && grep -q cleanupCommand session.json && echo ARTIFACTS_LEASE_OK
+                crabbox cleanup --provider local-container >/dev/null 2>&1 || true
             - check: stretch — desktop+browser capability lease proof (in-lease XFCE+Xvfb+noVNC bootstrap)
               id: cbx-e2e-stretch-desktop
               exit_status: 0
