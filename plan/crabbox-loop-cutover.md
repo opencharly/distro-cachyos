@@ -120,3 +120,6 @@ FAILs are upstream crabbox behaviors in the nested/rootless environment,
 external-gated like the #1813 knob release; their PASS state is tracked with
 the upstream workstream. The core R10 gate (steps=13 incl. the update/rebuild
 gates) was proven by the calver-2026.247.1452 full-green run of the loop bed.
+## Openclaw/selkies family pin hygiene — RCA + routing (2026-09-04)
+
+The multi-version warnings (pod-selkies, pod-selkies-core, layer-wl-*, layer-selkies-kde-desktop) are STRUCTURAL: the selkies box files in distro-cachyos carry a multi-version candy matrix (each box lists the family candies at several old+new tags simultaneously). A single stale-pin sweep cannot clear them safely (a regex sweep corrupted the graph once — reverted, R4). Fix = a DEDICATED matrix-alignment workstream: for each box file, collapse the family entries to the single newest tag per candy (v2026.246.2210 / v2026.246.2331 / v2026.247.1546 / v2026.243.1848 / v2026.247.0314), validate 0-warning, then the charly cachyos-import re-vendor (the parity item) can land. distro PR #64 (single-line closure fix) superseded by this workstream.
