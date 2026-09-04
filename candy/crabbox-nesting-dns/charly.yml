@@ -7,9 +7,14 @@ crabbox-nesting-dns:
     candy:
         version: 2026.247.0100
         description: |
-            Bakes a working resolver into the nested rootless podman via a
-            containers.conf drop-in (containers.conf.d/99-crabbox-dns.conf with
-            [containers] dns_servers=["9.9.9.9"]). The box's built-in gateway
+            Bakes a working resolver AND a private UTS namespace into the nested
+            rootless podman via a containers.conf drop-in
+            (containers.conf.d/99-crabbox-dns.conf with [containers]
+            dns_servers=["9.9.9.9"] and utsns="private" — the container-nesting
+            recipe's utsns=host makes podman refuse crabbox's lease hostname:
+            "cannot set hostname when running in the host UTS namespace", RCA
+            round 9; userns=host stays — the mount_too_revealing fix is
+            untouched). The box's built-in gateway
             resolver is HOST-dependent (rootless aardvark-dns DNAT varies by host),
             so crabbox local-container leases and the container-nesting smoke
             resolve registries from a fixed resolver instead — host-independent
@@ -26,6 +31,7 @@ crabbox-nesting-dns:
               content: |
                 [containers]
                 dns_servers = ["9.9.9.9"]
+                utsns = "private"
             - check: the nested-podman DNS drop-in is present in the image
               file:
                 file: /home/user/.config/containers/containers.conf.d/99-crabbox-dns.conf
