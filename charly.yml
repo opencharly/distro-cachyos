@@ -39,7 +39,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.241.1429'
+    - arch: '@github.com/opencharly/distro-arch:v2026.243.1842'
 discover:
     - path: box
       recursive: true
@@ -76,7 +76,7 @@ check-cachyos-vm:
         # dev-tools is composed here so this canary also validates the cachyos
         # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
         add_candy:
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
         install_opts:
             allow_repo_changes: true
@@ -213,7 +213,7 @@ check-punktfunk-vm:
             account, and the PACKAGED punktfunk-host user unit is enabled with the management
             API answering - none of which a supervisord container venue can demonstrate.
         add_candy:
-            - '@github.com/opencharly/layer-punktfunk:v2026.241.2026'
+            - '@github.com/opencharly/layer-punktfunk:v2026.242.1658'
         install_opts:
             # REQUIRED: the candy adds a third-party pacman repo, and needs root for
             # pacman-key, usermod and loginctl.
@@ -322,14 +322,14 @@ check-cachyos-gpu-vm:
             # in-guest layer here — it runs as the nested selkies-kde pod below
             # (kde-selkies moved into the selkies-kde-nvidia image). This mirrors the
             # workstation's dual-desktop split: bare-metal seat + headless stream.
-            - '@github.com/opencharly/pod-kde-desktop:v2026.239.1635'
+            - '@github.com/opencharly/pod-kde-desktop:v2026.243.1806'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
             # deploy-scope checks for BOTH the bed and the operator VM (R3).
             - cachyos-gpu-desktop-check
             - '@github.com/opencharly/layer-fonts-extended:v2026.240.0218'
-            - '@github.com/opencharly/layer-desktop-media:v2026.239.1628'
+            - '@github.com/opencharly/layer-desktop-media:v2026.243.1041'
             - '@github.com/opencharly/layer-cachyos-extras:v2026.239.1610'
             # charly (→ charly layer) exercises the charly-layer-on-VM-deploy path: on
             # this Arch/CachyOS guest the charly layer's localpkg builds the charly
@@ -339,7 +339,7 @@ check-cachyos-gpu-vm:
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
             - nvidia-driver
         install_opts:
@@ -657,6 +657,168 @@ check-selkies-labwc-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof of the CPU labwc selkies streaming desktop building from the cachyos→arch-builder pixi path — the labwc compositor variant (no wl probe) and the base box for android-emulator. Builds (pixi pixelflux + AUR chrome/wlrctl multistage) and deploys the selkies-labwc pod, then runs the inherited selkies-desktop baked checks — labwc/waybar/swaync/pavucontrol/chrome package+service probes, the selkies HTTPS :3000 UI probe, and chrome-devtools-mcp probes.
+check-cardwire-vm:
+    vm:
+        # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
+        # on the build host's /tmp (charly vm builds the disk there); redirect the build
+        # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR (see plan §2.3).
+        from: cachyos-gpu-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            R10 bed for plugin-cardwire + plugin-bpf facts on the REAL VFIO surface: a
+            CachyOS pacstrap VM receiving the passed-through NVIDIA GPU (auto-allocated
+            hostdev via requires_exclusive: [nvidia-gpu]) with a SPICE terminal (sway +
+            ghostty on the virtio head, host-side plugin-spice probes) and cardwire
+            installed from the OGC pacman repo with defaults. T1 (always): guest bpf LSM
+            active, cardwired active, CLI + config defaults. T2 (this host): NVIDIA
+            0x10de present in-guest; cardwire exposes it as the block target and the
+            mode/block gates are asserted as cardwire's REAL upstream contract on this
+            2-GPU topology (set manual REFUSED with the Laptop-classification message;
+            per-GPU block REFUSED with the manual-mode-only message; the blocked flag
+            stays clear), plus config persistence across daemon restart via the toml.
+            The block->ENOENT->unblock->open-OK semantics are proven by the Phase-0
+            spike on a Manual-classified guest (docs, not replayed here). The bed
+            REQUIRES the nvidia-gpu token (auto-allocate or fail hard), so the full
+            tier always runs here.
+        requires_exclusive: [nvidia-gpu]
+        add_candy:
+            - nvidia-driver
+            - wheel-nopasswd
+            - ghostty
+            - cardwire-seat
+            - '@github.com/opencharly/plugin-cardwire/candy/plugin-cardwire:v2026.243.1202'
+            - '@github.com/opencharly/plugin-cardwire/candy/cardwire-install:v2026.243.1202'
+            - '@github.com/opencharly/plugin-bpf/candy/plugin-bpf:v2026.243.1059'
+        install_opts:
+            with_service: true
+            allow_repo_changes: true
+            allow_root_tasks: true
+            skip_incompatible: true
+            verify: true
+        plan:
+            # ---- T1 (always) ----
+            - check: guest bpf LSM active (the eBPF blocker's gate, /sys/kernel/security/lsm)
+              id: t1-bpf-lsm-active
+              exit_status: 0
+              stdout:
+                - contains: bpf
+              context: [runtime]
+              command: cat /sys/kernel/security/lsm
+            - check: cardwired is active after install
+              id: t1-cardwired-active
+              exit_status: 0
+              stdout:
+                - contains: active
+              context: [runtime]
+              command: systemctl is-active cardwired
+            - check: the cardwire CLI is installed at /usr/bin/cardwire
+              id: t1-cardwire-cli
+              file:
+                file: /usr/bin/cardwire
+                exists: true
+              context: [runtime]
+            - check: the cardwire defaults config carries experimental_nvidia_block=true
+              id: t1-cardwire-config-defaults
+              file:
+                file: /etc/cardwire/cardwire.toml
+                contains: 'experimental_nvidia_block = true'
+              context: [runtime]
+            - check: the SPICE terminal seat is up (sway compositor + ghostty)
+              id: t1-seat-up
+              exit_status: 0
+              stdout:
+                - contains: sway
+              context: [runtime]
+              command: pgrep -af 'sway --unsupported-gpu' | head -1
+            # ---- T2 (in-guest NVIDIA driver present — full tier on this host) ----
+            - check: the passed-through NVIDIA GPU is visible in-guest (vendor 0x10de)
+              id: t2-nvidia-visible
+              exit_status: 0
+              stdout:
+                - contains: NVIDIA
+              context: [runtime]
+              command: lspci | grep -i nvidia | head -1
+            - check: cardwire list exposes the NVIDIA GPU as the block target (non-default id)
+              id: t2-nvidia-nondefault
+              exit_status: 0
+              stdout:
+                - matches: '.*NVIDIA.*'
+              context: [runtime]
+              command: sudo -n cardwire list | grep -i NVIDIA
+            - check: the mode gate contract — on this 2-GPU Laptop-classified topology set manual is REFUSED by upstream design and hybrid still applies
+              id: t2-mode-gate
+              exit_status: 0
+              stdout:
+                - contains: T2-MANUAL-GATE-REFUSED
+                - contains: T2-MODE-SET-HYBRID
+              context: [runtime]
+              command: |
+                set -e
+                out=$(sudo -n cardwire set manual 2>&1) && { echo "T2-MANUAL-UNEXPECTED-OK: $out"; exit 1; } || true
+                echo "$out" | grep -q 'Manual mode is only available' && echo 'T2-MANUAL-GATE-REFUSED'
+                sudo -n cardwire set hybrid >/dev/null 2>&1 && echo 'T2-MODE-SET-HYBRID'
+            - check: the block-surface contract — per-GPU block is manual-mode-only upstream; on this topology both gates REFUSE, the blocked flag stays clear, and the block->ENOENT->unblock->OK semantics are Phase-0-spike-proven on a Manual-classified guest
+              id: t2-block-surface-gate
+              exit_status: 0
+              stdout:
+                - contains: T2-BLOCK-SURFACE-GATED
+                - contains: T2-MANUAL-GATE-STILL-REFUSED
+                - contains: T2-BLOCKED-FLAG-CLEAR
+              context: [runtime]
+              command: |
+                set -e
+                nvidia_id=$(sudo -n cardwire list | awk '/NVIDIA/{print $1}' | head -1)
+                if [ -z "$nvidia_id" ]; then echo 'T2-NO-NVIDIA (portable N/A)'; exit 0; fi
+                out=$(sudo -n cardwire gpu "$nvidia_id" --block 2>&1) && { echo "T2-BLOCK-UNEXPECTED-OK: $out"; exit 1; } || true
+                echo "$out" | grep -q 'Per GPU block is only available on manual mode' && echo 'T2-BLOCK-SURFACE-GATED'
+                m=$(sudo -n cardwire set manual 2>&1) || true
+                echo "$m" | grep -q 'Manual mode is only available' && echo 'T2-MANUAL-GATE-STILL-REFUSED'
+                f=$(sudo -n cardwire list | awk -v id="$nvidia_id" '$1==id{print $NF}' | head -1)
+                echo "blocked-flag: $f"
+                echo "$f" | grep -q false && echo 'T2-BLOCKED-FLAG-CLEAR'
+            - check: config persistence across daemon restart (auto-apply-gpu-state survives cardwired restart via the toml)
+              id: t2-mode-persistence
+              exit_status: 0
+              stdout:
+                - contains: T2-CONFIG-PERSISTED
+                - contains: T2-CONFIG-PERSISTED-2
+              context: [runtime]
+              command: |
+                set -e
+                sudo -n cardwire config auto-apply-gpu-state false
+                sudo -n systemctl restart cardwired
+                sleep 2
+                out=$(sudo -n cardwire config auto-apply-gpu-state)
+                echo "after-restart: $out"
+                echo "$out" | grep -qi 'false' && echo 'T2-CONFIG-PERSISTED'
+                sudo -n cardwire config auto-apply-gpu-state true
+                sudo -n systemctl restart cardwired
+                sleep 2
+                out2=$(sudo -n cardwire config auto-apply-gpu-state)
+                echo "restored: $out2"
+                echo "$out2" | grep -qi 'true' && echo 'T2-CONFIG-PERSISTED-2'
+            # ---- SPICE terminal probes (host-side, plugin-spice) ----
+            - check: spice=status — the SPICE wire is connected to the guest seat
+              id: spice-connected
+              spice: status
+              stdout: {contains: display}
+              context: [runtime]
+            - check: spice=screenshot — the seat renders (non-uniform frame)
+              id: spice-renders
+              spice:
+                method: screenshot
+                artifact: /tmp/cardwire-seat.png
+                artifact_min_bytes: 4096
+                artifact_min_dimensions: 640x480
+                artifact_not_uniform: true
+              context: [runtime]
+            - check: spice=type — keystrokes reach the ghostty terminal on the seat
+              id: spice-terminal-type
+              spice:
+                method: type
+                text: 'cardwire seat ok'
+              context: [runtime]
 check-selkies-labwc-nvidia-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
@@ -957,7 +1119,34 @@ check-openclaw-pod:
         image: openclaw
         disposable: true
         lifecycle: dev
-        description: Sole build+runtime witness for box:openclaw — the MINIMAL openclaw composition (agent-forwarding + openclaw + dbus); NOT redundant with check-openclaw-full-pod because the dbus candy is composed ONLY here, never in the 27-candy box:openclaw-full meta. Builds (npm) and deploys the minimal openclaw pod on the CachyOS (Arch) base, exercising the cachyos→arch-builder npm build of the openclaw package plus the dbus/charly/socat/supervisord layer stack, and runs the inherited agent-forwarding + openclaw + dbus baked checks — the gateway CLI binary under ~/.npm-global/bin, the supervised service, and the openclaw :18789 TCP reachability.
+        description: Sole build+runtime witness for box:openclaw — the MINIMAL openclaw composition (agent-forwarding + openclaw + plugin-openclaw + dbus); NOT redundant with check-openclaw-full-pod because the dbus candy is composed ONLY here, never in the 27-candy box:openclaw-full meta. Builds (npm) and deploys the minimal openclaw pod on the CachyOS (Arch) base, exercising the cachyos→arch-builder npm build of the openclaw package plus the dbus/charly/socat/supervisord layer stack, and runs the inherited agent-forwarding + openclaw + dbus baked checks — the gateway CLI binary under ~/.npm-global/bin, the supervised service, the openclaw :18789 TCP reachability, and the /healthz liveness endpoint — plus the plugin-openclaw verb's own live dispatch (the openclaw health + ready methods against the running 2.0 gateway).
+        plan:
+            - check: the openclaw verb reaches the gateway's /healthz liveness endpoint on the running 2.0 gateway
+              id: openclaw-verb-health
+              openclaw:
+                method: health
+              stdout:
+                - contains: "ok"
+              eventually: 90s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: the openclaw verb reports the gateway ready via /readyz
+              id: openclaw-verb-ready
+              openclaw:
+                method: ready
+              eventually: 60s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: the openclaw verb reports the gateway's model status via the in-venue CLI
+              id: openclaw-verb-models
+              openclaw:
+                method: models
+              eventually: 60s
+              retry_interval: 5s
+              context:
+                - runtime
 # check-openclaw-full-pod deploys the maximal headless openclaw-full on the
 # CachyOS (Arch) base — a non-browser gateway (no chrome/chrome-cdp). Exercises
 # the tool stack incl. gogcli@latest (Arch go 1.26.x) and the ffmpeg/sqlite
@@ -968,7 +1157,18 @@ check-openclaw-full-pod:
         image: openclaw-full
         disposable: true
         lifecycle: dev
-        description: Sole proof the maximal headless openclaw-full non-browser gateway + tool stack (gogcli@latest go-install on Arch go 1.26.x, ffmpeg/sqlite) composes and runs on the CachyOS (Arch) base. Builds (npm + go install multistage) and deploys the openclaw-full pod, then runs the inherited agent-forwarding + openclaw-full baked checks asserting gogcli, ffmpeg, sqlite, and the gateway/tool stack present.
+        description: Sole proof the maximal headless openclaw-full non-browser gateway + tool stack (gogcli@latest go-install on Arch go 1.26.x, ffmpeg/sqlite) composes and runs on the CachyOS (Arch) base. Builds (npm + go install multistage) and deploys the openclaw-full pod, then runs the inherited agent-forwarding + openclaw-full baked checks asserting gogcli, ffmpeg, sqlite, and the gateway/tool stack present, plus the openclaw verb's health probe against the running 2.0 gateway.
+        plan:
+            - check: the openclaw verb reaches the gateway's /healthz liveness endpoint on the running 2.0 gateway
+              id: openclaw-full-verb-health
+              openclaw:
+                method: health
+              stdout:
+                - contains: "ok"
+              eventually: 90s
+              retry_interval: 5s
+              context:
+                - runtime
 # check-openclaw-desktop-pod deploys the all-in-one openclaw-desktop image on
 # the CachyOS (Arch) base — the selkies streaming desktop fused with the
 # openclaw-full gateway/tool stack (claude-code/codex/gemini), a CPU ollama,
@@ -984,7 +1184,19 @@ check-openclaw-desktop-pod:
         image: openclaw-desktop
         disposable: true
         lifecycle: dev
-        description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go multistage, plus the packaged CPU ollama) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp.
+        description: Sole proof of the all-in-one openclaw-desktop image fusing the selkies streaming desktop + openclaw-full gateway/AI-CLI stack + CPU ollama + full nested charly toolchain on one CachyOS image. Builds (AUR chrome + npm openclaw + go multistage, plus the packaged CPU ollama) and deploys the openclaw-desktop pod, then runs baked checks (nested-rootless posture, nested podman, libvirt-session, charly version/doctor, three services) plus deploy-scope probes — AUR chrome, the selkies HTTPS UI, the AI CLIs (claude-code/codex/gemini), the ollama binary, chrome-devtools-mcp, and the openclaw verb's health probe against the running 2.0 gateway.
+        plan:
+            - check: the openclaw verb reaches the gateway's /healthz liveness endpoint on the running 2.0 gateway
+              id: openclaw-desktop-verb-health
+              openclaw:
+                method: health
+              stdout:
+                - contains: "ok"
+              eventually: 90s
+              retry_interval: 5s
+              context:
+                - runtime
+
 # check-crabbox-pod — the minimal Crabbox CLI composition (agent-forwarding +
 # layer-crabbox + plugin-crabbox) on the CachyOS base. Runs the `crabbox:` check
 # verb's credential-free surface in-venue (version/providers/config/doctor with
@@ -1198,32 +1410,32 @@ cachyos-gpu:
             - '@github.com/opencharly/layer-yay:v2026.240.0121'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
             - '@github.com/opencharly/layer-gh:v2026.239.1624'
-            - '@github.com/opencharly/layer-pre-commit:v2026.239.1552'
+            - '@github.com/opencharly/layer-pre-commit:v2026.243.0409'
             - '@github.com/opencharly/layer-tmux:v2026.240.0202'
-            - '@github.com/opencharly/layer-direnv:v2026.239.1629'
+            - '@github.com/opencharly/layer-direnv:v2026.242.1147'
             - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
             - '@github.com/opencharly/layer-keepassxc:v2026.239.1624'
             - keepassxc-keyring
             - '@github.com/opencharly/layer-tailscale:v2026.240.0121'
-            - '@github.com/opencharly/layer-tailscale-up:v2026.240.0201'
+            - '@github.com/opencharly/layer-tailscale-up:v2026.243.0410'
             - '@github.com/opencharly/layer-build-toolchain:v2026.239.1636'
             - '@github.com/opencharly/layer-golang:v2026.239.1614'
             - '@github.com/opencharly/layer-rust:v2026.239.1627'
             - '@github.com/opencharly/layer-nodejs:v2026.239.1624'
             - '@github.com/opencharly/layer-uv:v2026.239.1631'
             - '@github.com/opencharly/layer-claude-code:v2026.239.1626'
-            - '@github.com/opencharly/layer-codex:v2026.239.1634'
-            - '@github.com/opencharly/layer-gemini:v2026.239.1621'
-            - '@github.com/opencharly/layer-oracle:v2026.239.1637'
-            - '@github.com/opencharly/layer-forgecode:v2026.239.1636'
-            - '@github.com/opencharly/layer-devops-tools:v2026.239.1640'
+            - '@github.com/opencharly/layer-codex:v2026.243.0408'
+            - '@github.com/opencharly/layer-gemini:v2026.243.0409'
+            - '@github.com/opencharly/layer-oracle:v2026.243.0409'
+            - '@github.com/opencharly/layer-forgecode:v2026.243.0408'
+            - '@github.com/opencharly/layer-devops-tools:v2026.243.0408'
             - '@github.com/opencharly/layer-docker-ce:v2026.239.1626'
-            - '@github.com/opencharly/layer-kubernetes:v2026.240.0201'
+            - '@github.com/opencharly/layer-kubernetes:v2026.241.0654'
             - '@github.com/opencharly/layer-vscode:v2026.239.1631'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
@@ -1233,14 +1445,14 @@ cachyos-gpu:
             # (real NVENC, :3000) deployed as a persistent in-guest quadlet — see
             # `nested:` below, NOT an in-guest layer. The bare-metal SDDM Plasma
             # seat (kde-desktop) drives the physical RTX monitors.
-            - '@github.com/opencharly/pod-kde-desktop:v2026.239.1635'
+            - '@github.com/opencharly/pod-kde-desktop:v2026.243.1806'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
             # deploy-scope checks for BOTH the bed and the operator VM (R3).
             - cachyos-gpu-desktop-check
             - '@github.com/opencharly/layer-fonts-extended:v2026.240.0218'
-            - '@github.com/opencharly/layer-desktop-media:v2026.239.1628'
+            - '@github.com/opencharly/layer-desktop-media:v2026.243.1041'
             - '@github.com/opencharly/layer-cachyos-extras:v2026.239.1610'
             # (in-guest kde-selkies layer REMOVED — the WebRTC streaming desktop is
             # the nested selkies-kde-nvidia pod below; podman is its in-guest substrate.)
@@ -1286,32 +1498,32 @@ charly-cachyos-app:
             - '@github.com/opencharly/layer-yay:v2026.240.0121'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
             - '@github.com/opencharly/layer-gh:v2026.239.1624'
-            - '@github.com/opencharly/layer-pre-commit:v2026.239.1552'
+            - '@github.com/opencharly/layer-pre-commit:v2026.243.0409'
             - '@github.com/opencharly/layer-tmux:v2026.240.0202'
-            - '@github.com/opencharly/layer-direnv:v2026.239.1629'
+            - '@github.com/opencharly/layer-direnv:v2026.242.1147'
             - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
             - '@github.com/opencharly/layer-keepassxc:v2026.239.1624'
             - keepassxc-keyring
             - '@github.com/opencharly/layer-tailscale:v2026.240.0121'
-            - '@github.com/opencharly/layer-tailscale-up:v2026.240.0201'
+            - '@github.com/opencharly/layer-tailscale-up:v2026.243.0410'
             - '@github.com/opencharly/layer-build-toolchain:v2026.239.1636'
             - '@github.com/opencharly/layer-golang:v2026.239.1614'
             - '@github.com/opencharly/layer-rust:v2026.239.1627'
             - '@github.com/opencharly/layer-nodejs:v2026.239.1624'
             - '@github.com/opencharly/layer-uv:v2026.239.1631'
             - '@github.com/opencharly/layer-claude-code:v2026.239.1626'
-            - '@github.com/opencharly/layer-codex:v2026.239.1634'
-            - '@github.com/opencharly/layer-gemini:v2026.239.1621'
-            - '@github.com/opencharly/layer-oracle:v2026.239.1637'
-            - '@github.com/opencharly/layer-forgecode:v2026.239.1636'
-            - '@github.com/opencharly/layer-devops-tools:v2026.239.1640'
+            - '@github.com/opencharly/layer-codex:v2026.243.0408'
+            - '@github.com/opencharly/layer-gemini:v2026.243.0409'
+            - '@github.com/opencharly/layer-oracle:v2026.243.0409'
+            - '@github.com/opencharly/layer-forgecode:v2026.243.0408'
+            - '@github.com/opencharly/layer-devops-tools:v2026.243.0408'
             - '@github.com/opencharly/layer-docker-ce:v2026.239.1626'
-            - '@github.com/opencharly/layer-kubernetes:v2026.240.0201'
+            - '@github.com/opencharly/layer-kubernetes:v2026.241.0654'
             - '@github.com/opencharly/layer-vscode:v2026.239.1631'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/layer-charly:v2026.241.1407'
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
         install_opts:
             with_service: true
             allow_repo_changes: true
@@ -1492,7 +1704,7 @@ check-cstream-vm:
             serving and two provisioned accounts, and a description may only claim
             what its plan actually checks.
         add_candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.0331'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.243.1831'
             # BED FIXTURE: the second account. Cross-user PAM is the reason this
             # venue exists, and it needs an account that is NOT the deploy user.
             - cstream-vm-probe-account
@@ -2528,24 +2740,6 @@ check-cstream-pod:
                 - contains: LOGIN-REJECTED
               eventually: 120s
               retry_interval: 20s
-            # The ONLY check in this bed that can fail on an encoding or transport
-            # defect. cstream-stream-live reads the producer's own tap and the wl-*
-            # checks read the compositor, so both pass happily while not one byte
-            # reaches a consumer -- which is exactly what happened while webrtcbin
-            # was missing from the image.
-            #
-            # artifact_not_uniform is the assertion that matters: a stream that
-            # negotiates and then sends black, or a placeholder, is the failure this
-            # check exists to catch, and a byte count alone would pass it.
-            - check: a frame pulled back THROUGH the negotiated WebRTC track has real content
-              id: cstream-frame-through-webrtc
-              context:
-                - runtime
-              cstream:
-                  method: frame
-                  artifact: /tmp/cstream-frame.jpg
-                  artifact_min_bytes: 5000
-                  artifact_not_uniform: true
             # The `wl:` verb against the nested compositor. These are the first
             # checks to exercise it here: the binaries it shells out to
             # (wl-clipboard, wtype, wlr-randr) reached this image only when
@@ -2585,3 +2779,391 @@ check-cstream-pod:
                 artifact: /tmp/wl-desktop.png
                 artifact_min_bytes: 5000
                 artifact_not_uniform: true
+
+            # WP5 lock/idle -- the last three checks of this bed, IN THIS ORDER, and
+            # nothing may be appended after them.
+            #
+            # The desktop locks itself once no consumer has been connected for
+            # CSTREAM_LOCK_AFTER (10s in pod-cstream). hyprlock takes an
+            # ext-session-lock, and a lock client that is killed rather than
+            # authenticated leaves the compositor locked with no client -- so once
+            # this fires, every later `wl:` check would be reading a lock screen
+            # instead of the desktop. That is why the WebRTC frame check moved down
+            # here: it is the only check that connects a consumer, and its departure
+            # is what starts the countdown.
+            #
+            # The ONLY check in this bed that can fail on an encoding or transport
+            # defect. cstream-stream-live reads the producer's own tap and the wl-*
+            # checks read the compositor, so both pass happily while not one byte
+            # reaches a consumer -- which is exactly what happened while webrtcbin
+            # was missing from the image.
+            #
+            # artifact_not_uniform is the assertion that matters: a stream that
+            # negotiates and then sends black, or a placeholder, is the failure this
+            # check exists to catch, and a byte count alone would pass it.
+            - check: nothing has locked the desktop yet -- the lock is a CONSEQUENCE, not the resting state
+              id: cstream-lock-idle-only
+              context:
+                - runtime
+              command:
+                command: |
+                  # No viewer has connected at any point above, so the countdown has
+                  # never started. Without this, the check below passes for free against
+                  # an arming bug that locked at STARTUP -- which looks identical from
+                  # outside and would ALSO be the reason every wl- check above failed.
+                  if pgrep -x hyprlock >/dev/null 2>&1; then
+                      echo "LOCK-HELD-EARLY: hyprlock is running before any viewer has ever connected" >&2
+                      exit 1
+                  fi
+                  echo UNLOCKED-WHILE-UNWATCHED
+                in_container: true
+              stdout:
+                - contains: UNLOCKED-WHILE-UNWATCHED
+            - check: a frame pulled back THROUGH the negotiated WebRTC track has real content
+              id: cstream-frame-through-webrtc
+              context:
+                - runtime
+              cstream:
+                  method: frame
+                  artifact: /tmp/cstream-frame.jpg
+                  artifact_min_bytes: 5000
+                  artifact_not_uniform: true
+            - check: the desktop locks itself once the last viewer has gone
+              id: cstream-lock-after-detach
+              context:
+                - runtime
+              command:
+                command: |
+                  # The consumer above connected and left; 10s later the streamer
+                  # dispatches hyprlock INTO the nested Hyprland over its IPC socket.
+                  # A failure here is the whole WP5 path: the policy never armed, the
+                  # signals never fired, the socket was not found, or the Lua dispatcher
+                  # name is wrong -- all of which look like "no hyprlock" from here.
+                  pgrep -x hyprlock >/dev/null 2>&1 || {
+                      echo "NO-LOCK-YET: hyprlock is not running" >&2
+                      exit 1
+                  }
+                  echo "DESKTOP-LOCKED-AFTER-DETACH pid=$(pgrep -x hyprlock | head -1)"
+                in_container: true
+              stdout:
+                - contains: DESKTOP-LOCKED-AFTER-DETACH
+              # charly's own bounded retry, not a sleep: it stops the moment the lock
+              # appears and fails if it never does.
+              eventually: 60s
+              retry_interval: 5s
+
+check-punktfunk-client:
+    pod:
+        image: punktfunk-client
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Proves the punktfunk CLIENT half live: the client package installs from the
+            signed repo, its headless CLI runs, and the punktfunk verb's NEW client methods
+            execute through it in the venue. Deliberately host-free — pairing and streaming
+            need a second system and belong to check-punktfunk-fleet; this bed exists so the
+            client methods are proven to run before anything depends on them.
+        plan:
+            - check: the verb's client method lists saved hosts through the real CLI
+              id: pf-client-hosts-list
+              context:
+                - runtime
+              punktfunk:
+                method: hosts-list
+            - check: the verb's client method reads stream profiles through the real CLI
+              id: pf-client-profiles
+              context:
+                - runtime
+              punktfunk:
+                method: profiles-list
+
+check-punktfunk-fleet:
+    group:
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The two-system punktfunk bed: a host member and a client member as siblings in one
+            group, so the client actually pairs with the host and pulls a stream. Every
+            single-node punktfunk bed before this one proved installation and the control
+            plane only — they would all still pass if punktfunk could not stream a frame,
+            because no client had ever paired (`clients` returned `[]` and that was recorded
+            as a PASS). This bed exists to be able to fail for that reason.
+    # The `1-` / `2-` prefixes are LOAD-BEARING, not decoration. charly runs one
+    # `check live` per node and orders members by SORTED KEY
+    # (spec/fleet.BedCheckLiveRefs -> SortedNestedKeys); there is no priority or
+    # depends-on for members. Named plainly, `client` sorts before `host`, so the client
+    # tried to pair before the host had armed and the PIN file did not exist yet:
+    #   punktfunk: pin file /pfshare/pin is missing or empty
+    # The ordinal makes the required order explicit instead of leaving it to a coincidence
+    # of spelling.
+    punktfunk-fleet-1-host:
+        pod:
+            image: punktfunk-host
+            description: >-
+                The streaming host: cachyos + headless sway + punktfunk-host. Its own candy
+                checks (packages, repo key trust, host.env, the management API and web console
+                answering in-venue) come along composed, so this member re-proves the
+                single-node claims as a side effect.
+            volume:
+                # The PIN channel. The host GENERATES the pairing PIN and ignores a
+                # caller-supplied one (verified against 0.33.0-1), only the CLIENT can use it,
+                # and charly has no way to carry a step's output into another step's input. So
+                # both members mount one path and the PIN travels as a file — the automation of
+                # a human reading it off one screen and typing it into the other.
+                # A BIND to /tmp, not a named volume and not a personal path.
+                # charly namespaces named volumes PER MEMBER
+                # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
+                # member its own and the PIN never crosses -- verified: the client saw
+                # "pin file /pfshare/pin is missing or empty". A bind needs a host path
+                # that already exists, because podman will not create one, so it is /tmp
+                # rather than a subdirectory nobody has made. The file name is
+                # bed-specific so mounting a shared /tmp cannot collide.
+                - name: punktfunk-pair-share
+                  type: bind
+                  host: /tmp
+                  path: /pfshare
+            plan:
+                # Mutating, so a `run:` step — the verb refuses a mutating method in a check.
+                # This executes at the member's bring-up, BEFORE any check-live, which is the
+                # only ordering charly offers: a member's checks cannot interleave with a
+                # sibling's (bed_run.go issues one `check live` per node, parent first).
+                - run: arm pairing and drop the host-generated PIN where the client can read it
+                  id: pf-fleet-arm-pairing
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: pair-arm
+                    pin_out: /pfshare/charly-punktfunk-fleet.pin
+                - check: the management API answers, so the client has something to pair with
+                  id: pf-fleet-host-live
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: health
+                # The CAPTURE prerequisite, asserted rather than assumed. A session
+                # resolves to `capture: Portal`, so without this interface on the bus the
+                # host pairs, negotiates a codec and then fails every session at pipeline
+                # build — while every other control-plane check still passes. That is the
+                # exact combination that let this bed report green while nothing streamed.
+                #
+                # It also settles the one warning a clean run still emits. The Documents
+                # portal cannot mount its FUSE store here:
+                #   fusermount3: mount failed: Operation not permitted
+                #   error: fuse init failed: Can't mount path /tmp/doc
+                # `/dev/fuse` IS present; rootless containers deny mount(2) without
+                # CAP_SYS_ADMIN. punktfunk uses ScreenCast, never Documents, and granting
+                # that capability would trade real privilege for a portal nothing calls —
+                # so this asserts the interface that IS needed instead.
+                # NOTE the bare `$XDG_RUNTIME_DIR`, not `${XDG_RUNTIME_DIR:-/tmp}`. Brace
+                # form is charly's CANDY-VAR syntax, so the step does not fail — it SKIPS,
+                # reporting `unresolved variables: XDG_RUNTIME_DIR`, and check-live still
+                # says PASS. A decorative check that cannot fail is the exact disease this
+                # bed was built to cure, and it was caught only because this change was run
+                # on its own instead of batched.
+                - check: the ScreenCast portal interface is live, so the host can capture
+                  id: pf-fleet-host-screencast
+                  context:
+                    - runtime
+                  command:
+                    command: >-
+                        S="$XDG_RUNTIME_DIR/dbus-session"; [ -S "$S" ] || S=/tmp/dbus-session;
+                        DBUS_SESSION_BUS_ADDRESS="unix:path=$S" busctl --user introspect
+                        org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop
+                        | grep -q org.freedesktop.portal.ScreenCast
+                # NO host-side "has a paired client" check here, and the reason is the bed's
+                # own ordering. charly runs one `check live` per node, parent first
+                # (bed_run.go's checkLiveTree), so the host's pass completes BEFORE the
+                # client's begins — the client cannot have paired yet. An `eventually: 120s`
+                # poll here does not fix that, it deadlocks: the host waits two minutes for a
+                # pairing that can only happen after it stops waiting, and the armed PIN
+                # (expires_in_secs: 119) dies in the meantime, so the client then gets
+                # "Pairing isn't armed on the host".
+                #
+                # Enrolment is therefore asserted on the CLIENT, where it is observable in the
+                # right order: `hosts-list` only names a host after a pairing succeeded, and
+                # the host's own log carries "pairing complete — client trusted".
+    punktfunk-fleet-2-client:
+        pod:
+            image: punktfunk-client
+            description: >-
+                The second system: punktfunk-client and its headless CLI, no compositor. This
+                is the member that makes the bed a fleet rather than a self-probe — pairing and
+                the stream measurement run from OUTSIDE the host, which is the only place they
+                can be observed honestly.
+            volume:
+                # A BIND to /tmp, not a named volume and not a personal path.
+                # charly namespaces named volumes PER MEMBER
+                # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
+                # member its own and the PIN never crosses -- verified: the client saw
+                # "pin file /pfshare/pin is missing or empty". A bind needs a host path
+                # that already exists, because podman will not create one, so it is /tmp
+                # rather than a subdirectory nobody has made. The file name is
+                # bed-specific so mounting a shared /tmp cannot collide.
+                - name: punktfunk-pair-share
+                  type: bind
+                  host: /tmp
+                  path: /pfshare
+            plan:
+                # Runs at this member's bring-up, after the host member armed. pin_file keeps
+                # the PIN out of the manifest and out of argv — the venue's own shell pipes the
+                # file into `punktfunk pair --pin -`.
+                - run: pair with the host using the PIN it generated
+                  id: pf-fleet-pair
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: pair
+                    host: charly-punktfunk-fleet-1-host
+                    pin_file: /pfshare/charly-punktfunk-fleet.pin
+                # The renderer opens a PipeWire playback stream for the session's audio, and
+                # NOTHING here asserted that, so the client shipped for weeks with its audio
+                # thread dying on every session while video decoded fine:
+                #   pf_client_core::audio: audio playback thread ended
+                #     error=pw connect (is PipeWire running in this session?)
+                # The binary arrives as a dependency of punktfunk-client, so its presence
+                # proves nothing — what matters is that a SESSION is running with a sink to
+                # play into. Without this the same regression returns silently, because
+                # stream-probe counts decoded VIDEO frames only and would still pass.
+                #
+                # Bare $XDG_RUNTIME_DIR, never ${...}: brace form is charly's CANDY-VAR
+                # syntax and makes the step SKIP with `unresolved variables` while the phase
+                # still reports PASS — a check that cannot fail.
+                - check: the client has a live PipeWire sink for the renderer to play into
+                  id: pf-fleet-client-audio
+                  context:
+                    - runtime
+                  command:
+                    command: >-
+                        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"; [ -n "$XDG_RUNTIME_DIR" ] || XDG_RUNTIME_DIR=/tmp;
+                        export XDG_RUNTIME_DIR;
+                        pgrep -x pipewire >/dev/null || { echo "pipewire is not running in this venue" >&2; exit 1; };
+                        n=$(pw-dump 2>/dev/null | grep -c "Audio/Sink");
+                        [ "$n" -ge 1 ] || { echo "pipewire is running but exposes no Audio/Sink" >&2; exit 1; };
+                        echo "pipewire up with $n Audio/Sink"
+                - check: the host is now a saved host on the client
+                  id: pf-fleet-client-knows-host
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: hosts-list
+                  stdout:
+                    # `paired`, not the member name: the client files a host under the
+                    # ADDRESS it paired with, so `hosts list` reads
+                    #   10.89.0.160  10.89.0.160:9777  paired  -
+                    # and the name never appears. `paired` is also the word that carries the
+                    # claim — an unpaired entry would read differently.
+                    - contains: paired
+                # THE streaming assertion, and the one this bed lacked while reporting
+                # green. Everything above is control plane: packages, repo, mgmt API,
+                # pairing. All of it passes on a host that can never send a frame.
+                #
+                # `speed-test` is NOT this check, though it looks like it. It runs on
+                # `punktfunk`, which links libgcc/libm/libc and nothing else, so it
+                # advertises codec 0x00 and the host correctly refuses:
+                #   no shared video codec: client advertised 0x00, host can emit 0x01
+                # The decoder lives in `punktfunk-client` (libvulkan, libwayland-*, libdrm,
+                # libgbm), which `launch` spawns — so stream-probe runs a real bounded
+                # session through the renderer and counts frames.
+                #
+                # What breaking punktfunk makes this report:
+                #   host cannot capture       -> connects, then "no frame decoded"
+                #   client has no hardware ICD -> "advertised 0x00" in the carried output
+                #   no compositor in the venue -> exit 4, naming the missing display
+                #   host unreachable on 9777   -> exit 2
+                - check: the client decodes real video from the host
+                  id: pf-fleet-stream
+                  context:
+                    - runtime
+                  punktfunk:
+                    method: stream-probe
+                    host: charly-punktfunk-fleet-1-host
+                    # Long enough for the handshake, the decoder and the adaptive-bitrate
+                    # probe (which alone takes ~800ms and only starts after the first frame).
+                    stream_for: 25s
+                  stdout:
+                    # The PREFIX both success shapes share. A bounded probe usually reports
+                    # "streamed: width=… height=… path=…" because the client prints a frame
+                    # TOTAL only when the host ends the session; a host-ended session reports
+                    # "streamed: N frames decoded (…)". Matching "frames decoded" failed a
+                    # working stream on the singular "first frame decoded" — the verb already
+                    # fails outright on zero frames, so this only asserts the success shape.
+                    - contains: "streamed:"
+                  timeout: 120s
+# --- check-vm-clone: the VM-on-VM layering + bake R10 bed (cutover task 9) ---
+# Two disposable beds: check-vm-clone-base builds + provisions the cachyos VM
+# and captures a "golden" snapshot at install finalize (the check-bed
+# snapshot policy); check-vm-clone deploys a source.kind: clone entity of
+# that golden, and its plan probes the cloned guest with real ssh/command
+# verbs. This is the R10 vehicle for the clone build path and the layered
+# bake (charly vm bake) — NOT improvised disk-size heuristics.
+
+# The clone entity: a new VM built ON TOP of the cachyos base at its named
+# snapshot. from_vm keys the snapshot registry; the base bed's capture
+# (--domain check-vm-clone-base) registers the golden there, so from_vm is
+# the base BED's name (the registry key the capture wrote under).
+cachyos-vm-clone:
+    vm:
+        source:
+            kind: clone
+            from_vm: check-vm-clone-base
+            from_snapshot: golden
+        disk_size: 20G
+        ram: 4G
+        cpu: 2
+        firmware: uefi-insecure
+        backend: libvirt
+        ssh: {user: cachyos, port_auto: true, key_source: generate}
+        libvirt:
+            devices:
+                channels: [{type: unix, name: org.qemu.guest_agent.0}]
+
+# Base bed: provisions the cachyos VM and captures the golden snapshot.
+check-vm-clone-base:
+    vm:
+        from: cachyos-vm
+        disposable: true
+        lifecycle: dev
+        description: 'CachyOS VM-on-VM R10 base: provisions the cachyos VM, waits for sshd + cloud-init, captures the golden snapshot at install finalize for the clone bed.'
+        snapshot:
+            on_finalize: golden
+            mode: external
+            keep_venue: true
+        plan:
+            - check: the cachyos guest reports its hostname (in-guest command probe)
+              id: cvc-base-hostname
+              command: "uname -n"
+              stdout:
+                matches: ".+"
+              eventually: 300s
+              retry_interval: 10s
+              context: [runtime]
+            - check: the guest reports its os-release (in-guest command probe)
+              id: cvc-base-os
+              command: "cat /etc/os-release"
+              stdout:
+                contains: "ID=arch"
+              context: [runtime]
+
+# Clone bed: deploys the clone entity of golden; probes prove the cloned
+# guest boots and answers.
+check-vm-clone:
+    vm:
+        from: cachyos-vm-clone
+        disposable: true
+        lifecycle: dev
+        description: 'CachyOS VM-on-VM R10 clone: deploys the source.kind clone entity (from_vm=check-vm-clone-base@golden), probes the cloned guest with real ssh/command verbs to prove it boots and answers.'
+        plan:
+            - check: the cloned guest reports its hostname (in-guest command probe)
+              id: cvc-clone-hostname
+              command: "uname -n"
+              stdout:
+                matches: ".+"
+              eventually: 300s
+              retry_interval: 10s
+              context: [runtime]
+            - check: the cloned guest reports its os-release (in-guest command probe)
+              id: cvc-clone-os
+              command: "cat /etc/os-release"
+              stdout:
+                contains: "ID=arch"
+              context: [runtime]
