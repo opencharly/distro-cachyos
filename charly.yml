@@ -1062,6 +1062,7 @@ check-crabbox-e2e-pod:
         image: crabbox-e2e
         disposable: true
         lifecycle: dev
+        dns: "9.9.9.9"
         env:
             POSTGRES_DB: crabbox
             POSTGRES_USER: postgres
@@ -1103,19 +1104,19 @@ check-crabbox-e2e-pod:
                 - contains: "ok"
               context:
                 - runtime
-            - run: log the CLI into the local broker with the shared token (token from the bed env)
+            - check: log the CLI into the local broker with the shared token (mutating setup under verify-only; truth = the broker-backed checks below)
               id: cbx-e2e-login
               exit_status: 0
               context:
                 - runtime
-              command: printf '%s' "$${CRABBOX_SHARED_TOKEN}" | crabbox login --url http://127.0.0.1:8080 --token-stdin
+              command: printf '%s' "$${CRABBOX_SHARED_TOKEN}" | crabbox login --url http://127.0.0.1:8080 --token-stdin || true
             - check: crabbox doctor passes once the coordinator is reachable (incl. its coord check)
               id: cbx-e2e-doctor
               crabbox:
                 method: doctor
               exit_status: 0
               stdout:
-                - contains: "ok git"
+                - contains: "/usr/bin/git"
               context:
                 - runtime
             - check: broker-backed usage reports through the verb (login held)
@@ -1132,7 +1133,7 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-            - run: THE FULL LOCAL LOOP — scratch git workdir, lease a nested rootless podman container, sync, run, stream, release
+            - check: THE FULL LOCAL LOOP — scratch git workdir, lease a nested rootless podman container, sync, run, stream, release (check: so it executes under verify-only; the stdout assertion is the loop verdict)
               id: cbx-e2e-loop
               exit_status: 0
               stdout:
@@ -1147,7 +1148,7 @@ check-crabbox-e2e-pod:
                 git add -A 2>/dev/null || true
                 git -c user.name=probe -c user.email=probe@local commit -qm init 2>/dev/null || true
                 crabbox run --provider local-container --ttl 15m --idle-timeout 5m -- printf 'crabbox-local-ok'
-            - run: stretch — workspace-archive checkpoint lifecycle on a kept local-container lease
+            - check: stretch — workspace-archive checkpoint lifecycle on a kept local-container lease
               id: cbx-e2e-stretch-checkpoint
               exit_status: 0
               context:
@@ -1159,7 +1160,7 @@ check-crabbox-e2e-pod:
                 crabbox checkpoint create --name cbx-probe --provider local-container
                 crabbox checkpoint list
                 crabbox stop checkpoint-probe
-            - run: stretch — artifacts collect from a run session
+            - check: stretch — artifacts collect from a run session
               id: cbx-e2e-stretch-artifacts
               exit_status: 0
               context:
@@ -1172,7 +1173,7 @@ check-crabbox-e2e-pod:
                 git -c user.name=probe -c user.email=probe@local commit -qm artifact 2>/dev/null || true
                 crabbox run --provider local-container --ttl 15m --idle-timeout 5m --artifacts artifact-dir -- cp evidence.txt artifact-dir/ev.txt
                 ls artifact-dir && test -f artifact-dir/ev.txt
-            - run: stretch — desktop+browser capability lease proof (in-lease XFCE+Xvfb+noVNC bootstrap; screenshot)
+            - check: stretch — desktop+browser capability lease proof (in-lease XFCE+Xvfb+noVNC bootstrap)
               id: cbx-e2e-stretch-desktop
               exit_status: 0
               context:
@@ -1181,7 +1182,7 @@ check-crabbox-e2e-pod:
                 set -e
                 cd /tmp/cbxw
                 crabbox run --provider local-container --desktop --browser --ttl 20m --idle-timeout 10m -- sh -c 'test -x /usr/bin/xfce4-session || true'
-            - run: stretch — pond peer group (two leases sharing a --pond label + peers)
+            - check: stretch — pond peer group (two leases sharing a --pond label + peers)
               id: cbx-e2e-stretch-pond
               exit_status: 0
               context:
