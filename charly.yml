@@ -1300,6 +1300,12 @@ check-crabbox-e2e-pod:
             pond peers — each individually documented. Zero cloud credentials;
             everything is local (shared-token auth).
         plan:
+            - check: pre-load the nesting smoke image into the host-backed storage (the volume starts empty and the baked smoke uses --pull=never; mutating check guarded by the smoke's own run)
+              id: cbx-e2e-prepull
+              exit_status: 0
+              context:
+                - runtime
+              command: podman pull quay.io/libpod/alpine:latest >/dev/null 2>&1 || true
             - check: coordinator /v1/health responds 200 (host-side http verb — host-networking publishes no port mapping; the coordinator binds host-localhost :8080)
               id: cbx-e2e-health
               http:
