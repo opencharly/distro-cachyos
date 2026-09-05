@@ -3150,7 +3150,14 @@ check-vm-clone-base:
         snapshot:
             on_finalize: golden
             mode: external
-            keep_venue: true
+            # keep_venue: false (the shared-snapshot default) — the base VM must
+            # release the golden after capture so clone VMs can open it read-only
+            # (shared lock) and run in parallel. keep_venue: true left the base VM
+            # holding the golden exclusively, blocking every clone at vm-create
+            # ("Failed to get shared write lock"). The golden persists on disk
+            # (external snapshot); the base VM is disposable and re-provisioned on
+            # the next refresh run.
+            keep_venue: false
         plan:
             - check: the cachyos guest reports its hostname (in-guest command probe)
               id: cvc-base-hostname
