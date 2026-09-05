@@ -1963,6 +1963,12 @@ cachyos-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # tmux: the record: session capture verb (plugin-record) requires tmux
+                # on the target. The instrument bed's add_candy (layer-tmux) does NOT
+                # land in the guest for a CLONE bed (no image rebuild — the clone uses
+                # the golden's disk), so tmux must be baked into the base image the
+                # golden is captured from.
+                - tmux
                 # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
                 # Without a helper mkinitcpio warns "No fsck helpers found", and
                 # its warnings escalate to "errors were encountered during the
