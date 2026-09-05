@@ -3128,6 +3128,13 @@ cachyos-vm-clone:
             kind: clone
             from_vm: check-vm-clone-base
             from_snapshot: golden
+            # cloud_init_clean: true — the clone generates a FRESH SSH keypair,
+            # but the golden's cloud-init state (instance-id + authorized_keys)
+            # carries the OLD key, so without a clean re-run the guest rejects
+            # the new key and deploy-add's wait-for-sshd times out (measured:
+            # "Permission denied ... Too many authentication failures"). The
+            # clean re-run installs the new key on first boot.
+            cloud_init_clean: true
         disk_size: 20G
         ram: 4G
         cpu: 2
