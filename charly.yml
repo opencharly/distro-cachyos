@@ -22,7 +22,7 @@
 #  Directly buildable: `charly box build cachyos` (from the parent repo:
 #  `charly -C box/cachyos box build cachyos`; anywhere:
 #  `charly --repo opencharly/distro-cachyos box build cachyos`).
-version: 2026.240.1943
+version: 2026.248.1030
 defaults:
     platform:
         - linux/amd64
@@ -1963,6 +1963,14 @@ cachyos-vm:
                 - cloud-init
                 - grub
                 - efibootmgr
+                # tmux + asciinema: the record: session capture verb (plugin-record)
+                # requires tmux AND asciinema on the target. The instrument bed's
+                # add_candy (layer-tmux + layer-asciinema) does NOT land in the guest
+                # for a CLONE bed (no image rebuild — the clone uses the golden's
+                # disk), so both must be baked into the base image the golden is
+                # captured from.
+                - tmux
+                - asciinema
                 # btrfs-progs supplies fsck.btrfs for the btrfs rootfs below.
                 # Without a helper mkinitcpio warns "No fsck helpers found", and
                 # its warnings escalate to "errors were encountered during the
@@ -3128,6 +3136,13 @@ cachyos-vm-clone:
             kind: clone
             from_vm: check-vm-clone-base
             from_snapshot: golden
+            # cloud_init_clean: true — the clone generates a FRESH SSH keypair,
+            # but the golden's cloud-init state (instance-id + authorized_keys)
+            # carries the OLD key, so without a clean re-run the guest rejects
+            # the new key and deploy-add's wait-for-sshd times out (measured:
+            # "Permission denied ... Too many authentication failures"). The
+            # clean re-run installs the new key on first boot.
+            cloud_init_clean: true
         disk_size: 20G
         ram: 4G
         cpu: 2
@@ -3136,7 +3151,9 @@ cachyos-vm-clone:
         ssh: {user: cachyos, port_auto: true, key_source: generate}
         libvirt:
             devices:
-                channels: [{type: unix, name: org.qemu.guest_agent.0}]
+                channels: [{type: unix, name: org.qemu.guest_agent.0}, {type: spicevmc, name: com.redhat.spice.0}]
+                graphics: [{type: spice, listen: [{type: socket}]}]
+                video: [{model: virtio, vram: 65536, heads: 1, accel3d: false}]
 
 # Base bed: provisions the cachyos VM and captures the golden snapshot.
 check-vm-clone-base:
@@ -3148,7 +3165,14 @@ check-vm-clone-base:
         snapshot:
             on_finalize: golden
             mode: external
-            keep_venue: true
+            # keep_venue: false (the shared-snapshot default) — the base VM must
+            # release the golden after capture so clone VMs can open it read-only
+            # (shared lock) and run in parallel. keep_venue: true left the base VM
+            # holding the golden exclusively, blocking every clone at vm-create
+            # ("Failed to get shared write lock"). The golden persists on disk
+            # (external snapshot); the base VM is disposable and re-provisioned on
+            # the next refresh run.
+            keep_venue: false
         plan:
             - check: the cachyos guest reports its hostname (in-guest command probe)
               id: cvc-base-hostname
@@ -3188,3 +3212,30 @@ check-vm-clone:
               stdout:
                 contains: "ID=arch"
               context: [runtime]
+check-instrument-cachyos-vm:
+    vm:
+        from: cachyos-vm-clone
+        disposable: true
+        lifecycle: dev
+        add_candy:
+            - '@github.com/opencharly/layer-tmux:v2026.240.0202'
+            - '@github.com/opencharly/layer-asciinema:v2026.246.1622'
+        instrument:
+            - id: screen
+              phase: [live]
+              spice: {method: session, fps: 5}
+              # The media contract's screen.mp4: the spice session's MJPEG is the
+              # transcode verb's SOURCE (source_artifact), transcoded to an MP4
+              # container (H.264 + yuv420p) by the host-side ffmpeg pipeline word.
+              pipeline: [{transcode: {to: mp4}}]
+            - id: term
+              phase: [live]
+              record: {method: session, record_mode: terminal}
+        plan:
+            - check: the cachyos instrument bed runs its subject steps
+              id: subject-prove
+              # The VM deploy delivers charly to a VERSIONED /tmp path
+              # (/tmp/charly-<calver>-<hash>), never /usr/bin/charly — the deploy
+              # "never changes PATH and never downgrades a target package". Probe
+              # the actual delivery path (the glob expands to the versioned binary).
+              command: 'ls /tmp/charly-*'
