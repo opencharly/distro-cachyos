@@ -3136,7 +3136,9 @@ cachyos-vm-clone:
         ssh: {user: cachyos, port_auto: true, key_source: generate}
         libvirt:
             devices:
-                channels: [{type: unix, name: org.qemu.guest_agent.0}]
+                channels: [{type: unix, name: org.qemu.guest_agent.0}, {type: spicevmc, name: com.redhat.spice.0}]
+                graphics: [{type: spice, listen: [{type: socket}]}]
+                video: [{model: virtio, vram: 65536, heads: 1, accel3d: false}]
 
 # Base bed: provisions the cachyos VM and captures the golden snapshot.
 check-vm-clone-base:
@@ -3190,7 +3192,7 @@ check-vm-clone:
               context: [runtime]
 check-instrument-cachyos-vm:
     vm:
-        from: cachyos-vm
+        from: cachyos-vm-clone
         disposable: true
         lifecycle: dev
         add_candy:
@@ -3207,4 +3209,4 @@ check-instrument-cachyos-vm:
         plan:
             - check: the cachyos instrument bed runs its subject steps
               id: subject-prove
-              command: 'true'
+              command: 'test -x /usr/bin/charly'
