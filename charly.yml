@@ -22,7 +22,7 @@
 #  Directly buildable: `charly box build cachyos` (from the parent repo:
 #  `charly -C box/cachyos box build cachyos`; anywhere:
 #  `charly --repo opencharly/distro-cachyos box build cachyos`).
-version: 2026.240.1943
+version: 2026.248.1030
 defaults:
     platform:
         - linux/amd64
@@ -3188,3 +3188,23 @@ check-vm-clone:
               stdout:
                 contains: "ID=arch"
               context: [runtime]
+check-instrument-cachyos-vm:
+    vm:
+        from: cachyos-vm
+        disposable: true
+        lifecycle: dev
+        add_candy:
+            - '@github.com/opencharly/layer-tmux:v2026.240.0202'
+            - '@github.com/opencharly/layer-asciinema:v2026.246.1622'
+        instrument:
+            - id: screen
+              phase: [live]
+              spice: {method: session, fps: 5}
+            - id: term
+              phase: [live]
+              record: {method: session, record_mode: terminal}
+              pipeline: [{transcode: {to: mp4}}]
+        plan:
+            - check: the cachyos instrument bed runs its subject steps
+              id: subject-prove
+              command: 'true'
