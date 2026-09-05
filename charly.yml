@@ -3231,4 +3231,8 @@ check-instrument-cachyos-vm:
         plan:
             - check: the cachyos instrument bed runs its subject steps
               id: subject-prove
-              command: 'test -x /usr/bin/charly'
+              # The VM deploy delivers charly to a VERSIONED /tmp path
+              # (/tmp/charly-<calver>-<hash>), never /usr/bin/charly — the deploy
+              # "never changes PATH and never downgrades a target package". Probe
+              # the actual delivery path (the glob expands to the versioned binary).
+              command: 'ls /tmp/charly-*'
