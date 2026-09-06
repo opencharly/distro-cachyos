@@ -3220,6 +3220,11 @@ check-instrument-cachyos-vm:
         add_candy:
             - '@github.com/opencharly/layer-tmux:v2026.240.0202'
             - '@github.com/opencharly/layer-asciinema:v2026.246.1622'
+            # The instrument verbs' serving plugins, declared EXPLICITLY (the bed knows
+            # which instruments it runs — core never maps a verb to a plugin).
+            - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.248.2114'
+            - '@github.com/opencharly/plugin-record/candy/plugin-record:v2026.248.1204'
+            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.248.2115'
         instrument:
             - id: screen
               phase: [live]
