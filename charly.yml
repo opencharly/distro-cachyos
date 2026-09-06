@@ -2746,7 +2746,8 @@ check-cstream-pod:
               id: cstream-verb-status
               context:
                 - runtime
-              cstream: status
+              cstream:
+                method: status
               stdout:
                 - contains: '"ready":true'
               eventually: 120s
