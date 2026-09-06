@@ -2013,6 +2013,14 @@ cachyos-vm:
                 # up. Symlinking a hook to /dev/null is pacman's canonical
                 # "disable this hook". Runs at first boot, before any deploy.
                 - sh -c 'mkdir -p /etc/pacman.d/hooks && ln -sf /dev/null /etc/pacman.d/hooks/nvidia-ctk-cdi.hook'
+        # The recording surface (the instrument beds' screen capture): the distro
+        # root carries ONE canonical spice channel + graphics + video set, inherited
+        # by every clone/deploy (R3 — no per-bed duplication).
+        libvirt:
+            devices:
+                channels: [{type: unix, name: org.qemu.guest_agent.0}, {type: spicevmc, name: com.redhat.spice.0}]
+                graphics: [{type: spice, listen: [{type: socket}]}]
+                video: [{model: virtio, vram: 65536, heads: 1, accel3d: false}]
 cachyos-gpu-vm:
     vm:
         # GPU-passthrough VM guest that receives a physical NVIDIA GPU via a VFIO
@@ -3118,42 +3126,6 @@ check-punktfunk-fleet:
                     # fails outright on zero frames, so this only asserts the success shape.
                     - contains: "streamed:"
                   timeout: 120s
-# --- check-vm-clone: the VM-on-VM layering + bake R10 bed (cutover task 9) ---
-# Two disposable beds: check-vm-clone-base builds + provisions the cachyos VM
-# and captures a "golden" snapshot at install finalize (the check-bed
-# snapshot policy); check-vm-clone deploys a source.kind: clone entity of
-# that golden, and its plan probes the cloned guest with real ssh/command
-# verbs. This is the R10 vehicle for the clone build path and the layered
-# bake (charly vm bake) — NOT improvised disk-size heuristics.
-
-# The clone entity: a new VM built ON TOP of the cachyos base at its named
-# snapshot. from_vm keys the snapshot registry; the base bed's capture
-# (--domain check-vm-clone-base) registers the golden there, so from_vm is
-# the base BED's name (the registry key the capture wrote under).
-cachyos-vm-clone:
-    vm:
-        source:
-            kind: clone
-            from_vm: check-vm-clone-base
-            from_snapshot: golden
-            # cloud_init_clean: true — the clone generates a FRESH SSH keypair,
-            # but the golden's cloud-init state (instance-id + authorized_keys)
-            # carries the OLD key, so without a clean re-run the guest rejects
-            # the new key and deploy-add's wait-for-sshd times out (measured:
-            # "Permission denied ... Too many authentication failures"). The
-            # clean re-run installs the new key on first boot.
-            cloud_init_clean: true
-        disk_size: 20G
-        ram: 4G
-        cpu: 2
-        firmware: uefi-insecure
-        backend: libvirt
-        ssh: {user: cachyos, port_auto: true, key_source: generate}
-        libvirt:
-            devices:
-                channels: [{type: unix, name: org.qemu.guest_agent.0}, {type: spicevmc, name: com.redhat.spice.0}]
-                graphics: [{type: spice, listen: [{type: socket}]}]
-                video: [{model: virtio, vram: 65536, heads: 1, accel3d: false}]
 
 # Base bed: provisions the cachyos VM and captures the golden snapshot.
 check-vm-clone-base:
@@ -3193,10 +3165,10 @@ check-vm-clone-base:
 # guest boots and answers.
 check-vm-clone:
     vm:
-        from: cachyos-vm-clone
+        from: check-vm-clone-base:golden
         disposable: true
         lifecycle: dev
-        description: 'CachyOS VM-on-VM R10 clone: deploys the source.kind clone entity (from_vm=check-vm-clone-base@golden), probes the cloned guest with real ssh/command verbs to prove it boots and answers.'
+        description: 'CachyOS VM-on-VM R10 clone: deploys the base at its golden snapshot (from: name:tag — the unified clone spelling), probes the cloned guest with real ssh/command verbs to prove it boots and answers.'
         plan:
             - check: the cloned guest reports its hostname (in-guest command probe)
               id: cvc-clone-hostname
@@ -3214,7 +3186,7 @@ check-vm-clone:
               context: [runtime]
 check-instrument-cachyos-vm:
     vm:
-        from: cachyos-vm-clone
+        from: check-vm-clone-base:golden
         disposable: true
         lifecycle: dev
         add_candy:
