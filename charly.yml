@@ -22,7 +22,7 @@
 #  Directly buildable: `charly box build cachyos` (from the parent repo:
 #  `charly -C box/cachyos box build cachyos`; anywhere:
 #  `charly --repo opencharly/distro-cachyos box build cachyos`).
-version: 2026.248.1030
+version: 2026.249.2125
 defaults:
     platform:
         - linux/amd64
@@ -119,12 +119,7 @@ check-punktfunk-pod:
         disposable: true
         lifecycle: dev
         description: >-
-            Sole proof of the punktfunk CONTAINER venue and of the `punktfunk:` check verb
-            against a live host. Builds punktfunk-host on cachyos, deploys it with a headless
-            sway compositor, and runs the candy's baked package/key/host.env/wrapper checks
-            plus the verb's own health, status, compositors, clients and json_path probes -
-            the status/clients probes proving the verb discovers the host-generated bearer
-            token inside the venue.
+            Sole proof of the punktfunk CONTAINER venue and of the `punktfunk:` check verb against a live host. Builds punktfunk-host on cachyos, deploys it with a headless sway compositor, and runs the candy's baked package/key/host.env/wrapper checks plus the verb's own health, status, compositors, clients and json_path probes - the status/clients probes proving the verb discovers the host-generated bearer token inside the venue.
         plan:
             - check: the punktfunk verb reaches the management API's unauthenticated health route
               id: pf-verb-health
@@ -165,7 +160,6 @@ check-punktfunk-pod:
                 - equals: ok
               context:
                 - runtime
-
 # The VM this bed boots. An Arch CLOUD IMAGE rather than the cachyos pacstrap
 # bootstrap: what is under test is the systemd USER-unit path, and a prebuilt
 # qcow2 reaches a booted systemd guest in a fraction of the time without changing
@@ -201,17 +195,13 @@ punktfunk-vm:
                 # management-API requests from INSIDE the venue (the API is loopback-only
                 # by punktfunk's design), and the candy's own mgmt-API check curls too.
                 - curl
-
 check-punktfunk-vm:
     vm:
         from: punktfunk-vm
         disposable: true
         lifecycle: dev
         description: >-
-            Sole proof of the punktfunk SYSTEMD path: the candy installs from unom's signed
-            pacman repo onto a real systemd guest, lingering is enabled for the deploying
-            account, and the PACKAGED punktfunk-host user unit is enabled with the management
-            API answering - none of which a supervisord container venue can demonstrate.
+            Sole proof of the punktfunk SYSTEMD path: the candy installs from unom's signed pacman repo onto a real systemd guest, lingering is enabled for the deploying account, and the PACKAGED punktfunk-host user unit is enabled with the management API answering - none of which a supervisord container venue can demonstrate.
         add_candy:
             - '@github.com/opencharly/layer-punktfunk:v2026.242.1658'
         install_opts:
@@ -277,7 +267,6 @@ check-punktfunk-vm:
                 - runtime
               command: |
                 curl -sk https://127.0.0.1:47990/api/v1/health
-
 check-cachyos-gpu-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
@@ -666,21 +655,7 @@ check-cardwire-vm:
         disposable: true
         lifecycle: dev
         description: >-
-            R10 bed for plugin-cardwire + plugin-bpf facts on the REAL VFIO surface: a
-            CachyOS pacstrap VM receiving the passed-through NVIDIA GPU (auto-allocated
-            hostdev via requires_exclusive: [nvidia-gpu]) with a SPICE terminal (sway +
-            ghostty on the virtio head, host-side plugin-spice probes) and cardwire
-            installed from the OGC pacman repo with defaults. T1 (always): guest bpf LSM
-            active, cardwired active, CLI + config defaults. T2 (this host): NVIDIA
-            0x10de present in-guest; cardwire exposes it as the block target and the
-            mode/block gates are asserted as cardwire's REAL upstream contract on this
-            2-GPU topology (set manual REFUSED with the Laptop-classification message;
-            per-GPU block REFUSED with the manual-mode-only message; the blocked flag
-            stays clear), plus config persistence across daemon restart via the toml.
-            The block->ENOENT->unblock->open-OK semantics are proven by the Phase-0
-            spike on a Manual-classified guest (docs, not replayed here). The bed
-            REQUIRES the nvidia-gpu token (auto-allocate or fail hard), so the full
-            tier always runs here.
+            R10 bed for plugin-cardwire + plugin-bpf facts on the REAL VFIO surface: a CachyOS pacstrap VM receiving the passed-through NVIDIA GPU (auto-allocated hostdev via requires_exclusive: [nvidia-gpu]) with a SPICE terminal (sway + ghostty on the virtio head, host-side plugin-spice probes) and cardwire installed from the OGC pacman repo with defaults. T1 (always): guest bpf LSM active, cardwired active, CLI + config defaults. T2 (this host): NVIDIA 0x10de present in-guest; cardwire exposes it as the block target and the mode/block gates are asserted as cardwire's REAL upstream contract on this 2-GPU topology (set manual REFUSED with the Laptop-classification message; per-GPU block REFUSED with the manual-mode-only message; the blocked flag stays clear), plus config persistence across daemon restart via the toml. The block->ENOENT->unblock->open-OK semantics are proven by the Phase-0 spike on a Manual-classified guest (docs, not replayed here). The bed REQUIRES the nvidia-gpu token (auto-allocate or fail hard), so the full tier always runs here.
         requires_exclusive: [nvidia-gpu]
         add_candy:
             - nvidia-driver
@@ -1196,7 +1171,6 @@ check-openclaw-desktop-pod:
               retry_interval: 5s
               context:
                 - runtime
-
 # check-crabbox-pod — the minimal Crabbox CLI composition (agent-forwarding +
 # layer-crabbox + plugin-crabbox) on the CachyOS base. Runs the `crabbox:` check
 # verb's credential-free surface in-venue (version/providers/config/doctor with
@@ -1208,14 +1182,7 @@ check-crabbox-pod:
         disposable: true
         lifecycle: dev
         description: >-
-            Sole build+runtime witness for box:crabbox — the minimal Crabbox CLI
-            composition (agent-forwarding + layer-crabbox + plugin-crabbox) on
-            the CachyOS base. Deploys the CLI pod and runs the `crabbox:` check
-            verb's credential-free surface IN-VENUE with NO coordinator
-            configured: version (in-venue CLI, probe-verified exit 0),
-            providers (credential-free matrix), config show (read-only), doctor
-            (no-broker exit 0 — the provider-selection warning is
-            informational). Binary presence is asserted directly.
+            Sole build+runtime witness for box:crabbox — the minimal Crabbox CLI composition (agent-forwarding + layer-crabbox + plugin-crabbox) on the CachyOS base. Deploys the CLI pod and runs the `crabbox:` check verb's credential-free surface IN-VENUE with NO coordinator configured: version (in-venue CLI, probe-verified exit 0), providers (credential-free matrix), config show (read-only), doctor (no-broker exit 0 — the provider-selection warning is informational). Binary presence is asserted directly.
         plan:
             - check: the crabbox CLI binary is present at /usr/local/bin/crabbox in the running pod
               id: cbx-cli-binary
@@ -1258,7 +1225,6 @@ check-crabbox-pod:
                 - contains: "ok"
               context:
                 - runtime
-
 # check-crabbox-e2e-pod — the flagship: the FULL LOCAL Crabbox control plane on
 # one CachyOS pod — CLI + Node/PostgreSQL coordinator + postgres + nested
 # rootless podman (container-nesting). Proves the crabbox: verb host probes
@@ -1285,20 +1251,7 @@ check-crabbox-e2e-pod:
             CRABBOX_PROVIDER: local-container
             CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME: "1"
         description: >-
-            The flagship disposable bed: the complete LOCAL Crabbox control
-            plane on one CachyOS pod — the crabbox CLI + the Node/PostgreSQL
-            coordinator (supervised, postgres-backed) + nested rootless podman.
-            (1) Coordinator liveness/readiness via the `crabbox:` verb host
-            probes (health/ready on :8080); (2) shared-token login into the
-            local broker; (3) broker-backed verb methods after login
-            (doctor-after-ready, usage, leases); (4) THE FULL LOCAL LOOP:
-            `crabbox run --provider local-container` leases a nested rootless
-            podman container in-venue (loopback SSH publish), syncs a scratch
-            git workdir, runs, streams, and releases — stdout asserted. Stretch
-            steps exercise the local capability surface: checkpoint
-            (workspace-archive), artifacts collect, desktop/browser proof,
-            pond peers — each individually documented. Zero cloud credentials;
-            everything is local (shared-token auth).
+            The flagship disposable bed: the complete LOCAL Crabbox control plane on one CachyOS pod — the crabbox CLI + the Node/PostgreSQL coordinator (supervised, postgres-backed) + nested rootless podman. (1) Coordinator liveness/readiness via the `crabbox:` verb host probes (health/ready on :8080); (2) shared-token login into the local broker; (3) broker-backed verb methods after login (doctor-after-ready, usage, leases); (4) THE FULL LOCAL LOOP: `crabbox run --provider local-container` leases a nested rootless podman container in-venue (loopback SSH publish), syncs a scratch git workdir, runs, streams, and releases — stdout asserted. Stretch steps exercise the local capability surface: checkpoint (workspace-archive), artifacts collect, desktop/browser proof, pond peers — each individually documented. Zero cloud credentials; everything is local (shared-token auth).
         plan:
             - check: pre-load the nesting smoke image into the host-backed storage (the volume starts empty and the baked smoke uses --pull=never; mutating check guarded by the smoke's own run)
               id: cbx-e2e-prepull
@@ -1351,7 +1304,6 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-
             # The FULL LOCAL LOOP + stretches land via openclaw/crabbox PR #1813
             # (the local-container no-hostname knob, CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME
             # set above): the uid-1000 posture cannot set the lease hostname
@@ -1609,10 +1561,7 @@ check-cstream-gpu-vm:
         disposable: true
         lifecycle: dev
         description: >-
-            The GPU venue for cstream. Increment 1: it establishes that the card is
-            really passed through and MEASURES the VA capability inventory, which is
-            the premise every later encoder claim depends on. It deliberately does
-            not yet gate encoder selection -- see the plan note in the checks below.
+            The GPU venue for cstream. Increment 1: it establishes that the card is really passed through and MEASURES the VA capability inventory, which is the premise every later encoder claim depends on. It deliberately does not yet gate encoder selection -- see the plan note in the checks below.
         # Auto-allocated hostdev: the token maps to a vendor selector (0x10de) and
         # charly writes THIS host's whole-IOMMU-group <hostdev> block, so no
         # host-specific PCI address is committed. Without a matching card the bed
@@ -1709,21 +1658,13 @@ check-cstream-gpu-vm:
                 echo "NO-VA-H264-ENCSLICE across $probed render node(s) -- the premise holds"
               stdout:
                 - contains: NO-VA-H264-ENCSLICE
-
 check-cstream-vm:
     vm:
         from: cstream-vm
         disposable: true
         lifecycle: dev
         description: >-
-            The SYSTEMD venue for cstream. Gates what check-cstream-pod structurally
-            cannot: the daemons render as real systemd units rather than supervisord
-            [program:] entries, the session target loads, and the nested compositor
-            is installed session-scoped instead of being started at boot. logind
-            sessions, linger and cross-user PAM are what this venue EXISTS to make
-            gateable, but they are not asserted here yet -- they need the broker
-            serving and two provisioned accounts, and a description may only claim
-            what its plan actually checks.
+            The SYSTEMD venue for cstream. Gates what check-cstream-pod structurally cannot: the daemons render as real systemd units rather than supervisord [program:] entries, the session target loads, and the nested compositor is installed session-scoped instead of being started at boot. logind sessions, linger and cross-user PAM are what this venue EXISTS to make gateable, but they are not asserted here yet -- they need the broker serving and two provisioned accounts, and a description may only claim what its plan actually checks.
         add_candy:
             - '@github.com/opencharly/layer-cstream-desktop:v2026.243.1831'
             # BED FIXTURE: the second account. Cross-user PAM is the reason this
@@ -1857,7 +1798,6 @@ check-cstream-vm:
               file:
                 file: /usr/local/bin/cstream-streamer
                 exists: true
-
 cstream-vm:
     vm:
         # The SYSTEMD venue for cstream. It exists to carry the claims the pod bed
@@ -1930,22 +1870,22 @@ cstream-vm:
                 video:
                     - model: virtio
                       accel3d: true
-        # NO cloud_init: block -- it would be INERT here, and that is measured,
-        # not assumed. cloud-init seeding is a `kind: cloud_image` feature
-        # (plugin-vm/vm_cloud_image.go). For this `kind: bootstrap` guest charly
-        # BUILDS output/qcow2/cstream-vm/seed.iso and then never attaches it:
-        # `virsh dumpxml` shows no <disk device='cdrom'> at all, and the guest
-        # reports `cloud-init status: error / No instance datasource found`,
-        # with /var/lib/cloud/instance/scripts/runcmd absent entirely.
-        #
-        # A pacstrapped guest is configured in the CHROOT instead -- charly's
-        # arch bootstrap already runs `arch-chroot systemctl enable sshd
-        # qemu-guest-agent cloud-init-*`. That is the only reason ssh works
-        # here, and it is exactly what makes an inert runcmd list look like it
-        # works: the two lines everyone copies are already done by the chroot.
-        #
-        # Confirmed NOT caused by this entity's `libvirt:` block -- removing
-        # that and re-creating the domain still yields zero cdrom devices.
+                      # NO cloud_init: block -- it would be INERT here, and that is measured,
+                      # not assumed. cloud-init seeding is a `kind: cloud_image` feature
+                      # (plugin-vm/vm_cloud_image.go). For this `kind: bootstrap` guest charly
+                      # BUILDS output/qcow2/cstream-vm/seed.iso and then never attaches it:
+                      # `virsh dumpxml` shows no <disk device='cdrom'> at all, and the guest
+                      # reports `cloud-init status: error / No instance datasource found`,
+                      # with /var/lib/cloud/instance/scripts/runcmd absent entirely.
+                      #
+                      # A pacstrapped guest is configured in the CHROOT instead -- charly's
+                      # arch bootstrap already runs `arch-chroot systemctl enable sshd
+                      # qemu-guest-agent cloud-init-*`. That is the only reason ssh works
+                      # here, and it is exactly what makes an inert runcmd list look like it
+                      # works: the two lines everyone copies are already done by the chroot.
+                      #
+                      # Confirmed NOT caused by this entity's `libvirt:` block -- removing
+                      # that and re-creating the domain still yields zero cdrom devices.
 cachyos-vm:
     vm:
         # Bootstrap-from-scratch via cachyos-pacstrap-builder (local). The cachyos
@@ -2341,9 +2281,7 @@ check-cstream-pod:
             group_add:
                 - keep-groups
         description: >-
-            The WP9 pod bed for cstream. Proves the stack STREAMS rather than merely
-            starts: frames pulled through the pipeline must change when a client
-            window maps, and hardware H.264 must actually produce a stream.
+            The WP9 pod bed for cstream. Proves the stack STREAMS rather than merely starts: frames pulled through the pipeline must change when a client window maps, and hardware H.264 must actually produce a stream.
         plan:
             - check: the Wayland parent service is running
               id: cstream-parent-service
@@ -2416,23 +2354,23 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  # --probe runs the SHIPPED binary: it builds the real
-                  # waylanddisplaysrc-to-webrtcsink graph, brings it to PLAYING, and
-                  # then opens the encoder it selected. `encode: va` is what makes this
-                  # discriminating -- on a VA-capable node the streamer must report the
-                  # hardware encoder and REFUSE rather than quietly use the CPU.
-                  #
-                  # The second marker exists because registration is not capability: a
-                  # VA element is registered wherever the plugin loads, including on a
-                  # host whose render node it cannot open. Only bringing it to READY
-                  # tells those apart.
-                  #
-                  # NOT claimed here: that webrtcsink hands a frame to that encoder.
-                  # Its encoder-setup fires only once a consumer negotiates, and this
-                  # probe has no signalling server. Frames actually moving is the
-                  # separate two-way streaming gate above.
-                  CSTREAM_ENCODE=va CSTREAM_RENDER_NODE=/dev/dri/renderD128 \
-                    timeout 60 /usr/local/bin/cstream-streamer --probe
+                    # --probe runs the SHIPPED binary: it builds the real
+                    # waylanddisplaysrc-to-webrtcsink graph, brings it to PLAYING, and
+                    # then opens the encoder it selected. `encode: va` is what makes this
+                    # discriminating -- on a VA-capable node the streamer must report the
+                    # hardware encoder and REFUSE rather than quietly use the CPU.
+                    #
+                    # The second marker exists because registration is not capability: a
+                    # VA element is registered wherever the plugin loads, including on a
+                    # host whose render node it cannot open. Only bringing it to READY
+                    # tells those apart.
+                    #
+                    # NOT claimed here: that webrtcsink hands a frame to that encoder.
+                    # Its encoder-setup fires only once a consumer negotiates, and this
+                    # probe has no signalling server. Frames actually moving is the
+                    # separate two-way streaming gate above.
+                    CSTREAM_ENCODE=va CSTREAM_RENDER_NODE=/dev/dri/renderD128 \
+                      timeout 60 /usr/local/bin/cstream-streamer --probe
               stdout:
                 - contains: 'CSTREAM-PIPELINE-PLAYING encoder=hardware:vah264enc'
                 - contains: 'CSTREAM-ENCODER-OPENABLE encoder=hardware:vah264enc'
@@ -2445,22 +2383,22 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  set -e
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  # A DEDICATED terminal: the focus/close fixtures' windows are
-                  # targets of dispatchers that move or destroy them, and typing
-                  # into one of those would race those gates.
-                  pgrep -f "foot -T cstream-input" >/dev/null 2>&1 || \
-                    (WAYLAND_DISPLAY=$NEST setsid foot -T cstream-input >/dev/null 2>&1 &)
-                  for _ in $(seq 40); do
-                      hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' && break
-                      sleep 1
-                  done
-                  hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' || {
-                      echo "INPUT-FIXTURE-NO-WINDOW: foot never mapped" >&2; exit 1; }
-                  echo INPUT-FIXTURE-READY
+                    set -e
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    # A DEDICATED terminal: the focus/close fixtures' windows are
+                    # targets of dispatchers that move or destroy them, and typing
+                    # into one of those would race those gates.
+                    pgrep -f "foot -T cstream-input" >/dev/null 2>&1 || \
+                      (WAYLAND_DISPLAY=$NEST setsid foot -T cstream-input >/dev/null 2>&1 &)
+                    for _ in $(seq 40); do
+                        hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' && break
+                        sleep 1
+                    done
+                    hyprctl -j clients | grep -q '"initialTitle": *"cstream-input"' || {
+                        echo "INPUT-FIXTURE-NO-WINDOW: foot never mapped" >&2; exit 1; }
+                    echo INPUT-FIXTURE-READY
               stdout:
                 - contains: INPUT-FIXTURE-READY
               eventually: 120s
@@ -2479,9 +2417,9 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-input"' && echo ACTIVE-IS-INPUT
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-input"' && echo ACTIVE-IS-INPUT
               stdout:
                 - contains: ACTIVE-IS-INPUT
               eventually: 60s
@@ -2508,14 +2446,14 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  # The whole point of the pair: `wl: type` and `wl: key` both exit 0
-                  # even when nothing is delivered. A live process with the exact
-                  # argument that was typed is the only thing that proves the
-                  # keystrokes crossed the compositor, reached the focused client,
-                  # and were executed by its shell.
-                  pgrep -f 'sleep 313' >/dev/null || {
-                      echo "TYPE-NOT-DELIVERED: no 'sleep 313' process -- keystrokes did not reach the shell" >&2; exit 1; }
-                  echo TYPE-DELIVERED
+                    # The whole point of the pair: `wl: type` and `wl: key` both exit 0
+                    # even when nothing is delivered. A live process with the exact
+                    # argument that was typed is the only thing that proves the
+                    # keystrokes crossed the compositor, reached the focused client,
+                    # and were executed by its shell.
+                    pgrep -f 'sleep 313' >/dev/null || {
+                        echo "TYPE-NOT-DELIVERED: no 'sleep 313' process -- keystrokes did not reach the shell" >&2; exit 1; }
+                    echo TYPE-DELIVERED
               stdout:
                 - contains: TYPE-DELIVERED
               eventually: 60s
@@ -2535,14 +2473,14 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  # A modifier that never reached the client leaves the sleep running,
-                  # and `wl: key-combo` still exits 0. Absence of the process is the
-                  # observation; the preceding check proved it was there to begin with,
-                  # so this cannot pass vacuously.
-                  if pgrep -f 'sleep 313' >/dev/null; then
-                      echo "KEYCOMBO-NOT-DELIVERED: 'sleep 313' still running after ctrl+c" >&2; exit 1
-                  fi
-                  echo KEYCOMBO-DELIVERED
+                    # A modifier that never reached the client leaves the sleep running,
+                    # and `wl: key-combo` still exits 0. Absence of the process is the
+                    # observation; the preceding check proved it was there to begin with,
+                    # so this cannot pass vacuously.
+                    if pgrep -f 'sleep 313' >/dev/null; then
+                        echo "KEYCOMBO-NOT-DELIVERED: 'sleep 313' still running after ctrl+c" >&2; exit 1
+                    fi
+                    echo KEYCOMBO-DELIVERED
               stdout:
                 - contains: KEYCOMBO-DELIVERED
               eventually: 60s
@@ -2561,14 +2499,14 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  # Without this the next observation is vacuous: if the layout were
-                  # already "de", asserting "de" after the switch would prove nothing.
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  dev=$(hyprctl -j devices 2>&1)
-                  printf '%s' "$dev" | grep -q '"layout": *"de"' && {
-                      echo "KEYMAP-BASELINE-ALREADY-DE: the switch below would prove nothing" >&2; exit 1; }
-                  echo KEYMAP-BASELINE-NOT-DE
+                    # Without this the next observation is vacuous: if the layout were
+                    # already "de", asserting "de" after the switch would prove nothing.
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    dev=$(hyprctl -j devices 2>&1)
+                    printf '%s' "$dev" | grep -q '"layout": *"de"' && {
+                        echo "KEYMAP-BASELINE-ALREADY-DE: the switch below would prove nothing" >&2; exit 1; }
+                    echo KEYMAP-BASELINE-NOT-DE
               stdout:
                 - contains: KEYMAP-BASELINE-NOT-DE
             - check: wl hypr-eval switches the compositor keymap to de
@@ -2586,19 +2524,19 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  # Half two of "dual-sided", and the reason this is an observation
-                  # rather than an exit-code check: `hyprctl eval` answers "ok" for
-                  # ANY expression -- valid, invalid or no-op -- so the verb's
-                  # success says nothing about whether the config changed. Only the
-                  # compositor's own device report does.
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  dev=$(hyprctl -j devices 2>&1)
-                  printf '%s' "$dev" | grep -q '"layout": *"de"' || {
-                      echo "KEYMAP-NOT-APPLIED: no keyboard reports layout de" >&2
-                      printf '%s' "$dev" | grep -A6 -i 'keyboards' | head -30 >&2
-                      exit 1; }
-                  echo KEYMAP-APPLIED-DE
+                    # Half two of "dual-sided", and the reason this is an observation
+                    # rather than an exit-code check: `hyprctl eval` answers "ok" for
+                    # ANY expression -- valid, invalid or no-op -- so the verb's
+                    # success says nothing about whether the config changed. Only the
+                    # compositor's own device report does.
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    dev=$(hyprctl -j devices 2>&1)
+                    printf '%s' "$dev" | grep -q '"layout": *"de"' || {
+                        echo "KEYMAP-NOT-APPLIED: no keyboard reports layout de" >&2
+                        printf '%s' "$dev" | grep -A6 -i 'keyboards' | head -30 >&2
+                        exit 1; }
+                    echo KEYMAP-APPLIED-DE
               stdout:
                 - contains: KEYMAP-APPLIED-DE
               eventually: 60s
@@ -2610,24 +2548,24 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  set -e
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  # -T sets the INITIAL title. foot rewrites its live title from the
-                  # shell prompt within a second of mapping, so `title:` selectors are
-                  # useless for automation here -- every window reports "@host:~".
-                  # initialtitle: is the stable one (measured).
-                  for n in focus-a focus-b close-keep close-target; do
-                      pgrep -f "foot -T cstream-$n" >/dev/null 2>&1 || \
-                        (WAYLAND_DISPLAY=$NEST setsid foot -T "cstream-$n" >/dev/null 2>&1 &)
-                  done
-                  for _ in $(seq 40); do
-                      [ "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4 ] && break
-                      sleep 1
-                  done
-                  test "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4
-                  echo FOCUS-FIXTURE-READY
+                    set -e
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    NEST=$(hyprctl -j instances | sed -n 's/.*"wl_socket"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    # -T sets the INITIAL title. foot rewrites its live title from the
+                    # shell prompt within a second of mapping, so `title:` selectors are
+                    # useless for automation here -- every window reports "@host:~".
+                    # initialtitle: is the stable one (measured).
+                    for n in focus-a focus-b close-keep close-target; do
+                        pgrep -f "foot -T cstream-$n" >/dev/null 2>&1 || \
+                          (WAYLAND_DISPLAY=$NEST setsid foot -T "cstream-$n" >/dev/null 2>&1 &)
+                    done
+                    for _ in $(seq 40); do
+                        [ "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4 ] && break
+                        sleep 1
+                    done
+                    test "$(hyprctl -j clients | grep -c 'cstream-\(focus\|close\)-')" -ge 4
+                    echo FOCUS-FIXTURE-READY
               stdout:
                 - contains: FOCUS-FIXTURE-READY
               eventually: 120s
@@ -2646,12 +2584,12 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  # Asserting the ACTIVE WINDOW, not the verb's exit code. A dispatcher
-                  # that silently did nothing still exits 0 -- that is the whole failure
-                  # mode this gate exists for.
-                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-a"' && echo ACTIVE-IS-A
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    # Asserting the ACTIVE WINDOW, not the verb's exit code. A dispatcher
+                    # that silently did nothing still exits 0 -- that is the whole failure
+                    # mode this gate exists for.
+                    hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-a"' && echo ACTIVE-IS-A
               stdout:
                 - contains: ACTIVE-IS-A
               eventually: 60s
@@ -2670,9 +2608,9 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-b"' && echo ACTIVE-IS-B
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    hyprctl -j activewindow | grep -q '"initialTitle": *"cstream-focus-b"' && echo ACTIVE-IS-B
               stdout:
                 - contains: ACTIVE-IS-B
               eventually: 60s
@@ -2691,19 +2629,19 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  # Two assertions, because either alone is satisfiable by a no-op:
-                  # the special workspace must EXIST (it is created on first use), and
-                  # B must be ON it -- a window that merely lost focus would satisfy the
-                  # first but not the second.
-                  hyprctl -j workspaces | grep -q 'special:minimized' || { echo NO-SPECIAL-WORKSPACE; exit 1; }
-                  # Plain `hyprctl clients` is one blank-line-separated paragraph per
-                  # window, so awk in paragraph mode reads the pair (initialTitle,
-                  # workspace) off the SAME window. Splitting the JSON would not:
-                  # `workspace` precedes `initialTitle` inside each object, so a naive
-                  # record split attributes one window's workspace to the next.
-                  hyprctl clients | awk -v RS= '/initialTitle: cstream-focus-b/ {for(i=1;i<=NF;i++) if($i=="workspace:"){w=$(i+2); gsub(/[()]/,"",w); print "B-WORKSPACE=" w}}'
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    # Two assertions, because either alone is satisfiable by a no-op:
+                    # the special workspace must EXIST (it is created on first use), and
+                    # B must be ON it -- a window that merely lost focus would satisfy the
+                    # first but not the second.
+                    hyprctl -j workspaces | grep -q 'special:minimized' || { echo NO-SPECIAL-WORKSPACE; exit 1; }
+                    # Plain `hyprctl clients` is one blank-line-separated paragraph per
+                    # window, so awk in paragraph mode reads the pair (initialTitle,
+                    # workspace) off the SAME window. Splitting the JSON would not:
+                    # `workspace` precedes `initialTitle` inside each object, so a naive
+                    # record split attributes one window's workspace to the next.
+                    hyprctl clients | awk -v RS= '/initialTitle: cstream-focus-b/ {for(i=1;i<=NF;i++) if($i=="workspace:"){w=$(i+2); gsub(/[()]/,"",w); print "B-WORKSPACE=" w}}'
               stdout:
                 - contains: 'B-WORKSPACE=special:minimized'
               eventually: 60s
@@ -2729,15 +2667,15 @@ check-cstream-pod:
               command:
                 in_container: true
                 command: |
-                  export XDG_RUNTIME_DIR=/tmp/cstream-rt
-                  export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-                  # BOTH halves are the assertion. Measured on 0.56.2 before the fix:
-                  # hl.dsp.window.close(<selector>) ACCEPTS the selector and ignores it,
-                  # closing the ACTIVE window instead -- so "the target is gone" alone
-                  # passes while the wrong window died. The survivor is what catches it.
-                  hyprctl clients | grep -q 'initialTitle: cstream-close-target' && { echo TARGET-STILL-OPEN; exit 1; }
-                  hyprctl clients | grep -q 'initialTitle: cstream-close-keep' || { echo WRONG-WINDOW-CLOSED; exit 1; }
-                  echo CLOSED-THE-NAMED-WINDOW
+                    export XDG_RUNTIME_DIR=/tmp/cstream-rt
+                    export HYPRLAND_INSTANCE_SIGNATURE=$(hyprctl -j instances | sed -n 's/.*"instance"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+                    # BOTH halves are the assertion. Measured on 0.56.2 before the fix:
+                    # hl.dsp.window.close(<selector>) ACCEPTS the selector and ignores it,
+                    # closing the ACTIVE window instead -- so "the target is gone" alone
+                    # passes while the wrong window died. The survivor is what catches it.
+                    hyprctl clients | grep -q 'initialTitle: cstream-close-target' && { echo TARGET-STILL-OPEN; exit 1; }
+                    hyprctl clients | grep -q 'initialTitle: cstream-close-keep' || { echo WRONG-WINDOW-CLOSED; exit 1; }
+                    echo CLOSED-THE-NAMED-WINDOW
               stdout:
                 - contains: CLOSED-THE-NAMED-WINDOW
               eventually: 60s
@@ -2816,7 +2754,6 @@ check-cstream-pod:
                 artifact: /tmp/wl-desktop.png
                 artifact_min_bytes: 5000
                 artifact_not_uniform: true
-
             # WP5 lock/idle -- the last three checks of this bed, IN THIS ORDER, and
             # nothing may be appended after them.
             #
@@ -2844,15 +2781,15 @@ check-cstream-pod:
                 - runtime
               command:
                 command: |
-                  # No viewer has connected at any point above, so the countdown has
-                  # never started. Without this, the check below passes for free against
-                  # an arming bug that locked at STARTUP -- which looks identical from
-                  # outside and would ALSO be the reason every wl- check above failed.
-                  if pgrep -x hyprlock >/dev/null 2>&1; then
-                      echo "LOCK-HELD-EARLY: hyprlock is running before any viewer has ever connected" >&2
-                      exit 1
-                  fi
-                  echo UNLOCKED-WHILE-UNWATCHED
+                    # No viewer has connected at any point above, so the countdown has
+                    # never started. Without this, the check below passes for free against
+                    # an arming bug that locked at STARTUP -- which looks identical from
+                    # outside and would ALSO be the reason every wl- check above failed.
+                    if pgrep -x hyprlock >/dev/null 2>&1; then
+                        echo "LOCK-HELD-EARLY: hyprlock is running before any viewer has ever connected" >&2
+                        exit 1
+                    fi
+                    echo UNLOCKED-WHILE-UNWATCHED
                 in_container: true
               stdout:
                 - contains: UNLOCKED-WHILE-UNWATCHED
@@ -2861,26 +2798,26 @@ check-cstream-pod:
               context:
                 - runtime
               cstream:
-                  method: frame
-                  artifact: /tmp/cstream-frame.jpg
-                  artifact_min_bytes: 5000
-                  artifact_not_uniform: true
+                method: frame
+                artifact: /tmp/cstream-frame.jpg
+                artifact_min_bytes: 5000
+                artifact_not_uniform: true
             - check: the desktop locks itself once the last viewer has gone
               id: cstream-lock-after-detach
               context:
                 - runtime
               command:
                 command: |
-                  # The consumer above connected and left; 10s later the streamer
-                  # dispatches hyprlock INTO the nested Hyprland over its IPC socket.
-                  # A failure here is the whole WP5 path: the policy never armed, the
-                  # signals never fired, the socket was not found, or the Lua dispatcher
-                  # name is wrong -- all of which look like "no hyprlock" from here.
-                  pgrep -x hyprlock >/dev/null 2>&1 || {
-                      echo "NO-LOCK-YET: hyprlock is not running" >&2
-                      exit 1
-                  }
-                  echo "DESKTOP-LOCKED-AFTER-DETACH pid=$(pgrep -x hyprlock | head -1)"
+                    # The consumer above connected and left; 10s later the streamer
+                    # dispatches hyprlock INTO the nested Hyprland over its IPC socket.
+                    # A failure here is the whole WP5 path: the policy never armed, the
+                    # signals never fired, the socket was not found, or the Lua dispatcher
+                    # name is wrong -- all of which look like "no hyprlock" from here.
+                    pgrep -x hyprlock >/dev/null 2>&1 || {
+                        echo "NO-LOCK-YET: hyprlock is not running" >&2
+                        exit 1
+                    }
+                    echo "DESKTOP-LOCKED-AFTER-DETACH pid=$(pgrep -x hyprlock | head -1)"
                 in_container: true
               stdout:
                 - contains: DESKTOP-LOCKED-AFTER-DETACH
@@ -2888,18 +2825,13 @@ check-cstream-pod:
               # appears and fails if it never does.
               eventually: 60s
               retry_interval: 5s
-
 check-punktfunk-client:
     pod:
         image: punktfunk-client
         disposable: true
         lifecycle: dev
         description: >-
-            Proves the punktfunk CLIENT half live: the client package installs from the
-            signed repo, its headless CLI runs, and the punktfunk verb's NEW client methods
-            execute through it in the venue. Deliberately host-free — pairing and streaming
-            need a second system and belong to check-punktfunk-fleet; this bed exists so the
-            client methods are proven to run before anything depends on them.
+            Proves the punktfunk CLIENT half live: the client package installs from the signed repo, its headless CLI runs, and the punktfunk verb's NEW client methods execute through it in the venue. Deliberately host-free — pairing and streaming need a second system and belong to check-punktfunk-fleet; this bed exists so the client methods are proven to run before anything depends on them.
         plan:
             - check: the verb's client method lists saved hosts through the real CLI
               id: pf-client-hosts-list
@@ -2913,18 +2845,7 @@ check-punktfunk-client:
                 - runtime
               punktfunk:
                 method: profiles-list
-
 check-punktfunk-fleet:
-    group:
-        disposable: true
-        lifecycle: dev
-        description: >-
-            The two-system punktfunk bed: a host member and a client member as siblings in one
-            group, so the client actually pairs with the host and pulls a stream. Every
-            single-node punktfunk bed before this one proved installation and the control
-            plane only — they would all still pass if punktfunk could not stream a frame,
-            because no client had ever paired (`clients` returned `[]` and that was recorded
-            as a PASS). This bed exists to be able to fail for that reason.
     # The `1-` / `2-` prefixes are LOAD-BEARING, not decoration. charly runs one
     # `check live` per node and orders members by SORTED KEY
     # (spec/fleet.BedCheckLiveRefs -> SortedNestedKeys); there is no priority or
@@ -2933,80 +2854,73 @@ check-punktfunk-fleet:
     #   punktfunk: pin file /pfshare/pin is missing or empty
     # The ordinal makes the required order explicit instead of leaving it to a coincidence
     # of spelling.
-    punktfunk-fleet-1-host:
-        pod:
-            image: punktfunk-host
-            description: >-
-                The streaming host: cachyos + headless sway + punktfunk-host. Its own candy
-                checks (packages, repo key trust, host.env, the management API and web console
-                answering in-venue) come along composed, so this member re-proves the
-                single-node claims as a side effect.
-            volume:
-                # The PIN channel. The host GENERATES the pairing PIN and ignores a
-                # caller-supplied one (verified against 0.33.0-1), only the CLIENT can use it,
-                # and charly has no way to carry a step's output into another step's input. So
-                # both members mount one path and the PIN travels as a file — the automation of
-                # a human reading it off one screen and typing it into the other.
-                # A BIND to /tmp, not a named volume and not a personal path.
-                # charly namespaces named volumes PER MEMBER
-                # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
-                # member its own and the PIN never crosses -- verified: the client saw
-                # "pin file /pfshare/pin is missing or empty". A bind needs a host path
-                # that already exists, because podman will not create one, so it is /tmp
-                # rather than a subdirectory nobody has made. The file name is
-                # bed-specific so mounting a shared /tmp cannot collide.
-                - name: punktfunk-pair-share
-                  type: bind
-                  host: /tmp
-                  path: /pfshare
-            plan:
-                # Mutating, so a `run:` step — the verb refuses a mutating method in a check.
-                # This executes at the member's bring-up, BEFORE any check-live, which is the
-                # only ordering charly offers: a member's checks cannot interleave with a
-                # sibling's (bed_run.go issues one `check live` per node, parent first).
-                - run: arm pairing and drop the host-generated PIN where the client can read it
-                  id: pf-fleet-arm-pairing
-                  context:
-                    - runtime
-                  punktfunk:
-                    method: pair-arm
-                    pin_out: /pfshare/charly-punktfunk-fleet.pin
-                - check: the management API answers, so the client has something to pair with
-                  id: pf-fleet-host-live
-                  context:
-                    - runtime
-                  punktfunk:
-                    method: health
-                # The CAPTURE prerequisite, asserted rather than assumed. A session
-                # resolves to `capture: Portal`, so without this interface on the bus the
-                # host pairs, negotiates a codec and then fails every session at pipeline
-                # build — while every other control-plane check still passes. That is the
-                # exact combination that let this bed report green while nothing streamed.
-                #
-                # It also settles the one warning a clean run still emits. The Documents
-                # portal cannot mount its FUSE store here:
-                #   fusermount3: mount failed: Operation not permitted
-                #   error: fuse init failed: Can't mount path /tmp/doc
-                # `/dev/fuse` IS present; rootless containers deny mount(2) without
-                # CAP_SYS_ADMIN. punktfunk uses ScreenCast, never Documents, and granting
-                # that capability would trade real privilege for a portal nothing calls —
-                # so this asserts the interface that IS needed instead.
-                # NOTE the bare `$XDG_RUNTIME_DIR`, not `${XDG_RUNTIME_DIR:-/tmp}`. Brace
-                # form is charly's CANDY-VAR syntax, so the step does not fail — it SKIPS,
-                # reporting `unresolved variables: XDG_RUNTIME_DIR`, and check-live still
-                # says PASS. A decorative check that cannot fail is the exact disease this
-                # bed was built to cure, and it was caught only because this change was run
-                # on its own instead of batched.
-                - check: the ScreenCast portal interface is live, so the host can capture
-                  id: pf-fleet-host-screencast
-                  context:
-                    - runtime
-                  command:
-                    command: >-
-                        S="$XDG_RUNTIME_DIR/dbus-session"; [ -S "$S" ] || S=/tmp/dbus-session;
-                        DBUS_SESSION_BUS_ADDRESS="unix:path=$S" busctl --user introspect
-                        org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop
-                        | grep -q org.freedesktop.portal.ScreenCast
+    pod:
+        image: punktfunk-host
+        description: >-
+            The streaming host: cachyos + headless sway + punktfunk-host. Its own candy checks (packages, repo key trust, host.env, the management API and web console answering in-venue) come along composed, so this member re-proves the single-node claims as a side effect.
+        volume:
+            # The PIN channel. The host GENERATES the pairing PIN and ignores a
+            # caller-supplied one (verified against 0.33.0-1), only the CLIENT can use it,
+            # and charly has no way to carry a step's output into another step's input. So
+            # both members mount one path and the PIN travels as a file — the automation of
+            # a human reading it off one screen and typing it into the other.
+            # A BIND to /tmp, not a named volume and not a personal path.
+            # charly namespaces named volumes PER MEMBER
+            # (charly-<member>-punktfunk-pair-share), so `type: volume` gives each
+            # member its own and the PIN never crosses -- verified: the client saw
+            # "pin file /pfshare/pin is missing or empty". A bind needs a host path
+            # that already exists, because podman will not create one, so it is /tmp
+            # rather than a subdirectory nobody has made. The file name is
+            # bed-specific so mounting a shared /tmp cannot collide.
+            - name: punktfunk-pair-share
+              type: bind
+              host: /tmp
+              path: /pfshare
+        plan:
+            # Mutating, so a `run:` step — the verb refuses a mutating method in a check.
+            # This executes at the member's bring-up, BEFORE any check-live, which is the
+            # only ordering charly offers: a member's checks cannot interleave with a
+            # sibling's (bed_run.go issues one `check live` per node, parent first).
+            - run: arm pairing and drop the host-generated PIN where the client can read it
+              id: pf-fleet-arm-pairing
+              context:
+                - runtime
+              punktfunk:
+                method: pair-arm
+                pin_out: /pfshare/charly-punktfunk-fleet.pin
+            - check: the management API answers, so the client has something to pair with
+              id: pf-fleet-host-live
+              context:
+                - runtime
+              punktfunk:
+                method: health
+            # The CAPTURE prerequisite, asserted rather than assumed. A session
+            # resolves to `capture: Portal`, so without this interface on the bus the
+            # host pairs, negotiates a codec and then fails every session at pipeline
+            # build — while every other control-plane check still passes. That is the
+            # exact combination that let this bed report green while nothing streamed.
+            #
+            # It also settles the one warning a clean run still emits. The Documents
+            # portal cannot mount its FUSE store here:
+            #   fusermount3: mount failed: Operation not permitted
+            #   error: fuse init failed: Can't mount path /tmp/doc
+            # `/dev/fuse` IS present; rootless containers deny mount(2) without
+            # CAP_SYS_ADMIN. punktfunk uses ScreenCast, never Documents, and granting
+            # that capability would trade real privilege for a portal nothing calls —
+            # so this asserts the interface that IS needed instead.
+            # NOTE the bare `$XDG_RUNTIME_DIR`, not `${XDG_RUNTIME_DIR:-/tmp}`. Brace
+            # form is charly's CANDY-VAR syntax, so the step does not fail — it SKIPS,
+            # reporting `unresolved variables: XDG_RUNTIME_DIR`, and check-live still
+            # says PASS. A decorative check that cannot fail is the exact disease this
+            # bed was built to cure, and it was caught only because this change was run
+            # on its own instead of batched.
+            - check: the ScreenCast portal interface is live, so the host can capture
+              id: pf-fleet-host-screencast
+              context:
+                - runtime
+              command:
+                command: >-
+                    S="$XDG_RUNTIME_DIR/dbus-session"; [ -S "$S" ] || S=/tmp/dbus-session; DBUS_SESSION_BUS_ADDRESS="unix:path=$S" busctl --user introspect org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop | grep -q org.freedesktop.portal.ScreenCast
                 # NO host-side "has a paired client" check here, and the reason is the bed's
                 # own ordering. charly runs one `check live` per node, parent first
                 # (bed_run.go's checkLiveTree), so the host's pass completes BEFORE the
@@ -3019,14 +2933,13 @@ check-punktfunk-fleet:
                 # Enrolment is therefore asserted on the CLIENT, where it is observable in the
                 # right order: `hosts-list` only names a host after a pairing succeeded, and
                 # the host's own log carries "pairing complete — client trusted".
+        disposable: true
+        lifecycle: dev
     punktfunk-fleet-2-client:
         pod:
             image: punktfunk-client
             description: >-
-                The second system: punktfunk-client and its headless CLI, no compositor. This
-                is the member that makes the bed a fleet rather than a self-probe — pairing and
-                the stream measurement run from OUTSIDE the host, which is the only place they
-                can be observed honestly.
+                The second system: punktfunk-client and its headless CLI, no compositor. This is the member that makes the bed a fleet rather than a self-probe — pairing and the stream measurement run from OUTSIDE the host, which is the only place they can be observed honestly.
             volume:
                 # A BIND to /tmp, not a named volume and not a personal path.
                 # charly namespaces named volumes PER MEMBER
@@ -3071,12 +2984,7 @@ check-punktfunk-fleet:
                     - runtime
                   command:
                     command: >-
-                        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"; [ -n "$XDG_RUNTIME_DIR" ] || XDG_RUNTIME_DIR=/tmp;
-                        export XDG_RUNTIME_DIR;
-                        pgrep -x pipewire >/dev/null || { echo "pipewire is not running in this venue" >&2; exit 1; };
-                        n=$(pw-dump 2>/dev/null | grep -c "Audio/Sink");
-                        [ "$n" -ge 1 ] || { echo "pipewire is running but exposes no Audio/Sink" >&2; exit 1; };
-                        echo "pipewire up with $n Audio/Sink"
+                        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"; [ -n "$XDG_RUNTIME_DIR" ] || XDG_RUNTIME_DIR=/tmp; export XDG_RUNTIME_DIR; pgrep -x pipewire >/dev/null || { echo "pipewire is not running in this venue" >&2; exit 1; }; n=$(pw-dump 2>/dev/null | grep -c "Audio/Sink"); [ "$n" -ge 1 ] || { echo "pipewire is running but exposes no Audio/Sink" >&2; exit 1; }; echo "pipewire up with $n Audio/Sink"
                 - check: the host is now a saved host on the client
                   id: pf-fleet-client-knows-host
                   context:
@@ -3126,7 +3034,6 @@ check-punktfunk-fleet:
                     # fails outright on zero frames, so this only asserts the success shape.
                     - contains: "streamed:"
                   timeout: 120s
-
 # Base bed: provisions the cachyos VM and captures the golden snapshot.
 check-vm-clone-base:
     vm:
@@ -3160,7 +3067,6 @@ check-vm-clone-base:
               stdout:
                 contains: "ID=arch"
               context: [runtime]
-
 # Clone bed: deploys the clone entity of golden; probes prove the cloned
 # guest boots and answers.
 check-vm-clone:
