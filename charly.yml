@@ -1303,7 +1303,7 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-            - check: the generated crabbox config exists in the venue (crabbox-nesting-dns rendered it via the config: verb)
+            - check: the generated crabbox config exists in the venue (rendered by crabbox-nesting-dns via the config verb)
               id: cbx-config-file
               context:
                 - runtime
