@@ -142,8 +142,18 @@ check-cachyos-mcp-vm:
             - check: the MCP port is reachable from the host via the forwarded port
               id: mcp-port-reachable
               context: [runtime]
-              addr: 127.0.0.1:${HOST_PORT:18765}
+              # The FIXED forwarded host port (the entity's 18765:18765 forward) —
+              # a literal, not a threaded env var: the check's ${...} variable
+              # surface is binary-dependent (the 1212 build threaded HOST_PORT, the
+              # 1226 build left it unresolved and SKIPped the step). The fixed
+              # forward is the merged design; the literal dials it deterministically.
+              addr: 127.0.0.1:18765
               timeout: 30s
+              # eventually: the guest server may still be starting when check-live
+              # begins (the 1212 signature: dial refused at the first probe, the
+              # mcp: ping with eventually passed seconds later).
+              eventually: 90s
+              retry_interval: 3s
             - check: the MCP server answers ping
               id: mcp-charly-ping
               mcp:
