@@ -1191,12 +1191,12 @@ check-crabbox-pod:
               file:
                 file: /usr/local/bin/crabbox
                 exists: true
-            - check: the crabbox verb reports the pinned 0.48.1 CLI version (in-venue CLI method)
+            - check: the crabbox verb reports the pinned 0.51.0 CLI version (in-venue CLI method)
               id: cbx-verb-version
               crabbox:
                 method: version
               stdout:
-                - contains: "0.48.1"
+                - contains: "0.51.0"
               eventually: 60s
               retry_interval: 5s
               context:
