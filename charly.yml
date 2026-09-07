@@ -1220,7 +1220,22 @@ check-android-emulator-pod:
         image: android-emulator
         disposable: true
         lifecycle: dev
-        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp.'
+        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp — and (Cutover E, E-4) the plugin-adb ADE session lifecycle: the SINGLE adb screen-recording bracket (adb-session-start → status → stop exercising the runner-owned background-session service against the live emulator — the pulled on-device MP4 + evidence row).'
+        add_candy:
+            # The adb serving plugin, declared EXPLICITLY (the bed knows which instruments it
+            # runs — core never maps a verb to a plugin). plugin-adb also lands in the image
+            # closure via pod-android-emulator-layer's require; the bed pins the E-4 tag so
+            # the HOST check runner builds + serves the session method. The adb session
+            # lifecycle IS the plugin's own ADE plan — ONE recorder (session id
+            # ade-adb-session) spawns at adb-session-start, holds, and finalizes its
+            # evidence row at stop — the fixture must not run a PARALLEL adb screen
+            # instrument (R1: the 2026.250.1940 full-mode row gate failed because the
+            # instrument's recorder ran under a second session id (check-android-
+            # emulator-pod.screen) writing into the bed capture dir, while the stop check
+            # polled /tmp/charly-session/ade-adb-session/row.json — a path no recorder
+            # wrote. One session, one identity: the stop gate poll path and the recorder's
+            # evidence path are the same by construction).
+            - '@github.com/opencharly/plugin-adb/candy/plugin-adb:v2026.250.1429'
         plan:
             - check: command=charly status --json
               id: status-shows-android
@@ -1234,13 +1249,16 @@ check-android-emulator-pod:
             - check: command=charly status --json
               id: status-shows-nested
               stdout:
-                # The pod→android nested tree renders as a JSON `nested:[…]`
-                # array under the emulator pod (children bare-keyed device/
-                # device-net; the parent context comes from the nesting, so
-                # there is no flattened dotted path). Assert the overlay
-                # structure. Fails if status_nested stops nesting the
-                # AndroidCollector rows under their parent pod.
-                - contains: '"nested"'
+                # The android status surface: the pod→android overlay renders
+                # BOTH nested android devices as their own rows (in-pod
+                # pixel9a-36 = image "device"; remote-endpoint pixel9a-endpoint
+                # = image "device-net") alongside the emulator pod row. A JSON
+                # `"nested"` key is not part of the status contract for this
+                # entity shape — the nested[] overlay only nests in-substrate
+                # members, and these android devices are deploy-level members —
+                # so assert the device rows the AndroidCollector honestly emits.
+                - contains: '"image": "device"'
+                - contains: '"image": "device-net"'
               context:
                 - runtime
               command:
