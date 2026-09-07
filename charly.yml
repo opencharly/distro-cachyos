@@ -134,9 +134,13 @@ check-cachyos-mcp-vm:
               id: etc-charly-validates
               command: charly box validate -C /etc/charly
               exit_status: 0
-            - run: start the system-scope MCP server on demand
+            - check: the systemd MCP server comes up on demand (systemctl start is idempotent — a no-op on an active unit — so this is a valid idempotent probe that also starts it, surviving verify-only runs)
               id: start-charly-mcp
-              command: systemctl start charly-mcp
+              command: systemctl start charly-mcp && systemctl is-active charly-mcp
+              exit_status: 0
+              timeout: 30s
+              eventually: 60s
+              retry_interval: 3s
             - check: the MCP server answers ping
               id: mcp-charly-ping
               mcp:
