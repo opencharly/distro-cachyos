@@ -81,6 +81,99 @@ check-cachyos-vm:
         install_opts:
             allow_repo_changes: true
             allow_root_tasks: true
+# Disposable R10 bed for the charly package's systemd integration + the full
+# MCP surface on the CachyOS bootstrap VM (the HOST-install path): the charly
+# toolchain installs as a native pac package carrying the systemd units +
+# /etc/charly/charly.yml, the NON-AUTOSTARTING units start the MCP server on
+# demand, and every MCP functionality is exercised via proper mcp: checks
+# against the cachyos-vm's mcp_provide declaration (the substrate-neutral P4
+# resolution — the mcp: verb dials the host-forwarded port).
+check-cachyos-mcp-vm:
+    vm:
+        from: cachyos-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole proof of the charly package's systemd units + /etc/charly/charly.yml +
+            the MCP server on a fresh CachyOS VM. Installs charly as a native pac
+            package (the shipped units + config), asserts the non-autostarting
+            contract, starts the systemd units on demand, and exercises every MCP
+            functionality (ping / list-tools / call) via proper mcp: checks — the
+            standing R10 gate for the host-install path.
+        add_candy:
+            - '@github.com/opencharly/layer-charly:v2026.243.0408'
+        install_opts:
+            allow_repo_changes: true
+            allow_root_tasks: true
+        plan:
+            - check: the packaged system unit is installed
+              id: systemd-system-unit
+              file:
+                file: /usr/lib/systemd/system/charly-mcp.service
+                exists: true
+            - check: the packaged user unit is installed
+              id: systemd-user-unit
+              file:
+                file: /usr/lib/systemd/user/charly-mcp.service
+                exists: true
+            - check: the shipped unit binds loopback only (P3 - the host default)
+              id: unit-loopback
+              command: grep -q '127.0.0.1:18765' /usr/lib/systemd/system/charly-mcp.service
+              exit_status: 0
+            - check: the unit is NOT autostarting (non-autostarting contract)
+              id: unit-disabled
+              command: systemctl is-enabled charly-mcp
+              stdout:
+                equals: disabled
+            - check: the system-wide /etc/charly/charly.yml is shipped
+              id: etc-charly-config
+              file:
+                file: /etc/charly/charly.yml
+                exists: true
+            - check: the shipped config validates as a project
+              id: etc-charly-validates
+              command: charly box validate -C /etc/charly
+              exit_status: 0
+            - run: start the system-scope MCP server on demand
+              id: start-charly-mcp
+              command: systemctl start charly-mcp
+            - check: the MCP server answers ping
+              id: mcp-charly-ping
+              mcp:
+                method: ping
+                mcp_name: charly
+              timeout: 30s
+              eventually: 90s
+              retry_interval: 3s
+              stdout:
+                equals: ok
+            - check: the MCP server exposes the charly tools
+              id: mcp-charly-list-tools
+              mcp:
+                method: list-tools
+                mcp_name: charly
+              stdout:
+                - contains: box.list.boxes
+                - contains: version
+            - check: the version tool round-trips a CalVer
+              id: mcp-charly-call-version
+              mcp:
+                method: call
+                tool: version
+                input: "{}"
+                mcp_name: charly
+              exit_status: 0
+              stdout:
+                - matches: "[0-9]{4}\\.[0-9]+"
+            - check: box.list.boxes resolves the /etc/charly project locally (no network fallback)
+              id: mcp-charly-call-list-boxes
+              mcp:
+                method: call
+                tool: box.list.boxes
+                input: "{}"
+                mcp_name: charly
+              timeout: 90s
+              exit_status: 0
 # Disposable R10 bed mirroring the cachyos-gpu WORKSTATION's exact dual-desktop
 # config — the acceptance gate for the live Part C migration:
 #   host (IOMMU on) → cachyos-gpu-vm (VFIO GPU passthrough, nvidia-open kernel
@@ -1936,6 +2029,20 @@ cachyos-vm:
         firmware: uefi-insecure
         network:
             mode: user
+            # The charly MCP server's port, host-forwarded so the host-side mcp:
+            # check verb (substrate-neutral resolution, P4) can dial it. The
+            # server binds 0.0.0.0 INSIDE the VM (normal - the host only reaches
+            # the forwarded port; the host system is the security boundary).
+            port_forwards:
+                - "auto:18765"
+        # The MCP server this VM serves - the substrate-neutral mcp_provide
+        # surface (P4): a kind:vm entity declares its MCP servers exactly like a
+        # box does. The mcp: check verb resolves this declaration for VM/host
+        # venues (no podman-inspectable OCI label on a VM).
+        mcp_provide:
+            - name: charly
+              url: "http://127.0.0.1:18765/mcp"
+              transport: http
         ssh:
             user: cachy
             port_auto: true
