@@ -209,18 +209,43 @@ charly-mcp-enable:
               # The SHIPPED unit binds 127.0.0.1 (the P3 host default, asserted by
               # the bed's unit-file check). The host-side mcp: checks reach the
               # server through the forwarded port (arrives on the VM's external
-              # interface), so this deployment overrides the runtime ExecStart to
-              # 0.0.0.0 via a systemd drop-in — the shipped unit is untouched, the
-              # running server binds all interfaces (normal inside a VM; the host
-              # system is the security boundary).
-              overrides:
-                  exec: "/usr/bin/charly mcp serve --listen 0.0.0.0:18765"
+              # interface), so the deploy plan below writes a systemd drop-in
+              # overriding the runtime ExecStart to 0.0.0.0 — the shipped unit is
+              # untouched, the running server binds all interfaces (normal inside
+              # a VM; the host system is the security boundary). The drop-in is
+              # written with a deploy run: file step, NOT the schema
+              # `overrides:` field: sdk/deploykit's packaged-service compile
+              # drops entry.Overrides (the drop-in never renders), which the
+              # bed's failed runs proved live — the run: file step + restart is
+              # the working bed-side mechanism (R1).
         plan:
+            - run: write the all-interfaces drop-in for the forwarded port (packaged unit untouched)
+              id: write-bind-dropin
+              file:
+                  file: /etc/systemd/system/charly-mcp.service.d/charly-bind.conf
+                  mode: "0644"
+              content: |
+                  # Written by the check-cachyos-mcp-vm bed (charly-mcp-enable candy).
+                  # Overrides the packaged unit's loopback bind so the host-forwarded
+                  # port can reach the server; the packaged unit is untouched.
+                  [Service]
+                  ExecStart=
+                  ExecStart=/usr/bin/charly mcp serve --listen 0.0.0.0:18765
+            - run: reload systemd and restart charly-mcp so the drop-in takes effect
+              id: restart-mcp
+              command:
+                  command: systemctl daemon-reload && systemctl restart charly-mcp
             - check: the packaged charly-mcp unit is installed (the service declaration enables it)
               id: charly-mcp-unit-present
               file:
                   file: /usr/lib/systemd/system/charly-mcp.service
                   exists: true
+            - check: the all-interfaces drop-in override is present
+              id: bind-dropin-present
+              file:
+                  file: /etc/systemd/system/charly-mcp.service.d/charly-bind.conf
+                  exists: true
+                  contains: "0.0.0.0:18765"
 # Disposable R10 bed mirroring the cachyos-gpu WORKSTATION's exact dual-desktop
 # config — the acceptance gate for the live Part C migration:
 #   host (IOMMU on) → cachyos-gpu-vm (VFIO GPU passthrough, nvidia-open kernel
@@ -2076,12 +2101,19 @@ cachyos-vm:
         firmware: uefi-insecure
         network:
             mode: user
-            # The charly MCP server's port, host-forwarded so the host-side mcp:
-            # check verb (substrate-neutral resolution, P4) can dial it. The
-            # server binds 0.0.0.0 INSIDE the VM (normal - the host only reaches
-            # the forwarded port; the host system is the security boundary).
+            # The charly MCP server's port, host-forwarded on a FIXED port so the
+            # host-side mcp: check verb (substrate-neutral resolution, P4) can dial
+            # it: the mcp_provide URL (127.0.0.1:18765/mcp) is dialed from the host
+            # as-is, and the fixed 18765:18765 forward makes the host's 18765 reach
+            # the guest server. The SHIPPED unit binds 127.0.0.1 (the P3 host
+            # default, asserted by the bed's unit-file check); the charly-mcp-enable
+            # candy writes a drop-in so the RUNNING server binds all interfaces — the
+            # forward arrives on the guest's external interface. (An auto: forward
+            # would need the unmerged check-env port threading; the fixed forward is
+            # the merged-products design — normal inside a VM, the host system is the
+            # security boundary.)
             port_forwards:
-                - "auto:18765"
+                - "18765:18765"
         # The MCP server this VM serves - the substrate-neutral mcp_provide
         # surface (P4): a kind:vm entity declares its MCP servers exactly like a
         # box does. The mcp: check verb resolves this declaration for VM/host
@@ -2090,6 +2122,11 @@ cachyos-vm:
             - name: charly
               url: "http://127.0.0.1:18765/mcp"
               transport: http
+              # Fixed-forward note: this URL's port (18765) is the FIXED host-forwarded
+              # port declared above (18765:18765), so the host-side mcp: verb dials the
+              # host loopback and reaches the guest server through the forward — no
+              # runtime port substitution needed (plugin-mcp's fromEnv-loopback rule
+              # dials host-local URLs as-is).
         ssh:
             user: cachy
             port_auto: true
