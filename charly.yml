@@ -229,18 +229,13 @@ charly-mcp-enable:
               # bed's failed runs proved live — the run: file step + restart is
               # the working bed-side mechanism (R1).
         plan:
-            - run: write the all-interfaces drop-in for the forwarded port (packaged unit untouched)
+            - run: write the all-interfaces drop-in (a root command step — the run:file step's provision ran as the guest user, mkdir Permission-denied, R1ed)
               id: write-bind-dropin
-              file:
-                  file: /etc/systemd/system/charly-mcp.service.d/charly-bind.conf
-                  mode: "0644"
-              content: |
-                  # Written by the check-cachyos-mcp-vm bed (charly-mcp-enable candy).
-                  # Overrides the packaged unit's loopback bind so the host-forwarded
-                  # port can reach the server; the packaged unit is untouched.
-                  [Service]
-                  ExecStart=
-                  ExecStart=/usr/bin/charly mcp serve --listen 0.0.0.0:18765
+              command:
+                  command: |
+                      install -d -m 0755 /etc/systemd/system/charly-mcp.service.d
+                      printf '%s\n' '[Service]' 'ExecStart=' 'ExecStart=/usr/bin/charly mcp serve --listen 0.0.0.0:18765' > /etc/systemd/system/charly-mcp.service.d/charly-bind.conf
+                      chmod 0644 /etc/systemd/system/charly-mcp.service.d/charly-bind.conf
             - run: reload systemd and restart charly-mcp so the drop-in takes effect
               id: restart-mcp
               command:
