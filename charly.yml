@@ -223,11 +223,12 @@ charly-mcp-enable:
               # overriding the runtime ExecStart to 0.0.0.0 — the shipped unit is
               # untouched, the running server binds all interfaces (normal inside
               # a VM; the host system is the security boundary). The drop-in is
-              # written with a deploy run: file step, NOT the schema
-              # `overrides:` field: sdk/deploykit's packaged-service compile
-              # drops entry.Overrides (the drop-in never renders), which the
-              # bed's failed runs proved live — the run: file step + restart is
-              # the working bed-side mechanism (R1).
+              # written with a deploy root command: step (install -d + printf),
+              # NOT the schema `overrides:` field: sdk/deploykit's packaged-service
+              # compile drops entry.Overrides, and the run: file step's provision
+              # ran as the guest user (mkdir EACCES + unterminated here-doc, R1ed)
+              # — the root command step + restart is the working bed-side
+              # mechanism.
         plan:
             - run: write the all-interfaces drop-in (a root command step — the run:file step's provision ran as the guest user, mkdir Permission-denied, R1ed)
               id: write-bind-dropin
