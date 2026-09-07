@@ -1,6 +1,7 @@
 # Crabbox local-loop cutover — NAMED thematic batch (B6/B14(b) routing)
 
-**Status:** NOT STARTED — scoped batch whose definition lives here; tracked as
+**Status:** EXIT-2 LANDED (2026-09-07) — see the LANDED note at the bottom.
+Legacy: scoped batch whose definition lives here; tracked as
 the routing for the steps de-scoped from distro-cachyos PR #62.
 
 ## Scope
@@ -87,3 +88,18 @@ Shipping state: the branch CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME env + loop step
 are gated on the knob being in the released CLI (upstream openclaw/crabbox
 #1813); the ledger PROOF is complete via the fork build (the sanctioned
 CHARLY_REPO_OVERRIDE mechanism).
+
+## LANDED (2026-09-07) — exit 2 (upstream hostname knob)
+
+Upstream LANDED the no-hostname feature in final form: #1813 + the #1924
+maintainer continuation (YAML localContainer.noHostname true/false layering +
+fixed-ID intent checks) + #1922, released as v0.51.0. The fork proof builds
+(v0.49.0-knob(2)) are SUPERSEDED and the org fork opencharly/crabbox main is
+synced to upstream.
+
+The charly stack moved to the released CLI + the CONFIG surface: the
+crabbox-nesting-dns candy renders ~/.config/crabbox/config.yaml with
+localContainer.noHostname: true via the new charly config: plan-step verb
+(validate: crabbox-yaml), and the bed's CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME
+env knob is DELETED. The e2e loop runs on the generated config with zero
+overrides; the gate story above is historical.
