@@ -206,6 +206,15 @@ charly-mcp-enable:
               use_packaged: charly-mcp.service
               enable: true
               scope: system
+              # The SHIPPED unit binds 127.0.0.1 (the P3 host default, asserted by
+              # the bed's unit-file check). The host-side mcp: checks reach the
+              # server through the forwarded port (arrives on the VM's external
+              # interface), so this deployment overrides the runtime ExecStart to
+              # 0.0.0.0 via a systemd drop-in — the shipped unit is untouched, the
+              # running server binds all interfaces (normal inside a VM; the host
+              # system is the security boundary).
+              overrides:
+                  exec: "/usr/bin/charly mcp serve --listen 0.0.0.0:18765"
         plan:
             - check: the packaged charly-mcp unit is installed (the service declaration enables it)
               id: charly-mcp-unit-present
