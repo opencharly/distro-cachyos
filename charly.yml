@@ -1220,22 +1220,35 @@ check-android-emulator-pod:
         image: android-emulator
         disposable: true
         lifecycle: dev
-        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp — and (Cutover E, E-4) the plugin-adb ADE session lifecycle: the SINGLE adb screen-recording bracket (adb-session-start → status → stop exercising the runner-owned background-session service against the live emulator — the pulled on-device MP4 + evidence row).'
+        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp — and (Cutover E) the plugin-adb ADE session lifecycle (E-4: the SINGLE adb screen-recording bracket — adb-session-start → status → stop exercising the runner-owned background-session service against the live emulator — plus the pulled on-device MP4 + evidence row) AND the appium session instrument (E-5): recording the plan run through Appium startRecordingScreen/stopRecordingScreen with the transcode pipeline word on the pulled MP4.'
         add_candy:
-            # The adb serving plugin, declared EXPLICITLY (the bed knows which instruments it
-            # runs — core never maps a verb to a plugin). plugin-adb also lands in the image
-            # closure via pod-android-emulator-layer's require; the bed pins the E-4 tag so
-            # the HOST check runner builds + serves the session method. The adb session
-            # lifecycle IS the plugin's own ADE plan — ONE recorder (session id
-            # ade-adb-session) spawns at adb-session-start, holds, and finalizes its
-            # evidence row at stop — the fixture must not run a PARALLEL adb screen
-            # instrument (R1: the 2026.250.1940 full-mode row gate failed because the
-            # instrument's recorder ran under a second session id (check-android-
-            # emulator-pod.screen) writing into the bed capture dir, while the stop check
-            # polled /tmp/charly-session/ade-adb-session/row.json — a path no recorder
-            # wrote. One session, one identity: the stop gate poll path and the recorder's
-            # evidence path are the same by construction).
+            # The instrument + transcode serving plugins, declared EXPLICITLY (the bed
+            # knows which instruments it runs — core never maps a verb to a plugin).
+            # plugin-adb also lands in the image closure via pod-android-emulator-layer's
+            # require; the bed pins the E-4 tag so the HOST check runner builds + serves
+            # the session method. The adb session lifecycle IS the plugin's own ADE
+            # plan — ONE recorder (session id ade-adb-session) spawns at adb-session-
+            # start, holds, and finalizes its evidence row at stop — the fixture must
+            # not run a PARALLEL adb screen instrument (E-4 R1: the 2026.250.1940
+            # full-mode row gate failed because the instrument's recorder ran under a
+            # second session id writing into the bed capture dir while the stop check
+            # polled a path no recorder wrote. One session, one identity.)
             - '@github.com/opencharly/plugin-adb/candy/plugin-adb:v2026.250.1429'
+            # plugin-appium serves the E-5 appium session instrument (also in the image
+            # closure via pod-android-emulator-layer's require); the bed pins the E-5
+            # tag so the HOST check runner builds + serves the session method.
+            - '@github.com/opencharly/plugin-appium/candy/plugin-appium:v2026.250.1425'
+            # plugin-media serves the transcode pipeline word on the pulled appium MP4.
+            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.248.2115'
+        instrument:
+            - id: appium-screen
+              phase: [live]
+              appium: {method: session}
+              # The appium recorder flushes Appium stopRecordingScreen MP4s; the transcode
+              # word re-wraps the capture into the normalized H.264/yuv420p MP4 container.
+              # The output path is EXPLICIT because the source's own .mp4 extension cannot
+              # be swapped in place — ffmpeg refuses an identical in/out path.
+              pipeline: [{transcode: {to: mp4, artifact: /tmp/charly-appium-screen.mp4}}]
         plan:
             - check: command=charly status --json
               id: status-shows-android
@@ -1264,6 +1277,45 @@ check-android-emulator-pod:
               command:
                 command: charly status --json
                 in_container: false
+            - check: the appium server reports ready through the host-side W3C status (the out-of-process plugin resolves the pod's published 4723 port)
+              id: appium-status
+              appium: status
+              stdout:
+                - contains: '"ready":true'
+              eventually: 240s
+              retry_interval: 15s
+              context:
+                - runtime
+            - run: open the W3C WebDriver session the instrument recorder brackets (writes the persisted session file the detached recorder polls)
+              id: appium-session-create
+              appium:
+                method: session-create
+                caps: |
+                  {"platformName":"Android","appium:automationName":"UiAutomator2","appium:deviceName":"emulator-5554","appium:noReset":true}
+              context:
+                - runtime
+            - run: launch ApiDemos (installed on the emulator by the device-net endpoint) inside the recording window
+              id: appium-launch-apidemos
+              appium:
+                method: app-start-activity
+                activity: io.appium.android.apis/.ApiDemos
+              context:
+                - runtime
+            - check: the ApiDemos list entry is findable through the live session (the capture proves real UI on screen)
+              id: appium-find-animation
+              appium:
+                method: find
+                strategy: xpath
+                selector: '//android.widget.TextView[@text="Animation"]'
+              context:
+                - runtime
+              stdout:
+                - contains: '"'
+            - run: close the W3C WebDriver session (the recorder's bracket closes with the session file)
+              id: appium-session-delete
+              appium: session-delete
+              context:
+                - runtime
     device:
         android:
             from: pixel9a-36
