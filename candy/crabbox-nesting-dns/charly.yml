@@ -31,6 +31,15 @@ crabbox-nesting-dns:
               enable: true
               scope: system
         plan:
+            - run: generate the crabbox user config with the no-hostname opt-in (upstream #1924 config surface, v0.51.0) — the nesting recipe CANNOT set a lease hostname (crun sethostname EPERM at uid-1000 under userns=host), so the loop leases hostname-less
+              config: /home/user/.config/crabbox/config.yaml
+              mode: "0600"
+              validate: crabbox-yaml
+              content: |
+                  provider: local-container
+                  localContainer:
+                      noHostname: true
+              run_as: user
             - run: restore user ownership of the box user's cache root (a build-time root step created /home/user/.cache as root:root 755 — crabbox's local-container bootstrap then fails with permission denied)
               command: mkdir -p /home/user/.cache && chown 1000:1000 /home/user/.cache && chmod 0755 /home/user/.cache
             - run: create the containers.conf drop-in directory for the box user

@@ -1191,12 +1191,12 @@ check-crabbox-pod:
               file:
                 file: /usr/local/bin/crabbox
                 exists: true
-            - check: the crabbox verb reports the pinned 0.48.1 CLI version (in-venue CLI method)
+            - check: the crabbox verb reports the pinned 0.51.0 CLI version (in-venue CLI method)
               id: cbx-verb-version
               crabbox:
                 method: version
               stdout:
-                - contains: "0.48.1"
+                - contains: "0.51.0"
               eventually: 60s
               retry_interval: 5s
               context:
@@ -1249,7 +1249,6 @@ check-crabbox-e2e-pod:
             CRABBOX_SHARED_OWNER: crabbox@local
             CRABBOX_PUBLIC_URL: http://127.0.0.1:8080
             CRABBOX_PROVIDER: local-container
-            CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME: "1"
         description: >-
             The flagship disposable bed: the complete LOCAL Crabbox control plane on one CachyOS pod — the crabbox CLI + the Node/PostgreSQL coordinator (supervised, postgres-backed) + nested rootless podman. (1) Coordinator liveness/readiness via the `crabbox:` verb host probes (health/ready on :8080); (2) shared-token login into the local broker; (3) broker-backed verb methods after login (doctor-after-ready, usage, leases); (4) THE FULL LOCAL LOOP: `crabbox run --provider local-container` leases a nested rootless podman container in-venue (loopback SSH publish), syncs a scratch git workdir, runs, streams, and releases — stdout asserted. Stretch steps exercise the local capability surface: checkpoint (workspace-archive), artifacts collect, desktop/browser proof, pond peers — each individually documented. Zero cloud credentials; everything is local (shared-token auth).
         plan:
@@ -1304,13 +1303,27 @@ check-crabbox-e2e-pod:
               exit_status: 0
               context:
                 - runtime
-            # The FULL LOCAL LOOP + stretches land via openclaw/crabbox PR #1813
-            # (the local-container no-hostname knob, CRABBOX_LOCAL_CONTAINER_NO_HOSTNAME
-            # set above): the uid-1000 posture cannot set the lease hostname
-            # (crun sethostname EPERM under the nesting recipe's userns=host) and the
-            # root posture cannot lease (netavark setns EPERM on the always-emitted
-            # --network bridge) — the knob makes the loop hostname-less, so bridge +
-            # loopback publish work at uid-1000. See plan/crabbox-loop-cutover.md.
+            - check: the generated crabbox config exists in the venue (rendered by crabbox-nesting-dns via the config verb)
+              id: cbx-config-file
+              context:
+                - runtime
+              file:
+                file: /home/user/.config/crabbox/config.yaml
+                exists: true
+            - check: crabbox config show reads the generated config (provider=local-container, noHostname opt-in from the file)
+              id: cbx-config-show
+              exit_status: 0
+              stdout:
+                - contains: "local-container"
+              context:
+                - runtime
+              command: /usr/local/bin/crabbox config show
+            # THE FULL LOCAL LOOP: the no-hostname opt-in comes from the GENERATED
+            # config (crabbox-nesting-dns renders ~/.config/crabbox/config.yaml with
+            # localContainer.noHostname: true via the charly config: verb — upstream
+            # v0.51.0 #1924): the uid-1000 posture cannot set the lease hostname
+            # (crun sethostname EPERM under the nesting recipe's userns=host), so the
+            # loop leases hostname-less. No env knob. See plan/crabbox-loop-cutover.md.
             - check: THE FULL LOCAL LOOP — scratch git workdir, lease via local-container, sync, run, stream, release (exit-2 acceptance)
               id: cbx-e2e-loop
               exit_status: 0
