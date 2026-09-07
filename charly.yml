@@ -1449,7 +1449,11 @@ cachyos-gpu:
         env:
             EDITOR: nvim
             PAGER: less
-    selkies-kde:
+    # renamed selkies-kde -> selkies-kde-gpu-stream: the spec validator now enforces
+    # global peer-name uniqueness and the check-cachyos-gpu-vm bed already owns
+    # the peer name selkies-kde (its in-guest quadlet checks reference
+    # charly-selkies-kde), so THIS deploy's bare streaming peer takes a unique name.
+    selkies-kde-gpu-stream:
         pod:
             image: selkies-kde-nvidia
 #  charly-cachyos — the operator CachyOS workstation profile (kind:local
