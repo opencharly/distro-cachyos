@@ -1254,6 +1254,11 @@ check-android-emulator-pod:
               id: status-shows-android
               stdout:
                 - contains: '"kind": "android"'
+              # 300s window: the status collector runs while the emulator is under the
+              # baked appium/adb churn — standalone repros pass, the in-run probe
+              # needs the idle tail (the appium-status step already uses 240s).
+              eventually: 300s
+              retry_interval: 10s
               context:
                 - runtime
               command:
@@ -1272,6 +1277,8 @@ check-android-emulator-pod:
                 # so assert the device rows the AndroidCollector honestly emits.
                 - contains: '"image": "device"'
                 - contains: '"image": "device-net"'
+              eventually: 300s
+              retry_interval: 10s
               context:
                 - runtime
               command:
@@ -1286,19 +1293,32 @@ check-android-emulator-pod:
               retry_interval: 15s
               context:
                 - runtime
-            - run: open the W3C WebDriver session the instrument recorder brackets (writes the persisted session file the detached recorder polls)
+            - check: open the W3C WebDriver session the instrument recorder brackets (writes the persisted session file the detached recorder polls; check-mode verb — the E-5 R1 correction, check-live is verify-only so the lifecycle uses check-steps like the E-1/E-3 fixtures)
               id: appium-session-create
               appium:
                 method: session-create
+                # Mirror the pod-android-emulator-layer baked caps: UiAutomator2's first
+                # instrumentation-server install exceeds the 30s default; chromedriver
+                # stays on the baked 133 (matches API-36 System WebView), offline.
                 caps: |
-                  {"platformName":"Android","appium:automationName":"UiAutomator2","appium:deviceName":"emulator-5554","appium:noReset":true}
+                  {"platformName":"Android","appium:automationName":"UiAutomator2","appium:deviceName":"emulator-5554","appium:platformVersion":"16","appium:noReset":true,"appium:newCommandTimeout":120,"appium:uiautomator2ServerInstallTimeout":240000,"appium:uiautomator2ServerLaunchTimeout":240000,"appium:chromedriverExecutableDir":"/opt/chromedriver/133","appium:chromedriverDisableBuildCheck":true}
+              timeout: 600s
               context:
                 - runtime
-            - run: launch ApiDemos (installed on the emulator by the device-net endpoint) inside the recording window
+            - check: reset the ApiDemos task so the HOME list actually renders (the pod layer's baked appium suite leaves the app deep in StatusBarNotifications; with noReset the stale activity is restored instead of the home, so the home 'Animation' entry never appears — force-stop first, mirroring the layer's av-force-stop-apidemos; proven by a live-session probe, GET /source showed the status-bar screen and the W3C element lookup returned no-such-element)
+              id: appium-force-stop-apidemos
+              adb:
+                method: shell
+                arg: [am, force-stop, io.appium.android.apis]
+              context:
+                - runtime
+            - check: launch ApiDemos fresh (installed on the emulator by the device-net endpoint) inside the recording window — the force-stopped task opens at the HOME list
               id: appium-launch-apidemos
               appium:
                 method: app-start-activity
                 activity: io.appium.android.apis/.ApiDemos
+              stdout:
+                - contains: started
               context:
                 - runtime
             - check: the ApiDemos list entry is findable through the live session (the capture proves real UI on screen)
@@ -1307,13 +1327,27 @@ check-android-emulator-pod:
                 method: find
                 strategy: xpath
                 selector: '//android.widget.TextView[@text="Animation"]'
+              # after the force-stop + fresh launch the HOME list renders; the retry
+              # window absorbs the first-render latency (W3C no-such-element = 404).
+              eventually: 120s
+              retry_interval: 5s
               context:
                 - runtime
+            - check: stop the appium screen recorder through the runner's background-session service BEFORE the session dies (SIGTERM plus evidence-row gate — the bracket's stop_recording_screen pulls the MP4 while the WebDriver session is still alive; the E-5 stop-race fix, a finalize-after-the-plan always loses to the plan's session-delete, so the stop step precedes it by construction, mirroring the E-4 one-identity pattern)
+              id: appium-session-stop
+              appium:
+                method: session
+                action: stop
+                session_id: check-android-emulator-pod.appium-screen
               stdout:
-                - contains: '"'
-            - run: close the W3C WebDriver session (the recorder's bracket closes with the session file)
+                - contains: stopped
+              context:
+                - runtime
+            - check: close the W3C WebDriver session after the recorder's bracket is finalized (the MP4 + row.json already landed with the stop step)
               id: appium-session-delete
               appium: session-delete
+              stdout:
+                - contains: deleted
               context:
                 - runtime
     device:
