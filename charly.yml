@@ -2967,7 +2967,7 @@ check-punktfunk-fleet:
                     - runtime
                   punktfunk:
                     method: pair
-                    host: charly-punktfunk-deploy-1-host
+                    host: charly-check-punktfunk-fleet
                     pin_file: /pfshare/charly-punktfunk-deploy.pin
                 # The renderer opens a PipeWire playback stream for the session's audio, and
                 # NOTHING here asserted that, so the client shipped for weeks with its audio
@@ -3025,7 +3025,7 @@ check-punktfunk-fleet:
                     - runtime
                   punktfunk:
                     method: stream-probe
-                    host: charly-punktfunk-deploy-1-host
+                    host: charly-check-punktfunk-fleet
                     # Long enough for the handshake, the decoder and the adaptive-bitrate
                     # probe (which alone takes ~800ms and only starts after the first frame).
                     stream_for: 25s
