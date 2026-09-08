@@ -1262,7 +1262,7 @@ check-android-emulator-pod:
               context:
                 - runtime
               command:
-                command: charly status --json
+                command: "${CHARLY_BIN} status --json"
                 in_container: false
             - check: command=charly status --json
               id: status-shows-nested
@@ -1282,7 +1282,7 @@ check-android-emulator-pod:
               context:
                 - runtime
               command:
-                command: charly status --json
+                command: "${CHARLY_BIN} status --json"
                 in_container: false
             - check: the appium server reports ready through the host-side W3C status (the out-of-process plugin resolves the pod's published 4723 port)
               id: appium-status
