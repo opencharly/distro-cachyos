@@ -1300,8 +1300,16 @@ check-android-emulator-pod:
                 # Mirror the pod-android-emulator-layer baked caps: UiAutomator2's first
                 # instrumentation-server install exceeds the 30s default; chromedriver
                 # stays on the baked 133 (matches API-36 System WebView), offline.
+                # newCommandTimeout is RAISED (120s → 3600s, one hour; SECONDS, per the
+                # Appium capability units — an ms-scale value is a NEWCOMMAND error):
+                # the detached recorder's stop_recording_screen arrives at the runner's
+                # finalize, minutes after the plan's last Appium command — Appium's
+                # 120s idle timeout closed the session under the open bracket first
+                # (R1 2026-09-08: 0312 every re-bracket/finalize stop 404'd; a 3600000
+                # cap overflows Node's 32-bit ms setTimeout, the timeout became 1ms
+                # and the session self-destructed before the next step).
                 caps: |
-                  {"platformName":"Android","appium:automationName":"UiAutomator2","appium:deviceName":"emulator-5554","appium:platformVersion":"16","appium:noReset":true,"appium:newCommandTimeout":120,"appium:uiautomator2ServerInstallTimeout":240000,"appium:uiautomator2ServerLaunchTimeout":240000,"appium:chromedriverExecutableDir":"/opt/chromedriver/133","appium:chromedriverDisableBuildCheck":true}
+                  {"platformName":"Android","appium:automationName":"UiAutomator2","appium:deviceName":"emulator-5554","appium:platformVersion":"16","appium:noReset":true,"appium:newCommandTimeout":3600,"appium:uiautomator2ServerInstallTimeout":240000,"appium:uiautomator2ServerLaunchTimeout":240000,"appium:chromedriverExecutableDir":"/opt/chromedriver/133","appium:chromedriverDisableBuildCheck":true}
               timeout: 600s
               context:
                 - runtime
