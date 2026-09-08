@@ -58,7 +58,7 @@ charly-marketplace:
             - '@github.com/opencharly/layer-gh:v2026.239.1624'
             - '@github.com/opencharly/pod-pmtiles-viewer:v2026.243.0508'
             - '@github.com/opencharly/layer-gifgrep:v2026.243.0409'
-            - '@github.com/opencharly/pod-postgresql:v2026.239.1627'
+            - '@github.com/opencharly/pod-postgresql:v2026.247.1304'
             - '@github.com/opencharly/layer-github-actions:v2026.242.1323'
             - '@github.com/opencharly/layer-pre-commit:v2026.243.0409'
             - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
