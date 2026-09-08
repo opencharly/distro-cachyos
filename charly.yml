@@ -1268,12 +1268,12 @@ check-android-emulator-pod:
         android:
             from: pixel9a-36
             add_candy:
-                - '@github.com/opencharly/layer-android-test-apps:v2026.239.1624'
+                - '@github.com/opencharly/layer-android-test-apps:v2026.251.0811'
     device-net:
         android:
             from: pixel9a-endpoint
             add_candy:
-                - '@github.com/opencharly/layer-android-apidemos:v2026.239.1626'
+                - '@github.com/opencharly/layer-android-apidemos:v2026.250.1816'
 # check-openclaw-pod deploys the minimal headless openclaw gateway on the
 # CachyOS (Arch) base. Exercises the cachyos→arch-builder npm build of the
 # openclaw package + the dbus/charly/socat/supervisord stack. The deploy-scope
