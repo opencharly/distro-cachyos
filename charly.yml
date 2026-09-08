@@ -1237,9 +1237,9 @@ check-android-emulator-pod:
             # plugin-appium serves the E-5 appium session instrument (also in the image
             # closure via pod-android-emulator-layer's require); the bed pins the E-5
             # tag so the HOST check runner builds + serves the session method.
-            - '@github.com/opencharly/plugin-appium/candy/plugin-appium:v2026.250.1425'
+            - '@github.com/opencharly/plugin-appium/candy/plugin-appium:v2026.251.1353'
             # plugin-media serves the transcode pipeline word on the pulled appium MP4.
-            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.248.2115'
+            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.251.1349'
         instrument:
             - id: appium-screen
               phase: [live]
@@ -3456,7 +3456,7 @@ check-instrument-cachyos-vm:
             # which instruments it runs — core never maps a verb to a plugin).
             - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.248.2114'
             - '@github.com/opencharly/plugin-record/candy/plugin-record:v2026.248.1204'
-            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.248.2115'
+            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.251.1349'
         instrument:
             - id: screen
               phase: [live]
