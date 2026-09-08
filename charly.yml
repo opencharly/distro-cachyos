@@ -1220,7 +1220,7 @@ check-android-emulator-pod:
         image: android-emulator
         disposable: true
         lifecycle: dev
-        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp — and (Cutover E) the plugin-adb ADE session lifecycle (E-4: the SINGLE adb screen-recording bracket — adb-session-start → status → stop exercising the runner-owned background-session service against the live emulator — plus the pulled on-device MP4 + evidence row) AND the appium session instrument (E-5): recording the plan run through Appium startRecordingScreen/stopRecordingScreen with the transcode pipeline word on the pulled MP4.'
+        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via goadb from the committed canonical client; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp — and (Cutover E) the plugin-adb ADE session lifecycle (E-4: the SINGLE adb screen-recording bracket — adb-session-start → status → stop exercising the runner-owned background-session service against the live emulator — plus the pulled on-device MP4 + evidence row) AND the appium session instrument (E-5): recording the plan run through Appium startRecordingScreen/stopRecordingScreen with the transcode pipeline word on the pulled MP4.'
         add_candy:
             # The instrument + transcode serving plugins, declared EXPLICITLY (the bed
             # knows which instruments it runs — core never maps a verb to a plugin).
@@ -1354,7 +1354,7 @@ check-android-emulator-pod:
         android:
             from: pixel9a-36
             add_candy:
-                - '@github.com/opencharly/layer-android-test-apps:v2026.239.1624'
+                - '@github.com/opencharly/layer-android-test-apps:b4fc08d915f2e6b1e7965aeedbdb7ad43caf8487'
     device-net:
         android:
             from: pixel9a-endpoint
