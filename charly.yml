@@ -1327,16 +1327,20 @@ check-android-emulator-pod:
             # E-5 single-identity neutralizer: the pod-android-emulator-layer baked plan's
             # appium-session-delete closed the W3C session under the recorder's OPEN bracket
             # (its stop_recording_screen then 404'd and the artifact chain never landed).
-            # This same-id step replaces the baked delete at its position; skip: true makes
-            # the runner SKIP it (the declarative "do not run this baked step for this bed"
-            # spelling) — ONE identity stays open through check-live and dies with the
-            # disposable pod, so the runner's finalize stop_recording_screen lands on a live
-            # session and the pulled MP4 + row.json artifact + transcode land as evidence.
-            - check: neutralize the baked appium-session-delete (E-5 ONE identity, ONE bracket — the fixture owns the session lifecycle; the runner finalizes the recorder against the open live session)
+            # This same-id step replaces the baked delete at its position. The neutralizer is
+            # a HOST-side no-op command (not the [skip: true] spelling — R1 2026-09-08 run
+            # 2026.251.0937: the skip form is un-compilable on the live runner, sdk
+            # kit/planrun.go RunOne validates Kind() BEFORE honoring c.Skip, so a verb-less
+            # skip step fails with "check has no verb set" — a runner gap, not a fixture
+            # defect). With ONE identity the fixture's own session stays open through
+            # check-live and dies with the disposable pod, so the runner's finalize
+            # stop_recording_screen lands on a live session and the pulled MP4 + row.json
+            # artifact + transcode land as evidence.
+            - check: neutralize the baked appium-session-delete (E-5 ONE identity, ONE bracket — the fixture owns the session lifecycle; the runner finalizes the recorder against the open live session; same-id host-side no-op)
               id: appium-session-delete
-              skip: true
               command:
                 command: "true"
+                in_container: false
               context:
                 - runtime
             - check: reset the ApiDemos task so the HOME list actually renders (the pod layer's baked appium suite leaves the app deep in StatusBarNotifications; with noReset the stale activity is restored instead of the home, so the home 'Animation' entry never appears — force-stop first, mirroring the layer's av-force-stop-apidemos; proven by a live-session probe, GET /source showed the status-bar screen and the W3C element lookup returned no-such-element)
