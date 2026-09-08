@@ -1333,23 +1333,19 @@ check-android-emulator-pod:
               retry_interval: 5s
               context:
                 - runtime
-            - check: stop the appium screen recorder through the runner's background-session service BEFORE the session dies (SIGTERM plus evidence-row gate — the bracket's stop_recording_screen pulls the MP4 while the WebDriver session is still alive; the E-5 stop-race fix, a finalize-after-the-plan always loses to the plan's session-delete, so the stop step precedes it by construction, mirroring the E-4 one-identity pattern)
-              id: appium-session-stop
-              appium:
-                method: session
-                action: stop
-                session_id: check-android-emulator-pod.appium-screen
-              stdout:
-                - contains: stopped
-              context:
-                - runtime
-            - check: close the W3C WebDriver session after the recorder's bracket is finalized (the MP4 + row.json already landed with the stop step)
-              id: appium-session-delete
-              appium: session-delete
-              stdout:
-                - contains: deleted
-              context:
-                - runtime
+            # E-5 stop-race resolution (R1 2026-09-08): NO in-plan session-stop /
+            # session-delete steps. The runner spawns the recorder as an instrument
+            # with the run-dir log_dir (.check/<bed>/<calver>/capture/<id>); a
+            # plan-step session: stop cannot address it — the stop seam resolves the
+            # handle under the AUTHORED log_dir, and the calver is only known at
+            # runtime (no runtime variable carries it), so a plan-step stop always
+            # misses (no session on record). And a plan-step session-delete closes
+            # the W3C session under the recorder's OPEN bracket, so the runner's
+            # finalize stop_recording_screen would 404 and the MP4/transcode evidence
+            # would be lost. ONE identity, ONE bracket: the recorder brackets the
+            # plan's live session (session-create) and the RUNNER finalizes it right
+            # after check-live — the pulled MP4 + row.json (with artifacts) land at
+            # the run's evidence phase and the transcode pipeline word runs on the MP4.
     device:
         android:
             from: pixel9a-36
