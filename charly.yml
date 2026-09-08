@@ -1220,31 +1220,49 @@ check-android-emulator-pod:
         image: android-emulator
         disposable: true
         lifecycle: dev
-        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via apkeep; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp — and (Cutover E, E-4) the plugin-adb ADE session lifecycle: the SINGLE adb screen-recording bracket (adb-session-start → status → stop exercising the runner-owned background-session service against the live emulator — the pulled on-device MP4 + evidence row).'
+        description: 'Sole proof Android is a first-class deploy substrate — an Android 16 (API 36) emulator pod with /dev/kvm passthrough plus two nested kind:android devices installing apps via the apk: package format over BOTH in-pod adb and a remote adb endpoint; the only adb+appium probe bed and the status-shows-android/nested witness. Builds and deploys the android-emulator pod (base selkies-labwc), deploys two nested kind:android devices (in-pod pixel9a-36 installing F-Droid via goadb from the committed canonical client; remote-endpoint pixel9a-endpoint installing ApiDemos via goadb), and runs charly status --json (kind:android + nested array) plus the android-emulator-layer adb probes plus appium-server status plus selkies-inherited stream/mcp — and (Cutover E) the plugin-adb ADE session lifecycle (E-4: the SINGLE adb screen-recording bracket — adb-session-start → status → stop exercising the runner-owned background-session service against the live emulator — plus the pulled on-device MP4 + evidence row) AND the appium session instrument (E-5): recording the plan run through Appium startRecordingScreen/stopRecordingScreen with the transcode pipeline word on the pulled MP4.'
         add_candy:
-            # The adb serving plugin, declared EXPLICITLY (the bed knows which instruments it
-            # runs — core never maps a verb to a plugin). plugin-adb also lands in the image
-            # closure via pod-android-emulator-layer's require; the bed pins the E-4 tag so
-            # the HOST check runner builds + serves the session method. The adb session
-            # lifecycle IS the plugin's own ADE plan — ONE recorder (session id
-            # ade-adb-session) spawns at adb-session-start, holds, and finalizes its
-            # evidence row at stop — the fixture must not run a PARALLEL adb screen
-            # instrument (R1: the 2026.250.1940 full-mode row gate failed because the
-            # instrument's recorder ran under a second session id (check-android-
-            # emulator-pod.screen) writing into the bed capture dir, while the stop check
-            # polled /tmp/charly-session/ade-adb-session/row.json — a path no recorder
-            # wrote. One session, one identity: the stop gate poll path and the recorder's
-            # evidence path are the same by construction).
+            # The instrument + transcode serving plugins, declared EXPLICITLY (the bed
+            # knows which instruments it runs — core never maps a verb to a plugin).
+            # plugin-adb also lands in the image closure via pod-android-emulator-layer's
+            # require; the bed pins the E-4 tag so the HOST check runner builds + serves
+            # the session method. The adb session lifecycle IS the plugin's own ADE
+            # plan — ONE recorder (session id ade-adb-session) spawns at adb-session-
+            # start, holds, and finalizes its evidence row at stop — the fixture must
+            # not run a PARALLEL adb screen instrument (E-4 R1: the 2026.250.1940
+            # full-mode row gate failed because the instrument's recorder ran under a
+            # second session id writing into the bed capture dir while the stop check
+            # polled a path no recorder wrote. One session, one identity.)
             - '@github.com/opencharly/plugin-adb/candy/plugin-adb:v2026.250.1429'
+            # plugin-appium serves the E-5 appium session instrument (also in the image
+            # closure via pod-android-emulator-layer's require); the bed pins the E-5
+            # tag so the HOST check runner builds + serves the session method.
+            - '@github.com/opencharly/plugin-appium/candy/plugin-appium:v2026.251.1353'
+            # plugin-media serves the transcode pipeline word on the pulled appium MP4.
+            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.251.1349'
+        instrument:
+            - id: appium-screen
+              phase: [live]
+              appium: {method: session}
+              # The appium recorder flushes Appium stopRecordingScreen MP4s; the transcode
+              # word re-wraps the capture into the normalized H.264/yuv420p MP4 container.
+              # The output path is EXPLICIT because the source's own .mp4 extension cannot
+              # be swapped in place — ffmpeg refuses an identical in/out path.
+              pipeline: [{transcode: {to: mp4, artifact: /tmp/charly-appium-screen.mp4}}]
         plan:
             - check: command=charly status --json
               id: status-shows-android
               stdout:
                 - contains: '"kind": "android"'
+              # 300s window: the status collector runs while the emulator is under the
+              # baked appium/adb churn — standalone repros pass, the in-run probe
+              # needs the idle tail (the appium-status step already uses 240s).
+              eventually: 300s
+              retry_interval: 10s
               context:
                 - runtime
               command:
-                command: charly status --json
+                command: "${CHARLY_BIN} status --json"
                 in_container: false
             - check: command=charly status --json
               id: status-shows-nested
@@ -1259,11 +1277,115 @@ check-android-emulator-pod:
                 # so assert the device rows the AndroidCollector honestly emits.
                 - contains: '"image": "device"'
                 - contains: '"image": "device-net"'
+              eventually: 300s
+              retry_interval: 10s
               context:
                 - runtime
               command:
-                command: charly status --json
+                command: "${CHARLY_BIN} status --json"
                 in_container: false
+            - check: the appium server reports ready through the host-side W3C status (the out-of-process plugin resolves the pod's published 4723 port)
+              id: appium-status
+              appium: status
+              stdout:
+                - contains: '"ready":true'
+              eventually: 240s
+              retry_interval: 15s
+              context:
+                - runtime
+            # E-5 single-identity (R1 2026-09-08, run 2026.251.0554): this step OVERSHADOWS
+            # the pod-android-emulator-layer baked appium-session-create — same author id,
+            # so the live-gather overlay (sdk#241 cross-section replace-by-id) substitutes
+            # THIS step at the baked step's position in the image's baked Candy plan. The
+            # fixture's session (newCommandTimeout 3600s — the recorder's stop lands minutes
+            # after the plan's last Appium command) is THE one identity: exactly ONE
+            # session-create executes for this bed, it leads the run before the layer's
+            # baked appium suite, and the layer's own av-* steps ride the same live session
+            # through the persisted session file. The previous behaviour — the fixture's
+            # same-id step NOT collapsing the baked one (both ran, different scoped origins)
+            # — churned the shared session file and broke the detached recorder's bracket.
+            - check: open the W3C WebDriver session the instrument recorder brackets (writes the persisted session file the detached recorder polls; check-mode verb — the E-5 R1 correction, check-live is verify-only so the lifecycle uses check-steps like the E-1/E-3 fixtures; replaces the layer-baked appium-session-create via the cross-section overlay)
+              id: appium-session-create
+              appium:
+                method: session-create
+                # Mirror the pod-android-emulator-layer baked caps: UiAutomator2's first
+                # instrumentation-server install exceeds the 30s default; chromedriver
+                # stays on the baked 133 (matches API-36 System WebView), offline.
+                # newCommandTimeout is RAISED (120s → 3600s, one hour; SECONDS, per the
+                # Appium capability units — an ms-scale value is a NEWCOMMAND error):
+                # the detached recorder's stop_recording_screen arrives at the runner's
+                # finalize, minutes after the plan's last Appium command — Appium's
+                # 120s idle timeout closed the session under the open bracket first
+                # (R1 2026-09-08: 0312 every re-bracket/finalize stop 404'd; a 3600000
+                # cap overflows Node's 32-bit ms setTimeout, the timeout became 1ms
+                # and the session self-destructed before the next step).
+                caps: |
+                  {"platformName":"Android","appium:automationName":"UiAutomator2","appium:deviceName":"emulator-5554","appium:platformVersion":"16","appium:noReset":true,"appium:newCommandTimeout":3600,"appium:uiautomator2ServerInstallTimeout":240000,"appium:uiautomator2ServerLaunchTimeout":240000,"appium:chromedriverExecutableDir":"/opt/chromedriver/133","appium:chromedriverDisableBuildCheck":true}
+              timeout: 600s
+              context:
+                - runtime
+            # E-5 single-identity neutralizer: the pod-android-emulator-layer baked plan's
+            # appium-session-delete closed the W3C session under the recorder's OPEN bracket
+            # (its stop_recording_screen then 404'd and the artifact chain never landed).
+            # This same-id step replaces the baked delete at its position. The neutralizer is
+            # a HOST-side no-op command (not the [skip: true] spelling — R1 2026-09-08 run
+            # 2026.251.0937: the skip form is un-compilable on the live runner, sdk
+            # kit/planrun.go RunOne validates Kind() BEFORE honoring c.Skip, so a verb-less
+            # skip step fails with "check has no verb set" — a runner gap, not a fixture
+            # defect). With ONE identity the fixture's own session stays open through
+            # check-live and dies with the disposable pod, so the runner's finalize
+            # stop_recording_screen lands on a live session and the pulled MP4 + row.json
+            # artifact + transcode land as evidence.
+            - check: neutralize the baked appium-session-delete (E-5 ONE identity, ONE bracket — the fixture owns the session lifecycle; the runner finalizes the recorder against the open live session; same-id host-side no-op)
+              id: appium-session-delete
+              command:
+                command: "true"
+                in_container: false
+              context:
+                - runtime
+            - check: reset the ApiDemos task so the HOME list actually renders (the pod layer's baked appium suite leaves the app deep in StatusBarNotifications; with noReset the stale activity is restored instead of the home, so the home 'Animation' entry never appears — force-stop first, mirroring the layer's av-force-stop-apidemos; proven by a live-session probe, GET /source showed the status-bar screen and the W3C element lookup returned no-such-element)
+              id: appium-force-stop-apidemos
+              adb:
+                method: shell
+                arg: [am, force-stop, io.appium.android.apis]
+              context:
+                - runtime
+            - check: launch ApiDemos fresh (installed on the emulator by the device-net endpoint) inside the recording window — the force-stopped task opens at the HOME list
+              id: appium-launch-apidemos
+              appium:
+                method: app-start-activity
+                activity: io.appium.android.apis/.ApiDemos
+              stdout:
+                - contains: started
+              context:
+                - runtime
+            - check: the ApiDemos list entry is findable through the live session (the capture proves real UI on screen)
+              id: appium-find-animation
+              appium:
+                method: find
+                strategy: xpath
+                selector: '//android.widget.TextView[@text="Animation"]'
+              # after the force-stop + fresh launch the HOME list renders; the retry
+              # window absorbs the first-render latency (W3C no-such-element = 404).
+              eventually: 120s
+              retry_interval: 5s
+              context:
+                - runtime
+            # E-5 stop-race resolution (R1 2026-09-08): NO in-plan session-stop /
+            # session-delete steps of our own. The runner spawns the recorder as an
+            # instrument with the run-dir log_dir (.check/<bed>/<calver>/capture/<id>); a
+            # plan-step session: stop cannot address it — the stop seam resolves the
+            # handle under the AUTHORED log_dir, and the calver is only known at
+            # runtime (no runtime variable carries it), so a plan-step stop always
+            # misses (no session on record). And a plan-step session-delete closes
+            # the W3C session under the recorder's OPEN bracket, so the runner's
+            # finalize stop_recording_screen would 404 and the MP4/transcode evidence
+            # would be lost. ONE identity, ONE bracket: the fixture's session-create
+            # (3600s caps) replaces the baked one and a same-id skip:true neutralizer
+            # disables the baked delete (sdk#241 cross-section overlay) — the recorder
+            # brackets the plan's ONE live session and the RUNNER finalizes it right
+            # after check-live — the pulled MP4 + row.json (with artifacts) land at
+            # the run's evidence phase and the transcode pipeline word runs on the MP4.
     device:
         android:
             from: pixel9a-36
@@ -3334,7 +3456,7 @@ check-instrument-cachyos-vm:
             # which instruments it runs — core never maps a verb to a plugin).
             - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.248.2114'
             - '@github.com/opencharly/plugin-record/candy/plugin-record:v2026.248.1204'
-            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.248.2115'
+            - '@github.com/opencharly/plugin-media/candy/plugin-media:v2026.251.1349'
         instrument:
             - id: screen
               phase: [live]
