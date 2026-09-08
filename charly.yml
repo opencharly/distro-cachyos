@@ -1335,6 +1335,8 @@ check-android-emulator-pod:
             - check: neutralize the baked appium-session-delete (E-5 ONE identity, ONE bracket — the fixture owns the session lifecycle; the runner finalizes the recorder against the open live session)
               id: appium-session-delete
               skip: true
+              command:
+                command: "true"
               context:
                 - runtime
             - check: reset the ApiDemos task so the HOME list actually renders (the pod layer's baked appium suite leaves the app deep in StatusBarNotifications; with noReset the stale activity is restored instead of the home, so the home 'Animation' entry never appears — force-stop first, mirroring the layer's av-force-stop-apidemos; proven by a live-session probe, GET /source showed the status-bar screen and the W3C element lookup returned no-such-element)
