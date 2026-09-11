@@ -16,7 +16,7 @@ cardwire-seat:
                     - sway
                     - seatd
         require:
-            - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.237.1428'
+            - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.248.2114'
         plan:
             - run: enable seatd + seat group for the login user (sway needs a seat)
               id: seatd-enable
