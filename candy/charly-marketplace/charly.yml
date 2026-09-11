@@ -25,7 +25,7 @@ charly-marketplace:
             # resolved to `unknown candy "github.com/opencharly/charly"`, so none of
             # charly's skill entities reached the corpus.
             - '@github.com/opencharly/layer-charly:v2026.243.0408'
-            - '@github.com/opencharly/layer-charly-build:v2026.243.0949'
+            - '@github.com/opencharly/layer-charly-build:v2026.254.1251'
             - '@github.com/opencharly/layer-charly-check:v2026.243.0857'
             - '@github.com/opencharly/layer-charly-image:v2026.243.0949'
             - '@github.com/opencharly/layer-charly-immich:v2026.243.0949'
