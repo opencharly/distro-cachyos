@@ -1,0 +1,45 @@
+# Local-to-distro-cachyos candy: restores the standard /tmp permission bits
+# (world-writable + sticky, 1777) on a box whose build leaves /tmp root-owned 0755.
+#
+# RCA 2026-09-12 (githubrunner): the container-nesting candy's build-time
+# `podman pull quay.io/libpod/alpine:latest` step (run_as: ${USER}) is emitted
+# with a /tmp-descendant build cache mount
+# (id=charly-tmp-npm-cache-uid1000,dst=/tmp/npm-cache,uid=1000,gid=1000); the
+# nested rootless podman materializes its XDG runtime dir under /tmp, and the
+# committed layer's /tmp upper then carries the default root:root 0755 instead
+# of the distro's 1777 (proof: layer 34/42 of
+# ghcr.io/opencharly/githubrunner:check-githubrunner-pod-2026.255.0052 — the
+# nested-podman pull layer — is the last layer that writes /tmp, and the shipped
+# image's /tmp is `drwxr-xr-x root root`, while the passing crabbox image's is
+# `drwxrwxrwt`). With /tmp root-owned 0755 the image is broken for its declared
+# uid 1000: supervisord's `logfile=/tmp/supervisord.log` gets EACCES (exit 1 →
+# start-limit-hit) and pod-dbus cannot bind `unix:path=/tmp/dbus-session` — the
+# check-githubrunner-pod `start` step fails after 3.6s.
+#
+# Same defect class and same fix as crabbox (RCA 2026.247.1406, whose copy of
+# `chmod 1777 /tmp` is inlined in candy/crabbox-nesting-dns). This candy is the
+# NAMED home for that normalization; the canonical long-term fix belongs upstream
+# in layer-container-nesting (which owns the step that causes it) — reported
+# separately, at which point both local copies can be deleted.
+tmp-sticky:
+    candy:
+        version: 2026.255.0330
+        description: |
+            Restores /tmp to the distro-standard world-writable sticky mode (1777).
+            A build-time step that writes under /tmp as uid 1000 (here: the
+            container-nesting nested-podman pre-pull) can leave the committed
+            layer's /tmp at root:root 0755, which breaks every uid-1000 writer of
+            /tmp — supervisord (logfile=/tmp/supervisord.log) and pod-dbus
+            (unix:path=/tmp/dbus-session) among them. Verifiable: the build-scope
+            check asserts the mode of /tmp in the built image.
+        plan:
+            - run: restore /tmp to world-writable sticky — a build-time uid-1000 step under /tmp leaves the committed image's /tmp root:root 0755
+              run_as: root
+              command: chmod 1777 /tmp
+            - check: /tmp in the built image carries the distro-standard world-writable sticky mode
+              exit_status: 0
+              stdout:
+                - contains: "1777"
+              context:
+                - build
+              command: stat -c '%a %n' /tmp

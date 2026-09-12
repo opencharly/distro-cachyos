@@ -16,3 +16,8 @@ githubrunner:
             - '@github.com/opencharly/layer-charly:v2026.243.0408'
             - '@github.com/opencharly/pod-dbus:v2026.243.1831'
             - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
+            # LAST, and it must stay last: the container-nesting pre-pull step
+            # leaves the BUILT image's /tmp root:root 0755, which breaks uid-1000
+            # supervisord (logfile=/tmp/supervisord.log) and pod-dbus
+            # (unix:path=/tmp/dbus-session). See candy/tmp-sticky for the RCA.
+            - tmp-sticky
