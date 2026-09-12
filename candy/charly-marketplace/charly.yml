@@ -172,7 +172,7 @@ charly-marketplace:
             - '@github.com/opencharly/pod-waybar-labwc:v2026.243.0508'
             - '@github.com/opencharly/layer-charly-filebrowser:v2026.243.0949'
             - '@github.com/opencharly/pod-hermes:v2026.243.1016'
-            - '@github.com/opencharly/pod-immich-ml:v2026.243.0516'
+            - '@github.com/opencharly/pod-immich-ml:v2026.255.1229'
             - '@github.com/opencharly/pod-jupyter-ml:v2026.243.0923'
             - '@github.com/opencharly/layer-notebook-finetuning:v2026.239.1606'
             - '@github.com/opencharly/layer-openclaw-full:v2026.247.0718'
