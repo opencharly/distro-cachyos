@@ -15,4 +15,4 @@ githubrunner:
             - '@github.com/opencharly/pod-github-runner:v2026.243.0410'
             - '@github.com/opencharly/layer-charly:v2026.243.0408'
             - '@github.com/opencharly/pod-dbus:v2026.243.1831'
-            - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
+            - '@github.com/opencharly/layer-container-nesting:v2026.247.0157'
