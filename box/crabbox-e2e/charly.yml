@@ -9,3 +9,7 @@ crabbox-e2e:
             - '@github.com/opencharly/pod-crabbox:v2026.250.1019'
             - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
             - crabbox-nesting-dns
+            # Shared /tmp normalization (moved out of crabbox-nesting-dns, R3/R5):
+            # must stay AFTER layer-container-nesting, whose build-time nested-podman
+            # pre-pull leaves the committed image's /tmp root:root 0755.
+            - tmp-sticky

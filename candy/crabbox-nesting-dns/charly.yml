@@ -72,9 +72,11 @@ crabbox-nesting-dns:
                 [storage.options.overlay]
                 mount_program = "/usr/bin/fuse-overlayfs"
                 mountopt = "nodev,fsync=0"
-            - run: restore /tmp to world-writable sticky — a build-time step left it 755 root and supervisord's /tmp/supervisord.log then EACCES at uid-1000 (RCA 2026.247.1406)
-              run_as: root
-              command: chmod 1777 /tmp
+            # /tmp normalization moved OUT of this candy (R3/R5): it now lives in the
+            # shared candy/tmp-sticky, which box/crabbox-e2e composes. The defect it
+            # addresses (a build-time uid-1000 step under /tmp leaving the committed
+            # image's /tmp root:root 0755 → supervisord EACCES at uid-1000, RCA
+            # 2026.247.1406) is unchanged; only its home moved.
             - run: create the system drop-in dir
               command: mkdir -p /etc/containers/containers.conf.d
             - check: the nested-podman DNS drop-in is present in the image
