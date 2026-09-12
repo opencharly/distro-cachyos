@@ -16,11 +16,16 @@
 # start-limit-hit) and pod-dbus cannot bind `unix:path=/tmp/dbus-session` — the
 # check-githubrunner-pod `start` step fails after 3.6s.
 #
-# Same defect class and same fix as crabbox (RCA 2026.247.1406, whose copy of
-# `chmod 1777 /tmp` is inlined in candy/crabbox-nesting-dns). This candy is the
-# NAMED home for that normalization; the canonical long-term fix belongs upstream
-# in layer-container-nesting (which owns the step that causes it) — reported
-# separately, at which point both local copies can be deleted.
+# This candy is the ONE home for that normalization (R3/R5): the identical step
+# previously inlined in candy/crabbox-nesting-dns (RCA 2026.247.1406) was DELETED
+# in the same cutover, and box/crabbox-e2e now composes THIS candy. Consumers:
+# box/githubrunner (the box the break was measured on) and box/crabbox-e2e.
+# The canonical long-term fix belongs upstream in layer-container-nesting — the
+# candy that owns the step that causes the break — tracked as
+# opencharly/layer-container-nesting#3 (batch `container-nesting-tmp-sticky`);
+# once it lands, this candy and both compositions can be deleted (R5).
+# Sibling-box audit for the same class: distro-cachyos#84
+# (batch `tmp-sticky-sibling-audit`).
 tmp-sticky:
     candy:
         version: 2026.255.0330
