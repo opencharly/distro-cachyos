@@ -23,14 +23,14 @@ cachyos-rooted app/fixture boxes — `versa`, `openclaw`/`openclaw-full`/`opencl
 layers live locally under `candy/` (discovered via the `discover:` block).
 Everything else is pulled from the main repo by github reference:
 
-- every shared candy layer is an `@github.com/opencharly/charly/candy/<name>:<tag>` ref;
+- every shared candy layer is an `@github.com/opencharly/<layer-*|pod-*|plugin-*>[:subdir]:<tag>` ref;
 - the **Arch base/builder stack** (`arch.arch`, `arch.arch-builder`,
   `arch.cuda-arch-builder`) is provided by the **`opencharly/distro-arch` submodule**,
   mounted under the `arch` import namespace in `charly.yml`.
 
 The CachyOS `distro`/`builder`/`init` build vocabulary is embedded in the `charly`
-binary (no `build.yml` import). All `@github` references pin to a single tag, so a
-build is reproducible — exactly one definition of every layer.
+binary (no `build.yml` import). All `@github` references pin to explicit CalVer
+tags, so a build is reproducible — exactly one definition of every layer.
 
 ## Dependency direction (post 2026-06 box inversion)
 
@@ -41,7 +41,7 @@ builders to `arch.arch-builder` / `arch.cuda-arch-builder`. The import is
 THIS repo (under the `cachyos` namespace) to build the relocated cachyos boxes; the
 former main↔cachyos mutual cycle is dissolved. The image DAG is acyclic
 (`versa → cachyos → docker.io/cachyos-v3`;
-`cachyos-pacstrap-builder → arch.arch → docker.io/archlinux`).
+`cachyos-pacstrap-builder → arch.arch → quay.io/archlinux/archlinux:base-<ver>`).
 
 ## Build
 
@@ -76,8 +76,8 @@ charly --repo opencharly/distro-cachyos update charly-cachyos
 ## pacstrap-from-scratch (`cachyos-pacstrap` / `cachyos-vm`)
 
 These build end-to-end as of **charly 2026.141.1850**. The shared pacstrap
-pacman.conf renderer (`renderPacstrapExtraConf` in `charly/build.go`, used by both
-the image and VM bootstrap paths) now:
+pacman.conf renderer (`RenderPacstrapExtraConf` in `sdk/buildkit/build_helpers.go`,
+used by both the image and VM bootstrap paths) now:
 
 1. emits an `[options] Architecture` directive derived from the cachyos-v3
    repos' microarch token, so pacman accepts the `x86_64_v3` packages (e.g.
@@ -97,8 +97,8 @@ the renderer fix lives in the binary.)
 
 A build of any image here fetches from the upstream repo, so it needs network
 access and a `charly` recent enough to understand the config's schema version
-(`charly` hard-fails with an "update charly" message if the config is newer than the
-binary supports).
+(`charly` hard-fails with a "newer than this charly supports" message if the config
+schema is newer than the binary supports).
 
 ---
 *Assisted-by: Claude*
