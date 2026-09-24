@@ -72,9 +72,10 @@ crabbox-nesting-dns:
                 [storage.options.overlay]
                 mount_program = "/usr/bin/fuse-overlayfs"
                 mountopt = "nodev,fsync=0"
-            - run: restore /tmp to world-writable sticky — a build-time step left it 755 root and supervisord's /tmp/supervisord.log then EACCES at uid-1000 (RCA 2026.247.1406)
-              run_as: root
-              command: chmod 1777 /tmp
+            # /tmp normalization was consolidated onto the shared candy/tmp-sticky
+            # (R3/R5, RCA 2026-09-24: the /tmp-0755 root cause is a cache mount under
+            # /tmp + a nested runtime, common to every nesting box). This candy no
+            # longer owns a /tmp step; its consumer box composes tmp-sticky LAST.
             - run: create the system drop-in dir
               command: mkdir -p /etc/containers/containers.conf.d
             - check: the nested-podman DNS drop-in is present in the image

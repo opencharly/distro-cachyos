@@ -9,3 +9,6 @@ crabbox-e2e:
             - '@github.com/opencharly/pod-crabbox:v2026.250.1019'
             - '@github.com/opencharly/layer-container-nesting:v2026.247.0157'
             - crabbox-nesting-dns
+            # LAST by intent: restores /tmp to 1777 after the cache-mount steps
+            # above could leave it 0755 (RCA 2026-09-24). One shared home (R3).
+            - tmp-sticky
