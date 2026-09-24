@@ -6,5 +6,8 @@ charly-selftest:
             - aur
         candy:
             - '@github.com/opencharly/pod-charly-mcp:v2026.243.0516'
-            - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
+            - '@github.com/opencharly/layer-container-nesting:v2026.247.0157'
             - '@github.com/opencharly/layer-claude-code:v2026.239.1626'
+            # LAST by intent: restores /tmp to 1777 after the cache-mount steps
+            # above could leave it 0755 (RCA 2026-09-24). One shared home (R3).
+            - tmp-sticky

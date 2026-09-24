@@ -23,6 +23,9 @@ openclaw-desktop:
             - '@github.com/opencharly/layer-golang:v2026.239.1614'
             - '@github.com/opencharly/layer-gh:v2026.239.1624'
             - '@github.com/opencharly/pod-dbus:v2026.243.1831'
+            # LAST by intent: restores /tmp to 1777 after the cache-mount steps
+            # above could leave it 0755 (RCA 2026-09-24). One shared home (R3).
+            - tmp-sticky
         # No box-level check: every check this all-in-one image carries lives on the
         # candy that provides the behaviour, so each is covered once across all
         # composing boxes — selkies/chrome/labwc/traefik/sshd binaries (selkies +
