@@ -20,7 +20,7 @@ githubrunner:
             # Runner Images ship gh; this rootless CachyOS runner must install it.
             - '@github.com/opencharly/layer-gh:v2026.239.1624'
             - '@github.com/opencharly/pod-dbus:v2026.243.1831'
-            - '@github.com/opencharly/layer-container-nesting:v2026.247.0157'
+            - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
             # LAST by intent: restores /tmp to 1777 after the cache-mount steps
             # above could leave it 0755 (RCA 2026-09-24). One shared home (R3).
             - tmp-sticky
