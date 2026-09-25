@@ -14,5 +14,13 @@ githubrunner:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
             - '@github.com/opencharly/pod-github-runner:v2026.243.0410'
             - '@github.com/opencharly/layer-charly:v2026.243.0408'
+            # gh: the org's pr-validator workflow drives `gh api/pr comment/pr merge`
+            # (opencharly/.github/.github/workflows/pr-validator.yml) and the runner
+            # is where it runs once vars.REVIEW_RUNNER_LABEL points here. GitHub
+            # Runner Images ship gh; this rootless CachyOS runner must install it.
+            - '@github.com/opencharly/layer-gh:v2026.239.1624'
             - '@github.com/opencharly/pod-dbus:v2026.243.1831'
             - '@github.com/opencharly/layer-container-nesting:v2026.239.1647'
+            # LAST by intent: restores /tmp to 1777 after the cache-mount steps
+            # above could leave it 0755 (RCA 2026-09-24). One shared home (R3).
+            - tmp-sticky

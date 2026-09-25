@@ -1638,6 +1638,13 @@ check-crabbox-e2e-pod:
             - check: THE FULL LOCAL LOOP — scratch git workdir, lease via local-container, sync, run, stream, release (exit-2 acceptance)
               id: cbx-e2e-loop
               exit_status: 0
+              # Explicit bound: this step leases a real nested container, syncs a
+              # workdir and streams a command, so its own work is minutes-long —
+              # NOT the harness's 2m never-hang default. Under a loaded host (the
+              # self-hosted runner executing a PR review concurrently) it exceeded
+              # the default and was killed (RCA 2026-09-24); sibling long steps in
+              # this file declare 5m/600s for the same reason.
+              timeout: 10m
               stdout:
                 - contains: "crabbox-local-ok"
               context:
