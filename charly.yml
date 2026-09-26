@@ -1225,15 +1225,18 @@ check-android-emulator-pod:
             # The instrument + transcode serving plugins, declared EXPLICITLY (the bed
             # knows which instruments it runs — core never maps a verb to a plugin).
             # plugin-adb also lands in the image closure via pod-android-emulator-layer's
-            # require; the bed pins the E-4 tag so the HOST check runner builds + serves
-            # the session method. The adb session lifecycle IS the plugin's own ADE
+            # require; the bed pins the SAME merged tag (v2026.269.0957 =
+            # opencharly/plugin-adb#12: spec-261 pin + the session-recorder `done` fix)
+            # so the HOST check runner builds + serves the session method against the
+            # same plugin the shipping closure carries — no bed-local branch override.
+            # The adb session lifecycle IS the plugin's own ADE
             # plan — ONE recorder (session id ade-adb-session) spawns at adb-session-
             # start, holds, and finalizes its evidence row at stop — the fixture must
             # not run a PARALLEL adb screen instrument (E-4 R1: the 2026.250.1940
             # full-mode row gate failed because the instrument's recorder ran under a
             # second session id writing into the bed capture dir while the stop check
             # polled a path no recorder wrote. One session, one identity.)
-            - '@github.com/opencharly/plugin-adb/candy/plugin-adb:v2026.250.1429'
+            - '@github.com/opencharly/plugin-adb/candy/plugin-adb:v2026.269.0957'
             # plugin-appium serves the E-5 appium session instrument (also in the image
             # closure via pod-android-emulator-layer's require); the bed pins the E-5
             # tag so the HOST check runner builds + serves the session method.
