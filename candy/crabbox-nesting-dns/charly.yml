@@ -72,10 +72,10 @@ crabbox-nesting-dns:
                 [storage.options.overlay]
                 mount_program = "/usr/bin/fuse-overlayfs"
                 mountopt = "nodev,fsync=0"
-            # /tmp normalization was consolidated onto the shared candy/tmp-sticky
-            # (R3/R5, RCA 2026-09-24: the /tmp-0755 root cause is a cache mount under
-            # /tmp + a nested runtime, common to every nesting box). This candy no
-            # longer owns a /tmp step; its consumer box composes tmp-sticky LAST.
+            # No /tmp normalization step: since the emitter no longer roots
+            # BuildKit caches under /tmp (opencharly/sdk#279), a nesting image's
+            # /tmp is never left at 0755 — no box-level chmod is needed (RCA
+            # 2026-09-24; batch distro-cachyos#95).
             - run: create the system drop-in dir
               command: mkdir -p /etc/containers/containers.conf.d
             - check: the nested-podman DNS drop-in is present in the image
