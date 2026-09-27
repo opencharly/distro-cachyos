@@ -13,7 +13,7 @@ githubrunner:
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
             - '@github.com/opencharly/pod-github-runner:v2026.243.0410'
-            - '@github.com/opencharly/layer-charly:v2026.243.0408'
+            - '@github.com/opencharly/layer-charly:v2026.269.2324'
             # gh: the org's pr-validator workflow drives `gh api/pr comment/pr merge`
             # (opencharly/.github/.github/workflows/pr-validator.yml) and the runner
             # is where it runs once vars.REVIEW_RUNNER_LABEL points here. GitHub
