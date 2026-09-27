@@ -76,7 +76,7 @@ check-cachyos-vm:
         # dev-tools is composed here so this canary also validates the cachyos
         # workstation's core dev toolkit installs (golangci-lint / gopls / etc.).
         add_candy:
-            - '@github.com/opencharly/layer-charly:v2026.243.0408'
+            - '@github.com/opencharly/layer-charly:v2026.269.2324'
             - '@github.com/opencharly/layer-dev-tools:v2026.239.1624'
         install_opts:
             allow_repo_changes: true
@@ -104,7 +104,7 @@ check-cachyos-mcp-vm:
             contract (fresh-install is-enabled = disabled) is asserted by the
             per-distro install-tests.
         add_candy:
-            - '@github.com/opencharly/layer-charly:v2026.243.0408'
+            - '@github.com/opencharly/layer-charly:v2026.269.2324'
             - charly-mcp-enable
         install_opts:
             allow_repo_changes: true
@@ -499,7 +499,7 @@ check-cachyos-gpu-vm:
             # (not the stale curl-a-binary fallback). Matches the operator
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
-            - '@github.com/opencharly/layer-charly:v2026.243.0408'
+            - '@github.com/opencharly/layer-charly:v2026.269.2324'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
             - nvidia-driver
         install_opts:
@@ -1739,7 +1739,7 @@ cachyos-gpu:
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/layer-charly:v2026.243.0408'
+            - '@github.com/opencharly/layer-charly:v2026.269.2324'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
@@ -1831,7 +1831,7 @@ charly-cachyos-app:
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.239.1623'
             - '@github.com/opencharly/layer-nvidia:v2026.236.116'
-            - '@github.com/opencharly/layer-charly:v2026.243.0408'
+            - '@github.com/opencharly/layer-charly:v2026.269.2324'
         install_opts:
             with_service: true
             allow_repo_changes: true
