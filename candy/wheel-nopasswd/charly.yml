@@ -1,6 +1,5 @@
 wheel-nopasswd:
     candy:
-        version: 2026.144.1443
         description: |
             Passwordless sudo for the wheel group
             Installs sudo, ensures the wheel group exists, adds the uid-1000
