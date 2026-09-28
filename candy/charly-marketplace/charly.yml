@@ -1,6 +1,5 @@
 charly-marketplace:
     candy:
-        version: 2026.239.1634
         description: |-
             The shared candy CLOSURE this repo resolves against — one `candy:` list naming
             every standalone candy repo whose entities the images here need, so a bare
