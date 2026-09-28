@@ -22,7 +22,6 @@
 #  Directly buildable: `charly box build cachyos` (from the parent repo:
 #  `charly -C box/cachyos box build cachyos`; anywhere:
 #  `charly --repo opencharly/distro-cachyos box build cachyos`).
-version: 2026.261.1747
 defaults:
     platform:
         - linux/amd64
@@ -199,7 +198,6 @@ check-cachyos-mcp-vm:
 # a deploy-time action; this candy IS that action.
 charly-mcp-enable:
     candy:
-        version: 2026.249.2125
         description: >-
             Enables + starts the packaged charly-mcp unit on this deployment
             (systemctl enable --now via the use_packaged service declaration).

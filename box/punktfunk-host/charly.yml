@@ -1,6 +1,5 @@
 punktfunk-host:
     candy:
-        version: 2026.241.2030
         description: |
             The punktfunk streaming host on the CachyOS base, with a headless Sway
             compositor for it to drive.
