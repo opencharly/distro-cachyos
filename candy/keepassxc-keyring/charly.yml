@@ -1,6 +1,5 @@
 keepassxc-keyring:
     candy:
-        version: 2026.144.1443
         description: |
             KeePassXC as the freedesktop.org Secret Service provider on a target:local host
             Enables the KeePassXC FdoSecrets plugin, autostarts KeePassXC on login,
