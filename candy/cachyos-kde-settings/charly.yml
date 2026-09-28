@@ -1,6 +1,5 @@
 cachyos-kde-settings:
     candy:
-        version: 2026.151.0543
         description: |
             CachyOS desktop look-and-feel — settings, theming, SDDM theme, wallpapers, Plymouth
             Installs the cachyos-* settings, theming, SDDM theme, wallpapers,
