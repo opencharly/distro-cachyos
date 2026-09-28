@@ -1,6 +1,5 @@
 cstream-vm-probe-account:
     candy:
-        version: 2026.243.0010
         description: |
             BED FIXTURE ONLY -- never composed into a shipped box.
 
