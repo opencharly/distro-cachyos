@@ -1,11 +1,9 @@
-version: 2026.240.1943
 # Local-to-distro-cachyos candy (vendored layer; composed by box/crabbox-e2e).
 # Bakes a working resolver into the NESTED podman configuration so crabbox
 # local-container leases and the container-nesting smoke can pull images without
 # depending on the box's (host-dependent) gateway resolver.
 crabbox-nesting-dns:
     candy:
-        version: 2026.247.0100
         volume:
             - name: cbx-storage
               path: /home/user/.crabbox-storage
