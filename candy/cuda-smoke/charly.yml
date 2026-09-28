@@ -1,6 +1,5 @@
 cuda-smoke:
     candy:
-        version: 2026.148.1730
         description: |
             Deterministic CUDA compute smoke test compiled with nvcc at build time
             Compiles a vector-add kernel with nvcc into /usr/local/bin/cuda-smoke;
