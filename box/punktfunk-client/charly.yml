@@ -1,6 +1,5 @@
 punktfunk-client:
     candy:
-        version: 2026.241.1845
         description: >-
             The punktfunk streaming CLIENT on the CachyOS base — punktfunk-client and its
             headless CLI, plus the punktfunk verb plugin so a bed can drive the client in

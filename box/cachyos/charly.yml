@@ -1,6 +1,5 @@
 cachyos:
     candy:
-        version: 2026.231.1219
         # Canonical CachyOS base: the upstream-published OCI image (cachyos-v3 —
         # x86_64_v3-optimized). The pacstrap-from-scratch variant is preserved as
         # `cachyos-pacstrap` for environments where pulling from Docker Hub isn't
