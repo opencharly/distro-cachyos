@@ -1,6 +1,5 @@
 ghostty:
     candy:
-        version: 2026.144.1443
         description: |
             Ghostty GPU-accelerated terminal emulator
             Installs the ghostty terminal emulator. Verifiable: the ghostty binary
