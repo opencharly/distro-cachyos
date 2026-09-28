@@ -1,6 +1,5 @@
 cachyos-gpu-desktop-check:
     candy:
-        version: 2026.151.0543
         description: |
             Shared desktop/GPU-stream verification layer for the CachyOS GPU workstation
             Carries no install beyond the desktop-interaction test tools (ydotool)
