@@ -1,6 +1,5 @@
 cachyos-base-check:
     candy:
-        version: 2026.231.1219
         description: |
             CachyOS base-image verification layer: proves the pacman scriptlet network
             sandbox is disabled (so install scriptlets and hooks actually run in rootless
