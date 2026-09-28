@@ -1,6 +1,5 @@
 cardwire-seat:
     candy:
-        version: 2026.240.1943
         description: |
             Thin SPICE seat for the check-cardwire-vm bed — a sway (wlroots)
             compositor session rendering a ghostty terminal on the virtio-gpu
