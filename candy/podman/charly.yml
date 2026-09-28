@@ -1,6 +1,5 @@
 podman:
     candy:
-        version: 2026.148.1730
         description: |
             Rootful podman container engine for a VM guest
             Installs podman + crun + netavark so a VM guest can run containers
