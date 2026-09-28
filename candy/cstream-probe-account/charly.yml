@@ -1,6 +1,5 @@
 cstream-probe-account:
     candy:
-        version: 2026.241.2100
         description: |
             BED FIXTURE ONLY -- never composed into a shipped box.
 
