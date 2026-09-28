@@ -1,6 +1,5 @@
 cstream-gpu-va-tooling:
     candy:
-        version: 2026.243.0429
         description: |
             BED FIXTURE ONLY -- never composed into a shipped box.
 
