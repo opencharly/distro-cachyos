@@ -1231,7 +1231,7 @@ check-android-emulator-pod:
             # full-mode row gate failed because the instrument's recorder ran under a
             # second session id writing into the bed capture dir while the stop check
             # polled a path no recorder wrote. One session, one identity.)
-            - '@github.com/opencharly/plugin-adb/candy/plugin-adb:v2026.269.0957'
+            - '@github.com/opencharly/plugin-adb/candy/plugin-adb:v2026.271.2244'
             # plugin-appium serves the E-5 appium session instrument (also in the image
             # closure via pod-android-emulator-layer's require); the bed pins the E-5
             # tag so the HOST check runner builds + serves the session method.
