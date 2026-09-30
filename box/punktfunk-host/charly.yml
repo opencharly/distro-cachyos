@@ -33,18 +33,18 @@ punktfunk-host:
             `capture lost — rebuilding pipeline`.
         base: cachyos
         candy:
-            - '@github.com/opencharly/layer-supervisord:v2026.240.0121'
-            - '@github.com/opencharly/pod-sway:v2026.241.2004'
-            # The capture path, and not optional: a session resolves to
+            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): the
+            # meta-layer `layer-xdg-portal` provides layer-supervisord (via pod-dbus),
+            # pod-sway, and pod-pipewire — so none of those are re-listed here.
+            # The capture path is load-bearing: a session resolves to
             # `capture: Portal`, so punktfunk asks xdg-desktop-portal's ScreenCast
             # interface for a virtual output and receives the frames over PipeWire.
-            # Without these the host pairs, negotiates a codec, and then fails every
+            # Without it the host pairs, negotiates a codec, and then fails every
             # session at pipeline build:
             #   create virtual output: ScreenCast portal failed: the name
             #   org.freedesktop.portal.Desktop was not provided by any .service files
             # xdg-portal needs no service entry — it ships D-Bus activation files and
             # respawns on demand (verified by killing it and watching the PID change).
             - '@github.com/opencharly/layer-xdg-portal:v2026.243.1016'
-            - '@github.com/opencharly/pod-pipewire:v2026.243.0508'
             - '@github.com/opencharly/layer-punktfunk:v2026.242.1658'
             - '@github.com/opencharly/plugin-punktfunk/candy/plugin-punktfunk:v2026.243.1139'

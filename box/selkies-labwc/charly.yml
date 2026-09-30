@@ -14,9 +14,10 @@ selkies-labwc:
         platform:
             - linux/amd64
         candy:
+            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): `pod-selkies-desktop`
+            # (→ pod-selkies-core) provides `pod-dbus`, so it is not re-listed.
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
             - '@github.com/opencharly/pod-selkies-desktop:v2026.247.1642'
-            - '@github.com/opencharly/pod-dbus:v2026.243.1831'
         # No box-level check: the labwc/chrome/traefik/sshd binaries belong to their
         # candies (labwc, chrome, selkies, sshd) and the chrome-devtools-mcp port to
         # candy/chrome-devtools-mcp — one candy check covers every box composing them.

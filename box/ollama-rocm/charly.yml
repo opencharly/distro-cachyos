@@ -8,7 +8,8 @@ ollama-rocm:
         platform:
             - linux/amd64
         candy:
+            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): `layer-ollama-rocm`
+            # provides `pod-ollama`, so the pod is not re-listed.
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
-            - '@github.com/opencharly/pod-ollama:v2026.243.0411'
             - '@github.com/opencharly/layer-ollama-rocm:v2026.243.1755'
             - '@github.com/opencharly/pod-dbus:v2026.243.1831'

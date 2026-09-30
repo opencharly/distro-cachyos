@@ -9,6 +9,8 @@ nvidia:
         platform:
             - linux/amd64
         candy:
+            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): the cachyos
+            # GPU base opts into `layer-cuda`, which itself provides `layer-nvidia` — so
+            # layer-nvidia is not re-listed.
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
-            - '@github.com/opencharly/layer-nvidia:v2026.236.116'
             - '@github.com/opencharly/layer-cuda:v2026.243.0408'
