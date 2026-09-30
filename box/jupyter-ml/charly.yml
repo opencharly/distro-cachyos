@@ -4,8 +4,15 @@ jupyter-ml:
         platform:
             - linux/amd64
         candy:
-            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): `pod-jupyter-ml`
-            # provides `pod-dbus` (via pod-jupyter-ml → pod-dbus) — so it is not re-listed here.
+            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): a box keeps
+            # exactly ONE ref per candy, dropping only a ref a kept meta-layer already
+            # provides. `pod-jupyter-ml` does NOT provide `pod-dbus` — its
+            # candy:/require: closure is layer-cuda + layer-supervisord + plugin-mcp +
+            # llama-cpp + unsloth + jupyter-mcp, with no dbus path — so `pod-dbus` is
+            # NOT redundant here and MUST stay listed: it bakes the `dbus` supervisord
+            # service + DBUS_SESSION_BUS_ADDRESS that check-cachyos-jupyter-ml-pod runs
+            # as inherited checks.
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
             - '@github.com/opencharly/pod-jupyter-ml:v2026.243.0923'
             - '@github.com/opencharly/layer-notebook-templates:v2026.240.0201'
+            - '@github.com/opencharly/pod-dbus:v2026.243.1831'
