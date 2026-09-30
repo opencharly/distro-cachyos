@@ -7,6 +7,8 @@ punktfunk-client:
             the whole reason a client venue stays a plain container.
         base: cachyos
         candy:
+            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): `pod-sway`
+            # (→ pod-dbus) provides `layer-supervisord`, so it is not re-listed here.
             - '@github.com/opencharly/layer-punktfunk-client:v2026.243.1116'
             # pod-sway is here for the RENDERER, not for a desktop. `punktfunk launch`
             # spawns `punktfunk-client`, which is a Wayland client (libvulkan,

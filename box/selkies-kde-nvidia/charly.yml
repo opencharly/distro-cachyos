@@ -12,8 +12,10 @@ selkies-kde-nvidia:
         platform:
             - linux/amd64
         candy:
-            # ONE SOURCE per layer (opencharly/charly#739, operator ruling): `pod-kde-selkies`
-            # (via layer-selkies-kde-desktop) provides `pod-dbus`, so it is not re-listed.
+            # ONE SOURCE per layer (opencharly/charly#739, operator ruling):
+            # `layer-selkies-kde-desktop` (→ `pod-kde-selkies`) provides `pod-dbus`
+            # (and again via `pod-selkies-core` → `layer-wl-overlay`), so it is not
+            # re-listed.
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
             - '@github.com/opencharly/layer-selkies-kde-desktop:v2026.247.1643'
         plan:

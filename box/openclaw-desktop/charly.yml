@@ -15,9 +15,10 @@ openclaw-desktop:
             - linux/amd64
         candy:
             # ONE SOURCE per layer (opencharly/charly#739, operator ruling): the composed
-            # meta-layers provide pod-dbus (pod-selkies-desktop → pod-selkies-core →
-            # pod-dbus) and layer-gh + layer-golang (layer-openclaw-full) — so none of
-            # those are re-listed here.
+            # meta-layers provide pod-dbus (pod-selkies-desktop → pod-labwc → pod-dbus;
+            # the same candy is also reachable via pod-selkies-desktop → pod-selkies-core
+            # → layer-wl-overlay → pod-dbus) and layer-gh + layer-golang
+            # (layer-openclaw-full) — so none of those are re-listed here.
             - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
             - '@github.com/opencharly/pod-selkies-desktop:v2026.247.1642'
             - '@github.com/opencharly/layer-openclaw-full:v2026.247.0718'
