@@ -7,7 +7,7 @@ punktfunk-client:
             the whole reason a client venue stays a plain container.
         base: cachyos
         candy:
-            - '@github.com/opencharly/layer-punktfunk-client:v2026.243.1116'
+            - '@github.com/opencharly/layer-punktfunk-client:v2026.272.0448'
             # pod-sway is here for the RENDERER, not for a desktop. `punktfunk launch`
             # spawns `punktfunk-client`, which is a Wayland client (libvulkan,
             # libwayland-*, libdrm, libgbm) and needs a surface to render into. Without a
@@ -19,8 +19,8 @@ punktfunk-client:
             # else — which has no decoder to advertise. A compositor changes nothing about
             # that; using the renderer does. The hardware decode path additionally needs a
             # non-lavapipe Vulkan ICD, which the punktfunk-client candy now installs.
-            - '@github.com/opencharly/layer-supervisord:v2026.240.0121'
-            - '@github.com/opencharly/pod-sway:v2026.241.2004'
+            - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
+            - '@github.com/opencharly/pod-sway:v2026.272.1053'
             # The renderer opens a PipeWire playback stream for the session's audio. The
             # `pipewire` binary arrives as a dependency of punktfunk-client, but nothing
             # STARTS it without this candy, so the client's audio thread died on every
@@ -34,7 +34,7 @@ punktfunk-client:
             #
             # This removes a known-broken path; it does not PROVE client audio. Nothing in
             # the bed asserts audio — stream-probe counts decoded VIDEO frames only.
-            - '@github.com/opencharly/pod-pipewire:v2026.243.0508'
+            - '@github.com/opencharly/pod-pipewire:v2026.273.1856'
         # plugin-punktfunk is deliberately NOT composed here. An out-of-tree verb plugin is
         # loaded by charly from the PROJECT, not from the venue image, so the `punktfunk:`
         # verb is available to this bed either way — and composing the plugin candy drags in

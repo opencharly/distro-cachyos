@@ -3,5 +3,5 @@ openclaw-full:
         enabled: true
         base: cachyos
         candy:
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
-            - '@github.com/opencharly/layer-openclaw-full:v2026.247.0718'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.271.1839'
+            - '@github.com/opencharly/layer-openclaw-full:v2026.272.0506'

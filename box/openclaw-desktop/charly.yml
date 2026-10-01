@@ -14,15 +14,15 @@ openclaw-desktop:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
-            - '@github.com/opencharly/pod-selkies-desktop:v2026.247.1642'
-            - '@github.com/opencharly/layer-openclaw-full:v2026.247.0718'
-            - '@github.com/opencharly/pod-ollama:v2026.243.0411'
-            - '@github.com/opencharly/layer-charly:v2026.269.2324'
-            - '@github.com/opencharly/layer-container-nesting:v2026.247.0157'
-            - '@github.com/opencharly/layer-golang:v2026.239.1614'
-            - '@github.com/opencharly/layer-gh:v2026.239.1624'
-            - '@github.com/opencharly/pod-dbus:v2026.243.1831'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.271.1839'
+            - '@github.com/opencharly/pod-selkies-desktop:v2026.272.0324'
+            - '@github.com/opencharly/layer-openclaw-full:v2026.272.0506'
+            - '@github.com/opencharly/pod-ollama:v2026.272.0142'
+            - '@github.com/opencharly/layer-charly:v2026.274.0345'
+            - '@github.com/opencharly/layer-container-nesting:v2026.271.2309'
+            - '@github.com/opencharly/layer-golang:v2026.272.0137'
+            - '@github.com/opencharly/layer-gh:v2026.272.0136'
+            - '@github.com/opencharly/pod-dbus:v2026.272.0105'
         # No box-level check: every check this all-in-one image carries lives on the
         # candy that provides the behaviour, so each is covered once across all
         # composing boxes — selkies/chrome/labwc/traefik/sshd binaries (selkies +

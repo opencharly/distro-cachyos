@@ -3,9 +3,9 @@ crabbox-e2e:
         enabled: true
         base: cachyos
         candy:
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.243.0408'
-            - '@github.com/opencharly/layer-crabbox:v2026.250.1023'
-            - '@github.com/opencharly/plugin-crabbox/candy/plugin-crabbox:v2026.250.1019'
-            - '@github.com/opencharly/pod-crabbox:v2026.250.1019'
-            - '@github.com/opencharly/layer-container-nesting:v2026.247.0157'
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.271.1839'
+            - '@github.com/opencharly/layer-crabbox:v2026.272.0023'
+            - '@github.com/opencharly/plugin-crabbox/candy/plugin-crabbox:v2026.272.0026'
+            - '@github.com/opencharly/pod-crabbox:v2026.272.0013'
+            - '@github.com/opencharly/layer-container-nesting:v2026.271.2309'
             - crabbox-nesting-dns
