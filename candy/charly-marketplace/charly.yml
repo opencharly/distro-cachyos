@@ -193,7 +193,7 @@ charly-marketplace:
             - '@github.com/opencharly/layer-heroic:v2026.274.1029'
             - '@github.com/opencharly/layer-steam:v2026.274.1030'
             - '@github.com/opencharly/layer-sway-desktop:v2026.274.1400'
-            - '@github.com/opencharly/layer-sway-desktop-vnc:v2026.274.1343'
+            - '@github.com/opencharly/layer-sway-desktop-vnc:v2026.274.1428'
             - '@github.com/opencharly/layer-thunar:v2026.274.1030'
             - '@github.com/opencharly/layer-xfce4-terminal:v2026.274.1031'
             - '@github.com/opencharly/pod-charly-automation:v2026.271.2332'
