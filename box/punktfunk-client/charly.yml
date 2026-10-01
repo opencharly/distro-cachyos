@@ -20,7 +20,7 @@ punktfunk-client:
             # that; using the renderer does. The hardware decode path additionally needs a
             # non-lavapipe Vulkan ICD, which the punktfunk-client candy now installs.
             - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
-            - '@github.com/opencharly/pod-sway:v2026.272.1053'
+            - '@github.com/opencharly/pod-sway:v2026.274.0642'
             # The renderer opens a PipeWire playback stream for the session's audio. The
             # `pipewire` binary arrives as a dependency of punktfunk-client, but nothing
             # STARTS it without this candy, so the client's audio thread died on every
