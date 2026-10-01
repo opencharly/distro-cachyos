@@ -15,7 +15,7 @@ openclaw-desktop:
             - linux/amd64
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/pod-selkies-desktop:v2026.274.0640'
+            - '@github.com/opencharly/pod-selkies-desktop:v2026.274.0911'
             - '@github.com/opencharly/layer-openclaw-full:v2026.274.0803'
             - '@github.com/opencharly/pod-ollama:v2026.274.0620'
             - '@github.com/opencharly/layer-charly:v2026.274.0345'
