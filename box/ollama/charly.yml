@@ -11,5 +11,5 @@ ollama:
             # a CPU consumer of the same candy (openclaw-desktop) pays nothing for it.
             # On Arch this resolves to the split `ollama-cuda` package, which depends
             # on `ollama` and drops its backend into the same runner directory.
-            - '@github.com/opencharly/layer-ollama-cuda:v2026.274.0631'
+            - '@github.com/opencharly/layer-ollama-cuda:v2026.274.0847'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
