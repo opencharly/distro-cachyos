@@ -34,7 +34,7 @@ punktfunk-host:
         base: cachyos
         candy:
             - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
-            - '@github.com/opencharly/pod-sway:v2026.274.0642'
+            - '@github.com/opencharly/pod-sway:v2026.274.0758'
             # The capture path, and not optional: a session resolves to
             # `capture: Portal`, so punktfunk asks xdg-desktop-portal's ScreenCast
             # interface for a virtual output and receives the frames over PipeWire.
@@ -44,7 +44,7 @@ punktfunk-host:
             #   org.freedesktop.portal.Desktop was not provided by any .service files
             # xdg-portal needs no service entry — it ships D-Bus activation files and
             # respawns on demand (verified by killing it and watching the PID change).
-            - '@github.com/opencharly/layer-xdg-portal:v2026.274.0629'
+            - '@github.com/opencharly/layer-xdg-portal:v2026.274.1258'
             - '@github.com/opencharly/pod-pipewire:v2026.273.1856'
             - '@github.com/opencharly/layer-punktfunk:v2026.272.0431'
             - '@github.com/opencharly/plugin-punktfunk/candy/plugin-punktfunk:v2026.272.0440'

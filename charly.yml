@@ -38,7 +38,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.274.0532'
+    - arch: '@github.com/opencharly/distro-arch:v2026.274.1256'
 discover:
     - path: box
       recursive: true
@@ -480,7 +480,7 @@ check-cachyos-gpu-vm:
             # in-guest layer here — it runs as the nested selkies-kde pod below
             # (kde-selkies moved into the selkies-kde-nvidia image). This mirrors the
             # workstation's dual-desktop split: bare-metal seat + headless stream.
-            - '@github.com/opencharly/pod-kde-desktop:v2026.274.0635'
+            - '@github.com/opencharly/pod-kde-desktop:v2026.274.1033'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
@@ -1747,7 +1747,7 @@ cachyos-gpu:
             # (real NVENC, :3000) deployed as a persistent in-guest quadlet — see
             # `nested:` below, NOT an in-guest layer. The bare-metal SDDM Plasma
             # seat (kde-desktop) drives the physical RTX monitors.
-            - '@github.com/opencharly/pod-kde-desktop:v2026.274.0635'
+            - '@github.com/opencharly/pod-kde-desktop:v2026.274.1033'
             - cachyos-kde-settings
             # Shared desktop/monitor/SPICE/selkies + mouse/keyboard/screenshot
             # checks (+ ydotool test tool). charly check live collects this layer's
@@ -1999,7 +1999,7 @@ check-cstream-vm:
         description: >-
             The SYSTEMD venue for cstream. Gates what check-cstream-pod structurally cannot: the daemons render as real systemd units rather than supervisord [program:] entries, the session target loads, and the nested compositor is installed session-scoped instead of being started at boot. logind sessions, linger and cross-user PAM are what this venue EXISTS to make gateable, but they are not asserted here yet -- they need the broker serving and two provisioned accounts, and a description may only claim what its plan actually checks.
         add_candy:
-            - '@github.com/opencharly/layer-cstream-desktop:v2026.274.0632'
+            - '@github.com/opencharly/layer-cstream-desktop:v2026.274.0802'
             # BED FIXTURE: the second account. Cross-user PAM is the reason this
             # venue exists, and it needs an account that is NOT the deploy user.
             - cstream-vm-probe-account
