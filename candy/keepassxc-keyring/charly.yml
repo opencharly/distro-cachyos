@@ -12,9 +12,9 @@ keepassxc-keyring:
         # cutover → pulled by their @github refs so this locally-vendored layer's deps
         # still resolve in this repo's namespace.
         require:
-            - '@github.com/opencharly/layer-keepassxc:v2026.239.1624'
-            - '@github.com/opencharly/layer-gnupg:v2026.239.1615'
-            - '@github.com/opencharly/layer-direnv:v2026.242.1147'
+            - '@github.com/opencharly/layer-keepassxc:v2026.272.0232'
+            - '@github.com/opencharly/layer-gnupg:v2026.272.0138'
+            - '@github.com/opencharly/layer-direnv:v2026.272.0057'
         distro:
             arch:
                 package:
