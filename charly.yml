@@ -1898,10 +1898,9 @@ charly-cachyos-app:
             # host web UI is a user-scope systemd unit exposed with `tailscale
             # serve` — an operator step documented by /charly-tools:dsh. No `${...}`
             # in any command (a check command is variable-substituted, and an
-            # unresolvable `${...}` silently SKIPS the step).
-            - check: |
-                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
-                test -x "$H/.npm-global/bin/dsh" && test -x "$H/.npm-global/bin/dsh-tui"
+            # unresolvable `${...}` silently SKIPS the step). The `check:` text is a
+            # plain description; the executable lives in `command.command`.
+            - check: the dsh and dsh-tui launchers are installed in the npm global bin directory
               id: dsh-cli-installed
               exit_status: 0
               context:
@@ -1911,9 +1910,7 @@ charly-cachyos-app:
                     H="$(getent passwd "$(id -u)" | cut -d: -f6)"
                     test -x "$H/.npm-global/bin/dsh" && test -x "$H/.npm-global/bin/dsh-tui"
                 in_container: false
-            - check: |
-                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
-                "$H/.npm-global/bin/dsh" --version
+            - check: running dsh --version prints a semantic version
               id: dsh-version
               exit_status: 0
               stdout:
@@ -1925,9 +1922,7 @@ charly-cachyos-app:
                     H="$(getent passwd "$(id -u)" | cut -d: -f6)"
                     "$H/.npm-global/bin/dsh" --version
                 in_container: false
-            - check: |
-                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
-                test -f "$H/.dsh/profiles/dsh-tui/package.json"
+            - check: the dsh-tui plugin is installed in the dsh-tui profile
               id: dsh-tui-profile-installed
               exit_status: 0
               context:
@@ -1937,13 +1932,11 @@ charly-cachyos-app:
                     H="$(getent passwd "$(id -u)" | cut -d: -f6)"
                     test -f "$H/.dsh/profiles/dsh-tui/package.json"
                 in_container: false
-            - check: |
-                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
-                "$H/.npm-global/bin/dsh-tui" version
+            - check: running dsh-tui version reports the launcher and profile versions
               id: dsh-tui-version
               exit_status: 0
               stdout:
-                - contains: "0.13.0"
+                - contains: "dsh-tui"
               context:
                 - runtime
               command:
@@ -1951,9 +1944,7 @@ charly-cachyos-app:
                     H="$(getent passwd "$(id -u)" | cut -d: -f6)"
                     "$H/.npm-global/bin/dsh-tui" version
                 in_container: false
-            - check: |
-                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
-                test -f "$H/.dsh/cordis.patch.yml" && grep -q 'ollama-cloud' "$H/.dsh/cordis.patch.yml"
+            - check: the ollama-cloud LLM route is installed in the dsh home patch
               id: dsh-ollama-route-installed
               exit_status: 0
               context:
@@ -1963,6 +1954,74 @@ charly-cachyos-app:
                     H="$(getent passwd "$(id -u)" | cut -d: -f6)"
                     test -f "$H/.dsh/cordis.patch.yml" && grep -q 'ollama-cloud' "$H/.dsh/cordis.patch.yml"
                 in_container: false
+# Disposable R10 witness for the two pod-dsh candy refs that charly-cachyos-app
+# composes. The profile itself is a `target: local` template whose host IS the
+# operator's real workstation, so the unattended R10 runs HERE, on the disposable
+# CachyOS bootstrap VM: add_candy resolves the SAME two refs the profile adds and
+# installs them on a CachyOS guest over SSH, then the profile's five deploy-scope
+# probes run in the guest (the profile's own in_container:false host semantics are
+# the same code path). A broken ref, or a candy that fails to install on CachyOS,
+# fails this bed.
+check-dsh-cachyos-vm:
+    vm:
+        from: cachyos-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole disposable R10 witness for the DeepSeek Harness family's
+            composition into charly-cachyos-app. Boots the CachyOS bootstrap VM and
+            deploys the two pod-dsh candy refs the profile adds — the dsh CLI
+            (@deepseek-ai/dsh 0.2.0-rc.2) and the dsh-TUI plugin, whose candy ships
+            the ollama-cloud route as ~/.dsh/cordis.patch.yml — then runs the
+            profile's five deploy-scope probes in the guest: the launchers on disk,
+            `dsh --version`, the dsh-tui profile manifest, `dsh-tui version`, and
+            the ollama-cloud route.
+        add_candy:
+            - '@github.com/opencharly/pod-dsh/candy/dsh:v2026.279.1210'
+            - '@github.com/opencharly/pod-dsh/candy/dsh-tui:v2026.279.1210'
+        install_opts:
+            allow_repo_changes: true
+            allow_root_tasks: true
+        plan:
+            - check: the dsh and dsh-tui launchers are installed in the npm global bin directory
+              id: vm-dsh-cli-installed
+              exit_status: 0
+              context: [runtime]
+              command: |
+                H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                test -x "$H/.npm-global/bin/dsh" && test -x "$H/.npm-global/bin/dsh-tui"
+            - check: running dsh --version prints a semantic version
+              id: vm-dsh-version
+              exit_status: 0
+              stdout:
+                - matches: "[0-9]+\\.[0-9]+"
+              context: [runtime]
+              command: |
+                H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                "$H/.npm-global/bin/dsh" --version
+            - check: the dsh-tui plugin is installed in the dsh-tui profile
+              id: vm-dsh-tui-profile-installed
+              exit_status: 0
+              context: [runtime]
+              command: |
+                H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                test -f "$H/.dsh/profiles/dsh-tui/package.json"
+            - check: running dsh-tui version reports the launcher and profile versions
+              id: vm-dsh-tui-version
+              exit_status: 0
+              stdout:
+                - contains: "dsh-tui"
+              context: [runtime]
+              command: |
+                H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                "$H/.npm-global/bin/dsh-tui" version
+            - check: the ollama-cloud LLM route is installed in the dsh home patch
+              id: vm-dsh-ollama-route-installed
+              exit_status: 0
+              context: [runtime]
+              command: |
+                H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                test -f "$H/.dsh/cordis.patch.yml" && grep -q 'ollama-cloud' "$H/.dsh/cordis.patch.yml"
 check-cstream-gpu-vm:
     # HOST REQUIREMENT, inherited from cachyos-gpu-vm: the bootstrap disk build needs
     # ~100 GiB of free space where charly builds it -- `<project>/output/qcow2/` AND

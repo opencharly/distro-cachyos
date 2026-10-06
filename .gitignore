@@ -7,6 +7,8 @@
 .check/
 # VM / disk-image build outputs
 output/
+# VM build scratch (charly vm build writes <state>/image/<vm>/.build.lock)
+image/
 # Editor scratch
 *.swp
 *~

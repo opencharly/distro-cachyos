@@ -50,9 +50,13 @@ charly-cachyos-skill:
             The dsh **web** GUI is deliberately NOT composed here: the `dsh-web`
             candy is a container service (supervisord + socat on container port
             3081), which does not suit a host workstation. On a host the web UI is a
-            user-scope systemd unit exposed with `tailscale serve --bg --https=443
-            http://127.0.0.1:3080` (the tailscale-up candy arms the operator
-            permission); see `/charly-tools:dsh`.
+            user-scope systemd unit exposed with `tailscale serve --bg --https=3080
+            http://127.0.0.1:3080` (a 1:1 port map — dsh does not occupy 443; the
+            tailscale-up candy arms the operator permission); see `/charly-tools:dsh`.
+            The web UI has TWO independent auth layers — the launch token on `/` and
+            a Host/Origin browser-trust fence on `/api/*` — so a proxy that presents a
+            non-loopback Host must start `dsh web` with `--trusted-host <host>:3080`,
+            or `/` loads while every `/api/*` call returns 403.
 
             ## Key fields
 
