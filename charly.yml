@@ -1830,6 +1830,13 @@ charly-cachyos-app:
             - '@github.com/opencharly/layer-chrome:v2026.271.2309'
             - '@github.com/opencharly/layer-nvidia:v2026.271.1817'
             - '@github.com/opencharly/layer-charly:v2026.274.0345'
+            # The DeepSeek Harness family (opencharly/pod-dsh): the CLI candy
+            # plus the dsh-TUI terminal-UI candy. dsh-web is NOT composed here —
+            # it runs a supervisord+socat web service, which is a pod concern;
+            # on the host the web GUI is exposed through the deploy's own
+            # systemd unit + `tailscale serve`.
+            - '@github.com/opencharly/pod-dsh/candy/dsh:v2026.279.1210'
+            - '@github.com/opencharly/pod-dsh/candy/dsh-tui:v2026.279.1210'
         install_opts:
             with_service: true
             allow_repo_changes: true
@@ -1882,6 +1889,79 @@ charly-cachyos-app:
                     else
                       echo "host NVIDIA driver not active (vfio passthrough or no GPU) — CDI spec N/A"
                     fi
+                in_container: false
+            # --- the DeepSeek Harness family (opencharly/pod-dsh) ---------------
+            # The npm-global CLI + the dsh-TUI plugin. The `dsh-tui` candy ships the
+            # `ollama-cloud` LLM route as ~/.dsh/cordis.patch.yml, so the route is
+            # installed by the profile itself. The web GUI is deliberately NOT
+            # composed here: `dsh-web` is a container (supervisord+socat) candy; the
+            # host web UI is a user-scope systemd unit exposed with `tailscale
+            # serve` — an operator step documented by /charly-tools:dsh. No `${...}`
+            # in any command (a check command is variable-substituted, and an
+            # unresolvable `${...}` silently SKIPS the step).
+            - check: |
+                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                test -x "$H/.npm-global/bin/dsh" && test -x "$H/.npm-global/bin/dsh-tui"
+              id: dsh-cli-installed
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: |
+                    H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                    test -x "$H/.npm-global/bin/dsh" && test -x "$H/.npm-global/bin/dsh-tui"
+                in_container: false
+            - check: |
+                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                "$H/.npm-global/bin/dsh" --version
+              id: dsh-version
+              exit_status: 0
+              stdout:
+                - matches: "[0-9]+\\.[0-9]+"
+              context:
+                - runtime
+              command:
+                command: |
+                    H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                    "$H/.npm-global/bin/dsh" --version
+                in_container: false
+            - check: |
+                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                test -f "$H/.dsh/profiles/dsh-tui/package.json"
+              id: dsh-tui-profile-installed
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: |
+                    H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                    test -f "$H/.dsh/profiles/dsh-tui/package.json"
+                in_container: false
+            - check: |
+                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                "$H/.npm-global/bin/dsh-tui" version
+              id: dsh-tui-version
+              exit_status: 0
+              stdout:
+                - contains: "0.13.0"
+              context:
+                - runtime
+              command:
+                command: |
+                    H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                    "$H/.npm-global/bin/dsh-tui" version
+                in_container: false
+            - check: |
+                command=H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                test -f "$H/.dsh/cordis.patch.yml" && grep -q 'ollama-cloud' "$H/.dsh/cordis.patch.yml"
+              id: dsh-ollama-route-installed
+              exit_status: 0
+              context:
+                - runtime
+              command:
+                command: |
+                    H="$(getent passwd "$(id -u)" | cut -d: -f6)"
+                    test -f "$H/.dsh/cordis.patch.yml" && grep -q 'ollama-cloud' "$H/.dsh/cordis.patch.yml"
                 in_container: false
 check-cstream-gpu-vm:
     # HOST REQUIREMENT, inherited from cachyos-gpu-vm: the bootstrap disk build needs
