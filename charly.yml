@@ -1982,6 +1982,12 @@ check-dsh-cachyos-vm:
         install_opts:
             allow_repo_changes: true
             allow_root_tasks: true
+            # The dsh candy ships a package.json (the npm builder installs
+            # @deepseek-ai/dsh globally), so the guest deploy needs an npm-capable
+            # builder image — the same published OCI ref the charly-cachyos-app
+            # profile pins. Without it the walk fails: "no builder image for npm
+            # (candy=dsh)".
+            builder_image: ghcr.io/opencharly/arch-builder:2026.122.2252
         plan:
             - check: the dsh and dsh-tui launchers are installed in the npm global bin directory
               id: vm-dsh-cli-installed
