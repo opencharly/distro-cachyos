@@ -12,7 +12,7 @@ githubrunner:
         network: host
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/pod-github-runner:v2026.274.0625'
+            - '@github.com/opencharly/pod-github-runner:v2026.279.0028'
             - '@github.com/opencharly/layer-charly:v2026.274.0345'
             # gh: the org's pr-validator workflow drives `gh api/pr comment/pr merge`
             # (opencharly/.github/.github/workflows/pr-validator.yml) and the runner
