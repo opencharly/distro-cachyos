@@ -12,7 +12,7 @@ Canonical files:
   tree, the inline VM / app / check-bed entities, and the embedded `skill:`
   entities (`cachyos`, `cachyos-pacstrap`, `cachyos-pacstrap-builder`,
   `githubrunner`, `selkies-kde`, `selkies-kde-nvidia`, `selkies-labwc`,
-  `selkies-labwc-nvidia`, `versa`, `openclaw-desktop`, `charly-cachyos`,
+  `selkies-labwc-nvidia`, `versa`, `charly-cachyos`,
   `keepassxc-keyring`).
 - `box/<name>/charly.yml` — one manifest per image / app / VM box.
 - `candy/<name>/charly.yml` — the CachyOS-exclusive candy layers.

@@ -535,7 +535,6 @@ selkies-labwc-skill:
             ## Related Boxes
             
             - `/charly-selkies:selkies-labwc-nvidia` — the GPU sibling of this CPU box: the same `selkies-desktop` metalayer on the CachyOS GPU base (`cachyos.nvidia`, `build: [pac, aur]`) with `builder.pixi: arch.cuda-arch-builder` for real NVENC, in the `opencharly/distro-cachyos` submodule. See `/charly-distros:cachyos`.
-            - `/charly-openclaw:openclaw-desktop` — all-in-one CachyOS variant: this streaming desktop fused with the openclaw-full gateway + AI CLIs, a CPU ollama, and the full charly toolchain (build boxes, run nested pods, launch rootless libvirt VMs from inside the streaming desktop). Uses `/charly-distros:container-nesting`'s `unmask=/proc/*` posture — no `--privileged`, still uid 1000.
             - `/charly-selkies:sway-browser-vnc` — VNC-based alternative using Sway compositor instead of Selkies/labwc streaming
             
             ## Verification
@@ -688,7 +687,6 @@ selkies-labwc-nvidia-skill:
             - `/charly-selkies:selkies-desktop-layer` — the labwc desktop metalayer this box is the GPU build of
             - `selkies-labwc` (in this same `opencharly/distro-cachyos` submodule) — the CPU-encoding labwc sibling
             - `selkies-kde-nvidia` — the KDE-Plasma GPU sibling (same `cachyos.nvidia` base + CUDA arch-builder)
-            - `/charly-openclaw:openclaw-desktop` — the CachyOS/CPU all-in-one: this streaming desktop stack + the openclaw-full gateway + AI CLIs + a CPU ollama + the full charly toolchain (charly + container-nesting + golang + gh). Use it if you want to build boxes / start nested pods / launch VMs from inside the browser-accessible desktop.
             - `/charly-distros:cachyos` — the CachyOS base image family (owns this box's submodule)
             
             ## Related Commands

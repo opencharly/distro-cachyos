@@ -19,7 +19,7 @@ namespace.
 | Base / builder | `cachyos` (base), `cachyos-pacstrap-builder` (privileged), `cachyos-pacstrap` (`from: builder:pacstrap`) |
 | GPU base | `nvidia`, `python-ml` |
 | Streaming desktops | `selkies-labwc`, `selkies-labwc-nvidia`, `selkies-kde`, `selkies-kde-nvidia` |
-| Relocated app / fixture boxes | `versa`, `openclaw`/`openclaw-full`/`openclaw-desktop`, `githubrunner`, `android-emulator`, `charly-selftest`, `comfyui`, `immich-ml`, `jupyter-ml`, `ollama`, `ollama-rocm`, `unsloth-studio`, `crabbox`, `cstream`, `punktfunk-*` |
+| Relocated app / fixture boxes | `versa`, `githubrunner`, `android-emulator`, `charly-selftest`, `comfyui`, `immich-ml`, `jupyter-ml`, `ollama`, `ollama-rocm`, `unsloth-studio`, `crabbox`, `cstream`, `punktfunk-*` |
 | VMs | `cachyos-vm`, `cachyos-gpu-vm`, `cachyos-gpu-workstation-vm`, `cstream-vm`, `punktfunk-vm`, … |
 | Operator profile | `charly-cachyos` (`kind:local` template + `host:local` deploy) |
 | Check beds | `check-cachyos-vm`, `check-cachyos-mcp-vm`, `check-punktfunk-pod`, `check-selkies-*-pod`, `check-crabbox-pod`, … |
@@ -99,7 +99,7 @@ config schema is newer than the binary supports).
   `/charly-distros:cachyos-pacstrap-builder`, `/charly-distros:githubrunner`,
   `/charly-selkies:selkies-kde`, `/charly-selkies:selkies-kde-nvidia`,
   `/charly-selkies:selkies-labwc`, `/charly-selkies:selkies-labwc-nvidia`,
-  `/charly-versa:versa`, `/charly-openclaw:openclaw-desktop`,
+  `/charly-versa:versa`,
   `/charly-local:charly-cachyos`, `/charly-infrastructure:keepassxc-keyring`
 - Bootstrap VM: `/charly-vm:cachyos-bootstrap-vm`
 - Arch base: `/charly-distros:arch` (imported under the `arch` namespace)
