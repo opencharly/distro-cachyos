@@ -8,7 +8,7 @@ githubrunner:
             - linux/amd64
         # No uid/user override and NO image-level security: block → resolves to
         # container-nesting's rootless posture (cap_add:[], unmask=/proc/*,
-        # /dev/fuse, /dev/net/tun) at uid 1000. Same shape as openclaw-desktop.
+        # /dev/fuse, /dev/net/tun) at uid 1000.
         network: host
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
