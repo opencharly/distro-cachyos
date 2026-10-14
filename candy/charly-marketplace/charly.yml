@@ -50,7 +50,12 @@ charly-marketplace:
             - '@github.com/opencharly/layer-a11y-tools:v2026.274.0748'
             - '@github.com/opencharly/layer-docker-ce:v2026.272.0100'
             - '@github.com/opencharly/layer-docs-site:v2026.274.0639'
-            - '@github.com/opencharly/pod-dsh:v2026.274.0638'
+            # `pod-dsh`'s repo ROOT stopped being a candy at this tag: its root candy `dsh:`
+            # moved into `candy/dsh` (the root charly.yml now declares only skill:/hook:
+            # entities), so the bare `@github.com/opencharly/pod-dsh:vTAG` form resolves to
+            # `unknown candy "github.com/opencharly/pod-dsh"`. `candy/dsh` is the direct
+            # successor of what this line named before, at the aligned version.
+            - '@github.com/opencharly/pod-dsh/candy/dsh:v2026.279.1210'
             - '@github.com/opencharly/layer-fastfetch:v2026.272.0102'
             - '@github.com/opencharly/pod-filebrowser:v2026.274.0654'
             - '@github.com/opencharly/layer-forgecode:v2026.274.0635'
@@ -182,7 +187,7 @@ charly-marketplace:
             - '@github.com/opencharly/layer-notebook-ollama:v2026.272.0611'
             - '@github.com/opencharly/layer-charly-coder:v2026.271.2125'
             - '@github.com/opencharly/layer-charly-hermes:v2026.271.2154'
-            - '@github.com/opencharly/pod-github-runner:v2026.274.0625'
+            - '@github.com/opencharly/pod-github-runner:v2026.279.0028'
             - '@github.com/opencharly/pod-nested-podman-socket:v2026.273.1858'
             - '@github.com/opencharly/layer-notebook-openrouter:v2026.272.0413'
             - '@github.com/opencharly/layer-charly-jupyter:v2026.271.2217'
