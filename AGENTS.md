@@ -14,8 +14,9 @@ Canonical files:
   `candy/cachyos-selkies-skills/charly.yml` — the eleven `skill:` routing nodes
   (`charly-cachyos`, `keepassxc-keyring`, `versa`; `cachyos`, `cachyos-pacstrap`,
   `cachyos-pacstrap-builder`, `githubrunner`; `selkies-kde`, `selkies-kde-nvidia`,
-  `selkies-labwc`, `selkies-labwc-nvidia`), each carrying
-  `name`/`family`/`owner`/`triggers` and no body.
+  `selkies-labwc`, `selkies-labwc-nvidia`), each carrying `name`/`family`/`owner`
+  and no body, with `triggers` on the two that are routed (`charly-cachyos`,
+  `cachyos`) and none on the other nine.
 - `.agents/skills/<name>/SKILL.md` — the eleven skill BODIES, one directory per
   node's `name:`. The files are the source of record for the prose.
 - `box/<name>/charly.yml` — one manifest per image / app / VM box.
