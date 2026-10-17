@@ -8,9 +8,9 @@ versa:
             - linux/amd64
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/layer-nvidia:v2026.289.1705' # GPU runtime (nvidia-utils + nvidia-container-toolkit) — formerly via base: nvidia
-            - '@github.com/opencharly/layer-cuda:v2026.274.0643' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
-            - '@github.com/opencharly/pod-marimo:v2026.274.0753' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
+            - '@github.com/opencharly/layer-nvidia:054aa7702ebe79e8be444764f91a03933ba45eec' # GPU runtime (nvidia-utils + nvidia-container-toolkit) — formerly via base: nvidia
+            - '@github.com/opencharly/layer-cuda:v2026.290.1513' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
+            - '@github.com/opencharly/pod-marimo:v2026.290.1909' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
             - '@github.com/opencharly/pod-airflow:v2026.274.1033' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
             - '@github.com/opencharly/pod-osm-tools:v2026.274.0631' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI
             - '@github.com/opencharly/pod-maputnik:v2026.274.0617' # MapLibre style editor (built from npm source, served by python -m http.server)

@@ -498,7 +498,7 @@ check-cachyos-gpu-vm:
             # cachyos-gpu workstation, which lists charly. Placed before
             # nvidia-driver so nvidia-driver's reboot: still trails the whole stack.
             - '@github.com/opencharly/layer-charly:v2026.281.2113'
-            - '@github.com/opencharly/layer-nvidia:v2026.289.1705'
+            - '@github.com/opencharly/layer-nvidia:054aa7702ebe79e8be444764f91a03933ba45eec'
             - nvidia-driver
         install_opts:
             # with_service gates the systemd unit enable for sddm (the bare-metal
@@ -984,7 +984,7 @@ check-selkies-labwc-nvidia-vm:
             - podman
             - '@github.com/opencharly/pod-qemu-guest-agent:v2026.272.0236'
             - '@github.com/opencharly/layer-workspace-mount:v2026.272.0431'
-            - '@github.com/opencharly/layer-nvidia:v2026.289.1705'
+            - '@github.com/opencharly/layer-nvidia:054aa7702ebe79e8be444764f91a03933ba45eec'
             - nvidia-driver
         install_opts:
             with_service: true
@@ -1032,7 +1032,7 @@ check-selkies-kde-nvidia-vm:
             - podman
             - '@github.com/opencharly/pod-qemu-guest-agent:v2026.272.0236'
             - '@github.com/opencharly/layer-workspace-mount:v2026.272.0431'
-            - '@github.com/opencharly/layer-nvidia:v2026.289.1705'
+            - '@github.com/opencharly/layer-nvidia:054aa7702ebe79e8be444764f91a03933ba45eec'
             - nvidia-driver
         install_opts:
             with_service: true
@@ -1650,7 +1650,7 @@ cachyos-gpu:
             - '@github.com/opencharly/layer-vscode:v2026.272.0410'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.271.2309'
-            - '@github.com/opencharly/layer-nvidia:v2026.289.1705'
+            - '@github.com/opencharly/layer-nvidia:054aa7702ebe79e8be444764f91a03933ba45eec'
             - '@github.com/opencharly/layer-charly:v2026.281.2113'
             # Full KDE Plasma desktop synced to the host + GPU display/stream
             # stack. kde-desktop pulls the whole Plasma/KF6/Qt stack via
@@ -1742,7 +1742,7 @@ charly-cachyos-app:
             - '@github.com/opencharly/layer-vscode:v2026.272.0410'
             - ghostty
             - '@github.com/opencharly/layer-chrome:v2026.271.2309'
-            - '@github.com/opencharly/layer-nvidia:v2026.289.1705'
+            - '@github.com/opencharly/layer-nvidia:054aa7702ebe79e8be444764f91a03933ba45eec'
             - '@github.com/opencharly/layer-charly:v2026.281.2113'
             # The DeepSeek Harness family (opencharly/pod-dsh): the CLI candy
             # plus the dsh-TUI terminal-UI candy. dsh-web is NOT composed here —
