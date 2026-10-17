@@ -9,11 +9,16 @@ CachyOS-rooted app/fixture boxes, discovered from `box/` and `candy/`. It import
 Canonical files:
 
 - `charly.yml` — the root manifest: the `arch` namespace import, the `discover:`
-  tree, the inline VM / app / check-bed entities, and the embedded `skill:`
-  entities (`cachyos`, `cachyos-pacstrap`, `cachyos-pacstrap-builder`,
-  `githubrunner`, `selkies-kde`, `selkies-kde-nvidia`, `selkies-labwc`,
-  `selkies-labwc-nvidia`, `versa`, `charly-cachyos`,
-  `keepassxc-keyring`).
+  tree, and the inline VM / app / check-bed entities.
+- `candy/cachyos-app-skills/charly.yml`, `candy/cachyos-os-skills/charly.yml`,
+  `candy/cachyos-selkies-skills/charly.yml` — the eleven `skill:` routing nodes
+  (`charly-cachyos`, `keepassxc-keyring`, `versa`; `cachyos`, `cachyos-pacstrap`,
+  `cachyos-pacstrap-builder`, `githubrunner`; `selkies-kde`, `selkies-kde-nvidia`,
+  `selkies-labwc`, `selkies-labwc-nvidia`), each carrying `name`/`family`/`owner`
+  and no body, with `triggers` on the two that are routed (`charly-cachyos`,
+  `cachyos`) and none on the other nine.
+- `.agents/skills/<name>/SKILL.md` — the eleven skill BODIES, one directory per
+  node's `name:`. The files are the source of record for the prose.
 - `box/<name>/charly.yml` — one manifest per image / app / VM box.
 - `candy/<name>/charly.yml` — the CachyOS-exclusive candy layers.
 - `.github/workflows/tag-on-merge.yml` — CalVer tag + `CHANGELOG/` on merge.
@@ -30,6 +35,10 @@ Canonical files:
 - `/charly-selkies:selkies-labwc`, `/charly-selkies:selkies-labwc-nvidia`,
   `/charly-selkies:selkies-kde`, `/charly-selkies:selkies-kde-nvidia` — the CPU
   and GPU streaming desktops; `/charly-selkies:selkies` for the engine.
+- `/charly-distros:githubrunner` — the rootless self-hosted GitHub Actions runner box.
+- `/charly-versa:versa` — the marimo + Airflow + OSM/GTFS analytics image.
+- `/charly-infrastructure:keepassxc-keyring` — the KeePassXC Secret Service wiring
+  for a `target: local` host.
 - `/charly-image:image` + `/charly-image:layer` — composition and candy
   authoring.
 - `/charly-check:check` — the disposable check beds and `plan:` authoring.
@@ -47,9 +56,10 @@ Canonical files:
 
 ## Modify this repo
 
-- Edit the box manifest under `box/<name>/charly.yml` and any embedded `skill:`
-  entity together — the skill is the projected usage source, so a change not
-  mirrored in the skill leaves the corpus stale.
+- Edit a skill's `SKILL.md` under `.agents/skills/<name>/` for the prose, or its
+  node in the owning `candy/cachyos-*-skills/charly.yml` for the routing — never
+  the generated `SKILL.md` in the marketplace corpus; a corpus regeneration
+  (`charly marketplace generate`) projects both.
 - The `arch` namespace import (`arch.arch`, `arch.arch-builder`,
   `arch.cuda-arch-builder`) is one-directional; do not introduce a back-import.
 - New behaviour claims belong in a `plan:` as an observable `check:` step, and
