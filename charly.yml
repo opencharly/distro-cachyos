@@ -3557,3 +3557,31 @@ check-instrument-cachyos-vm:
               # "never changes PATH and never downgrades a target package". Probe
               # the actual delivery path (the glob expands to the versioned binary).
               command: 'ls /tmp/charly-*'
+# check-openwebui-pod — the disposable witness for the CachyOS openwebui box: the same
+# candy composition as the Fedora box, on the x86_64_v3 base, with the served version
+# asserted from the app itself so a base or pin regression cannot pass silently.
+check-openwebui-pod:
+    pod:
+        image: openwebui
+        disposable: true
+        lifecycle: dev
+        description: Sole proof of the openwebui image on the CachyOS base — the Open Web UI chat front-end with its auto-config entrypoint, composed with agent-forwarding (GPG/SSH/direnv) and pod-dbus, mirroring the Fedora box candy-for-candy so the two are comparable. Builds the pod on cachyos (open-webui 0.12.3 from PyPI through pixi, on the 3.12 interpreter upstream requires), deploys it, and runs the candy baked checks — entrypoint present and executable, supervisord service running, HTTP 200 on the auto-allocated port, injected WEBUI_ADMIN_EMAIL, published port reachable — plus the python layer floor assertion and the served open-webui version read from /api/config. The HTTP probes are readiness-bounded (eventually 3m) because Open Web UI migrates its database before uvicorn binds.
+        env:
+            OPENAI_API_BASE_URL: https://api.openai.com/v1
+            OPENAI_API_KEY: not-a-real-key
+            WEBUI_ADMIN_EMAIL: admin@openwebui.example
+        plan:
+            # The box OWNS the pod-openwebui pin, so it owns the expectation: when the pin
+            # advances, this line advances with it in the same change.
+            - check: the running service serves the open-webui version this box pins (0.12.3), read from its own /api/config
+              id: openwebui-served-version
+              context:
+                - runtime
+              timeout: 30s
+              eventually: 3m
+              retry_interval: 2s
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8080}/api/config
+                status: 200
+                body:
+                  - contains: '"version":"0.12.3"'

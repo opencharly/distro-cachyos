@@ -8,7 +8,10 @@ cachyos:
         # rolling tag for cachyos-v3 (no named/dated tags exist), so a digest is
         # the most precise coordinate. Refresh by repinning to a newer digest:
         #   skopeo inspect --no-tags docker://docker.io/cachyos/cachyos-v3 | jq -r .Digest
-        base: docker.io/cachyos/cachyos-v3@sha256:7ada9fc1c311c2f651f62ab75b6b95f4b341a51eba3f9b6d133eb12b370bedb0
+        # (skopeo-less form, used for this refresh: read Docker-Content-Digest off the
+        # `latest` manifest with an anonymous registry token).
+        # Refreshed 2026-10-20 from 7ada9fc1c311…bedb0, which had drifted from upstream.
+        base: docker.io/cachyos/cachyos-v3@sha256:f50fa29540b3de01845f908202c91e4cddc7d1cdaac1b25ad33332afba94184b
         # The cachyos base checks (sandbox-disabled, os-release, pacman, v3-repo) live on
         # the cachyos-base-check CANDY, composed here, NOT in this box's plan: a base-box
         # plan does not bake into derived images (CollectDescriptions bakes only the TOP
