@@ -49,10 +49,15 @@ discover:
 # deploy.yml). disposable: true is the sole authorization for the unattended
 # destroy+rebuild driven by `charly check run check-cachyos-vm`.
 check-cachyos-vm:
-    # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
-    # on the build host's /tmp (charly vm builds the disk there); a host with less
-    # fails with 'insufficient free space on /tmp/charly-priv-N'. Redirect the build
-    # to a larger filesystem with TMPDIR + CHARLY_VM_STATE_DIR.
+    # HOST REQUIREMENT: the bootstrap VM disk build stages a 25 GiB disk (the
+    # cachyos-vm entity's disk_size) and the preflight requires disk + overhead —
+    # 27.0 GiB as reported by `charly vm build` on 2026-10-20 (28,991,029,248
+    # bytes). The staging dir honors TMPDIR (sdk/buildkit's privileged runner), so
+    # a host whose /tmp is a tmpfs must point TMPDIR at a disk-backed path
+    # (e.g. TMPDIR=$HOME/.cache/charly/tmp) — otherwise the preflight refuses with
+    # 'insufficient free space on /tmp/charly-priv-N: 26.1 GiB free, 27.0 GiB
+    # required' even though the home filesystem has room. CHARLY_VM_STATE_DIR
+    # relocates the VM state tree the same way.
     # mkinitcpio 'failed to detect root filesystem' in the base-image build: the
     # chroot autodetect fallback, allowlisted by charly#400
     # (mkinitcpio-chroot-autodetect-fallback + mkinitcpio-chroot-warnings); this
