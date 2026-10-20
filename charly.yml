@@ -3585,3 +3585,20 @@ check-openwebui-pod:
                 status: 200
                 body:
                   - contains: '"version":"0.12.3"'
+            # A base DIGEST cannot be observed from the manifest at runtime — the only witness
+            # that the image really came from the pinned base is the base's own /etc/os-release.
+            # So it is asserted here, and VERSION_ID is the digest's fingerprint (the digest
+            # itself never reaches the guest). When the base digest is refreshed, this line
+            # advances with it in the SAME change: the box owns the pin, so the box owns the
+            # expectation — the same coupling the served-version check above uses, and the one
+            # whose absence let the Fedora box ship a three-release-old candy.
+            - check: the composed image runs from the CachyOS base this box pins (ID=cachyos, VERSION_ID=20261018.0.612668), so a stale base digest cannot pass this bed
+              id: cachyos-base-identity
+              context:
+                - runtime
+              exit_status: 0
+              stdout:
+                - contains: ID=cachyos
+                - contains: VERSION_ID=20261018.0.612668
+              command: |
+                grep -E '^(ID|VERSION_ID)=' /etc/os-release
