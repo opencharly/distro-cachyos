@@ -86,9 +86,10 @@ config schema is newer than the binary supports).
 
 - `charly.yml` — the root manifest: the `arch` namespace import, the `discover:`
   tree, and the inline VM / app / check-bed entities.
-- `candy/cachyos-*-skills/charly.yml` — the eleven `skill:` routing nodes
+- `candy/cachyos-*-skills/charly.yml` — the three skill CARRIER candies, each with a
+  real `candy:` node and with that carrier's `skill:` routing nodes
   (`name`/`family`/`owner`, plus `triggers` on the two routed ones, no body); the
-  bodies live in `.agents/skills/<name>/SKILL.md`.
+  bodies live in `candy/<carrier>/.agents/skills/<name>/SKILL.md`.
 - `box/<name>/charly.yml` — one manifest per image / app / VM box.
 - `candy/<name>/charly.yml` — the CachyOS-exclusive candy layers.
 - `.github/workflows/tag-on-merge.yml` — CalVer tag + `CHANGELOG/` on merge.

@@ -19,6 +19,9 @@ cachyos:
         # gate unexecuted in every bed that ships the fix. Composing the candy makes the
         # checks bake into this base image AND every image that FROMs it.
         candy:
+            # The skill carrier this image owns its skill in — see candy/cachyos-os-skills/charly.yml
+            - cachyos-os-skills
+
             - cachyos-base-check
         build:
             - pac
