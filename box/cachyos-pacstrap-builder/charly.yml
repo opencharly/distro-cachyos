@@ -9,6 +9,9 @@ cachyos-pacstrap-builder:
         distro:
             - arch
         candy:
+            # The skill carrier this image owns its skill in — see candy/cachyos-os-skills/charly.yml
+            - cachyos-os-skills
+
             - '@github.com/opencharly/layer-pacstrap-builder:v2026.272.0421'
         # No box-level check: the pacstrap/arch-install-scripts/grub/parted toolchain
         # checks live on the pacstrap-builder candy, so ONE check covers this box AND

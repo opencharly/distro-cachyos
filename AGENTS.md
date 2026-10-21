@@ -11,14 +11,19 @@ Canonical files:
 - `charly.yml` — the root manifest: the `arch` namespace import, the `discover:`
   tree, and the inline VM / app / check-bed entities.
 - `candy/cachyos-app-skills/charly.yml`, `candy/cachyos-os-skills/charly.yml`,
-  `candy/cachyos-selkies-skills/charly.yml` — the eleven `skill:` routing nodes
+  `candy/cachyos-selkies-skills/charly.yml` — the three skill CARRIER candies. Each
+  declares a real `candy:` node (so it can be composed, and so an image that owns one
+  of its skills carries its prose in `ai.opencharly.skill` — opencharly/sdk#434) and
+  holds that carrier's eleven `skill:` routing nodes in total
   (`charly-cachyos`, `keepassxc-keyring`, `versa`; `cachyos`, `cachyos-pacstrap`,
   `cachyos-pacstrap-builder`, `githubrunner`; `selkies-kde`, `selkies-kde-nvidia`,
   `selkies-labwc`, `selkies-labwc-nvidia`), each carrying `name`/`family`/`owner`
   and no body, with `triggers` on the two that are routed (`charly-cachyos`,
   `cachyos`) and none on the other nine.
-- `.agents/skills/<name>/SKILL.md` — the eleven skill BODIES, one directory per
-  node's `name:`. The files are the source of record for the prose.
+- `candy/<carrier>/.agents/skills/<name>/SKILL.md` — the eleven skill BODIES, one
+  directory per node's `name:`, beside the carrier that owns them (and
+  `candy/keepassxc-keyring/.agents/skills/keepassxc-keyring/SKILL.md` for the one
+  skill owned by its own candy). The files are the source of record for the prose.
 - `box/<name>/charly.yml` — one manifest per image / app / VM box.
 - `candy/<name>/charly.yml` — the CachyOS-exclusive candy layers.
 - `.github/workflows/tag-on-merge.yml` — CalVer tag + `CHANGELOG/` on merge.
@@ -56,7 +61,7 @@ Canonical files:
 
 ## Modify this repo
 
-- Edit a skill's `SKILL.md` under `.agents/skills/<name>/` for the prose, or its
+- Edit a skill's `SKILL.md` under `candy/<carrier>/.agents/skills/<name>/` for the prose, or its
   node in the owning `candy/cachyos-*-skills/charly.yml` for the routing — never
   the generated `SKILL.md` in the marketplace corpus; a corpus regeneration
   (`charly marketplace generate`) projects both.

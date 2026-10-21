@@ -11,6 +11,9 @@ githubrunner:
         # /dev/fuse, /dev/net/tun) at uid 1000.
         network: host
         candy:
+            # The skill carrier this image owns its skill in — see candy/cachyos-os-skills/charly.yml
+            - cachyos-os-skills
+
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/pod-github-runner:v2026.279.0028'
             - '@github.com/opencharly/layer-charly:v2026.281.2113'

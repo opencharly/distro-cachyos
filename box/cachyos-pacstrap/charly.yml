@@ -10,3 +10,6 @@ cachyos-pacstrap:
         distro:
             - cachyos
             - arch
+        candy:
+            # The skill carrier this image owns its skill in — see candy/cachyos-os-skills/charly.yml
+            - cachyos-os-skills
