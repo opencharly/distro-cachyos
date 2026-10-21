@@ -20,10 +20,12 @@ Canonical files:
   `selkies-labwc`, `selkies-labwc-nvidia`), each carrying `name`/`family`/`owner`
   and no body, with `triggers` on the two that are routed (`charly-cachyos`,
   `cachyos`) and none on the other nine.
-- `candy/<carrier>/.agents/skills/<name>/SKILL.md` — the eleven skill BODIES, one
-  directory per node's `name:`, beside the carrier that owns them (and
-  `candy/keepassxc-keyring/.agents/skills/keepassxc-keyring/SKILL.md` for the one
-  skill owned by its own candy). The files are the source of record for the prose.
+- `.agents/skills/<name>/SKILL.md` — the eleven skill BODIES, one directory per
+  node's `name:`, at THIS REPO'S ROOT and never in a carrier candy's directory:
+  the root is the base the marketplace corpus reads and the directory a harness
+  rooted here discovers natively (`deploykit.candyRepoRoot`, opencharly/sdk#445),
+  so the corpus and the `ai.opencharly.skill` label name the same file. The files
+  are the source of record for the prose.
 - `box/<name>/charly.yml` — one manifest per image / app / VM box.
 - `candy/<name>/charly.yml` — the CachyOS-exclusive candy layers.
 - `.github/workflows/tag-on-merge.yml` — CalVer tag + `CHANGELOG/` on merge.
@@ -61,7 +63,7 @@ Canonical files:
 
 ## Modify this repo
 
-- Edit a skill's `SKILL.md` under `candy/<carrier>/.agents/skills/<name>/` for the prose, or its
+- Edit a skill's `SKILL.md` at the repo root (`.agents/skills/<name>/`) for the prose, or its
   node in the owning `candy/cachyos-*-skills/charly.yml` for the routing — never
   the generated `SKILL.md` in the marketplace corpus; a corpus regeneration
   (`charly marketplace generate`) projects both.
