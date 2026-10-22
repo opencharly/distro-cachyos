@@ -1,0 +1,51 @@
+# containerd-v4-egress — the egress-validation subject for the R10 bed
+# check-containerd-v4-egress-vm (opencharly/charly#929).
+#
+# The candy installs the containerd stack the CONTAINERD.md §3.1 host contract
+# needs (containerd + crictl + the crun and krun OCI runtimes) and ships a
+# SCRATCH fixture project (fixture/) into the guest. The fixture's candy carries
+# the canonical version-4 config as a `config:` step with
+# `validate: containerd_config` — the egress seam that validates rendered bytes
+# through the real verb:egress provider BEFORE they are staged. The bed drives
+# `charly box generate` over that fixture, so the validator under test is the
+# binary the bed runs, not a copied schema.
+containerd-v4-egress:
+    candy:
+        description: |
+            The containerd v4 config egress-validation subject (opencharly/charly#929).
+            Installs containerd + crictl + crun + krun and ships the scratch fixture
+            project whose config: step carries the CONTAINERD.md section 3.1 version-4
+            config with validate: containerd_config. The bed
+            check-containerd-v4-egress-vm generates the fixture through the REAL
+            verb:egress validator, installs the exact bytes the validator accepted, and
+            asserts the running daemon serves the crun/krun runtime handlers and the
+            overlayfs snapshotter. A plugin-egress without the v4 arm fails the
+            generate with a version conflict, so the bed is red without the schema.
+        package:
+            - containerd
+            - crictl
+            - crun
+            - krun
+        plan:
+            - run: ship the scratch fixture project's project root into the guest home
+              copy: fixture/charly.yml
+              to: "~/containerd-v4-egress-fixture/charly.yml"
+            - run: ship the scratch fixture box that composes the egress-validation candy
+              copy: fixture/box/containerd-v4-fixture-box/charly.yml
+              to: "~/containerd-v4-egress-fixture/box/containerd-v4-fixture-box/charly.yml"
+            - run: ship the scratch fixture candy carrying the canonical v4 config and its egress validation
+              copy: fixture/candy/containerd-v4-fixture-candy/charly.yml
+              to: "~/containerd-v4-egress-fixture/candy/containerd-v4-fixture-candy/charly.yml"
+            # RUNTIME, not build: a local add_candy's plan IS collected into the bed's
+            # check-live plan, so a build-scope check would be counted as SKIPPED there.
+            # This asserts the shipped fixture on the guest, which is the install result.
+            - check: the scratch fixture project is shipped into the guest home with its egress-validation candy
+              id: containerd-v4-egress-fixture-shipped
+              context: [runtime]
+              exit_status: 0
+              stdout:
+                - contains: FIXTURE-SHIPPED
+              command: |
+                test -s "$HOME/containerd-v4-egress-fixture/charly.yml"
+                test -s "$HOME/containerd-v4-egress-fixture/candy/containerd-v4-fixture-candy/charly.yml"
+                echo FIXTURE-SHIPPED

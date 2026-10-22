@@ -1,0 +1,19 @@
+# Scratch fixture project for check-containerd-v4-egress-vm (opencharly/charly#929).
+#
+# A self-contained two-entity project: a throwaway box whose only payload is one
+# scratch candy, whose only install step is the canonical CONTAINERD.md section 3.1
+# version-4 config carried as a `config:` step with `validate: containerd_config`.
+# `charly box generate` over this project therefore drives the REAL verb:egress
+# validator and stages the exact bytes it accepted; nothing here builds an image.
+defaults:
+    platform:
+        - linux/amd64
+    tag: auto
+    registry: ghcr.io/example
+    build:
+        - rpm
+discover:
+    - path: box
+      recursive: true
+    - path: candy
+      recursive: true

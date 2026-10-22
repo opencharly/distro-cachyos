@@ -441,6 +441,235 @@ check-punktfunk-vm:
                 - runtime
               command: |
                 curl -sk https://127.0.0.1:47990/api/v1/health
+# The VM the containerd v4 egress bed boots. An ARCH CLOUD IMAGE rather than the
+# cachyos pacstrap bootstrap: containerd/crictl/crun/krun are the same packages on
+# Arch and CachyOS, and a prebuilt qcow2 reaches a booted systemd guest without the
+# bootstrap's ~100 GiB transient build. This is the same substrate decision
+# punktfunk-vm records (a systemd path under test, not a distro build).
+containerd-v4-vm:
+    vm:
+        source:
+            kind: cloud_image
+            url: https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2
+            checksum:
+                type: sha256
+            base_user: arch
+            distro: arch
+        backend: libvirt
+        disk_size: 20G
+        ram: 4G
+        cpu: 2
+        machine: q35
+        # BIOS: the Arch cloud image's EFI path boots a stale embedded grub.cfg and
+        # loses the console to the simpledrm->virtio takeover race (punktfunk-vm's
+        # measured note; /charly-vm:arch-cloud-vm Finding B).
+        firmware: bios
+        network:
+            mode: user
+        ssh:
+            port_auto: true
+            key_source: generate
+        cloud_init:
+            timezone: UTC
+            package:
+                # The bed's check steps run as the base user and need root for
+                # install/restart/ss; charly's create-pattern grants NOPASSWD sudo.
+                - sudo
+                # python3 (stdlib json + tomllib only) renders the egress-validated JSON
+                # pre-image to TOML and proves the rendered file parses.
+                - python
+# check-containerd-v4-egress-vm — the R10 bed opencharly/charly#929 records as
+# missing: the ONLY assembled bed that drives a config through the real
+# verb:egress validator. Three-step shape, so the bed fails on a tree whose
+# plugin-egress predates the #ContainerdConfigV4 arm:
+#
+#   1. v4-config-not-yet-accepted — on the fresh guest, no version-4
+#      /etc/containerd/config.toml exists and the CRI runtime map has no crun.
+#   2. v4-config-validated-through-egress — generate the shipped fixture project,
+#      whose config: step carries the CONTAINERD.md section 3.1 version-4 config
+#      with validate: containerd_config. The generate is the egress validation;
+#      on a v2-only schema it fails with "version: conflicting values 2 and 4".
+#      The accepted pre-image is then rendered to the TOML the daemon loads, so
+#      there is no second copy of the values and the rendered file parses back.
+#   3. v4-config-accepted-and-served — the running daemon's crictl info lists the
+#      crun and krun runtime handlers, ctr plugins ls shows the overlayfs
+#      snapshotter, and ss -lx shows the v4
+#      [plugins.'io.containerd.server.v1.grpc'] address
+#      (/run/containerd-v4-egress/containerd.sock) and NOT the default socket.
+#
+# DAEMON SAFETY: the daemon is started INSIDE this disposable VM (user-mode
+# network, no host socket mount), and its gRPC listener is a non-default guest
+# path, so the host's /run/containerd/containerd.sock is never bound. The bed's
+# own step 3 asserts the real listen address; the run's before/after host socket
+# inode+mtime and ss -lx are pasted in the PR.
+check-containerd-v4-egress-vm:
+    vm:
+        from: containerd-v4-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole assembled proof that a containerd version-4 config passes egress
+            validation end to end (opencharly/charly#929). Generates a fixture project
+            whose config: step carries the structured pre-image of the CONTAINERD.md
+            section 3.1 version-4 config with validate: containerd_config, renders the
+            accepted pre-image to the TOML the daemon loads, and asserts the running
+            daemon serves the crun and krun runtime handlers + the overlayfs snapshotter
+            on the v4 plugin-path gRPC address. Fails on a plugin-egress without the v4
+            arm.
+        add_candy:
+            - containerd-v4-egress
+        install_opts:
+            # pacman sync + root package install/restart for the containerd stack.
+            allow_repo_changes: true
+            allow_root_tasks: true
+        plan:
+            - check: the fresh guest has NOT yet accepted the v4 config - no version-4 file and no crun runtime handler
+              id: v4-config-not-yet-accepted
+              context:
+                - runtime
+              exit_status: 0
+              stdout:
+                - contains: ABSENT-v4-config-not-yet-accepted
+              command: |
+                set -eu
+                if [ -s /etc/containerd/config.toml ] && grep -qE '^[[:space:]]*version[[:space:]]*=[[:space:]]*4' /etc/containerd/config.toml; then
+                  echo "PRESENT: a version-4 containerd config is already applied"
+                  exit 1
+                fi
+                if sudo crictl --runtime-endpoint unix:///run/containerd-v4-egress/containerd.sock info 2>/dev/null | grep -q '"crun"'; then
+                  echo "PRESENT: the crun runtime handler is already served"
+                  exit 1
+                fi
+                echo ABSENT-v4-config-not-yet-accepted
+            - check: the structured pre-image of the v4 config passes the real egress validator and its accepted render is installed and loaded
+              id: v4-config-validated-through-egress
+              context:
+                - runtime
+              timeout: 300s
+              exit_status: 0
+              stdout:
+                - contains: VALIDATED-AND-APPLIED-v4-config
+              command: |
+                set -eu
+                fixture="$HOME/containerd-v4-egress-fixture"
+                test -f "$fixture/charly.yml"
+                # The candy's copy: steps are system-scope (root-owned); hand the
+                # fixture to the check user so box generate can create .build.
+                sudo chown -R "$(id -u):$(id -g)" "$fixture"
+                charly_bin="$(command -v charly || true)"
+                if [ -z "$charly_bin" ]; then
+                  # The delivered controller binary is /tmp/charly-<version>-<digest>; the
+                  # leading digit excludes the /tmp/charly-plugins directory.
+                  for candidate in $(ls -1t /tmp/charly-[0-9]* 2>/dev/null); do
+                    if [ -f "$candidate" ] && [ -x "$candidate" ]; then charly_bin="$candidate"; break; fi
+                  done
+                fi
+                test -n "$charly_bin"
+                echo "binary-under-test: $charly_bin"
+                "$charly_bin" version
+                # The generate IS the egress validation: the fixture candy's config:
+                # step is unified with #ContainerdConfig before the bytes are staged.
+                "$charly_bin" -C "$fixture" box generate containerd-v4-fixture-box
+                containerfile="$fixture/.build/containerd-v4-fixture-box/Containerfile"
+                test -f "$containerfile"
+                src="$(awk '$1=="COPY" { for (i=2;i<=NF;i++) if ($i=="/etc/containerd/config.preimage.json") { print $(i-1); exit } }' "$containerfile")"
+                test -n "$src"
+                test -f "$fixture/$src"
+                # The validated artifact is the STRUCTURED PRE-IMAGE (the egress schema's
+                # contract for a TOML output). Render it to the TOML the daemon reads, and
+                # parse the rendered file back so a malformed render fails here.
+                python3 - "$fixture/$src" > /tmp/containerd-v4-config.toml <<'PY'
+                import json, sys
+                def key(k):
+                    if k and all(c.isalnum() or c in "_-" for c in k):
+                        return k
+                    return "'" + k.replace("'", "''") + "'"
+                def val(v):
+                    if isinstance(v, bool):
+                        return "true" if v else "false"
+                    if isinstance(v, (int, float)):
+                        return str(v)
+                    if isinstance(v, str):
+                        return json.dumps(v)
+                    if isinstance(v, list):
+                        return "[" + ", ".join(val(x) for x in v) + "]"
+                    raise TypeError(type(v).__name__)
+                def emit(obj, path):
+                    for k, v in obj.items():
+                        if not isinstance(v, dict):
+                            print(f"{key(k)} = {val(v)}")
+                    for k, v in obj.items():
+                        if isinstance(v, dict):
+                            p = path + [k]
+                            print("[" + ".".join(key(x) for x in p) + "]")
+                            emit(v, p)
+                emit(json.load(open(sys.argv[1])), [])
+                PY
+                python3 -c 'import sys, tomllib; d = tomllib.load(open(sys.argv[1], "rb")); assert d["version"] == 4' /tmp/containerd-v4-config.toml
+                grep -qE '^[[:space:]]*version[[:space:]]*=[[:space:]]*4' /tmp/containerd-v4-config.toml
+                sudo install -d -m0755 /etc/containerd
+                sudo install -d -m0755 /run/containerd-v4-egress
+                sudo install -m0644 /tmp/containerd-v4-config.toml /etc/containerd/config.toml
+                sudo systemctl enable containerd
+                sudo systemctl restart containerd
+                echo VALIDATED-AND-APPLIED-v4-config
+            - check: the running daemon serves the crun and krun runtime handlers, the overlayfs snapshotter, and the v4 plugin-path gRPC address
+              id: v4-config-accepted-and-served
+              context:
+                - runtime
+              timeout: 120s
+              # The restart is Type=notify, but the CRI plugin's runtime map is read a
+              # moment later; the standard eventually window covers that, no sleep.
+              eventually: 60s
+              retry_interval: 3s
+              exit_status: 0
+              stdout:
+                - contains: SERVED-crun
+                - contains: SERVED-krun
+                - contains: SERVED-overlayfs
+                - contains: SERVED-v4-config
+              command: |
+                set -eu
+                endpoint="unix:///run/containerd-v4-egress/containerd.sock"
+                if ! info="$(sudo crictl --runtime-endpoint "$endpoint" info 2>/tmp/crictl.err)"; then
+                  echo "FAIL: crictl info could not reach $endpoint: $(head -1 /tmp/crictl.err)" >&2
+                  exit 1
+                fi
+                if ! printf '%s\n' "$info" | grep -q '"crun"'; then
+                  echo "FAIL: crictl info has no crun runtime handler" >&2
+                  exit 1
+                fi
+                echo SERVED-crun
+                if ! printf '%s\n' "$info" | grep -q '"krun"'; then
+                  echo "FAIL: crictl info has no krun runtime handler" >&2
+                  exit 1
+                fi
+                echo SERVED-krun
+                # v4 configures the snapshotter on the CRI images plugin, not on the
+                # runtime's containerd block (which has no Snapshotter field).
+                if ! sudo containerd config dump | grep -A3 "io.containerd.cri.v1.images'" | grep -q "snapshotter = 'overlayfs'"; then
+                  echo "FAIL: the CRI images plugin's snapshotter is not overlayfs" >&2
+                  exit 1
+                fi
+                if ! sudo ctr --address /run/containerd-v4-egress/containerd.sock plugins ls | grep -E '^io\.containerd\.snapshotter\.v1[[:space:]]+overlayfs[[:space:]]' | grep -q 'ok'; then
+                  echo "FAIL: ctr plugins ls does not show the overlayfs snapshotter as ok" >&2
+                  exit 1
+                fi
+                echo SERVED-overlayfs
+                if ! sudo ss -lx | grep -q '/run/containerd-v4-egress/containerd.sock'; then
+                  echo "FAIL: the v4 custom gRPC address is not listening" >&2
+                  exit 1
+                fi
+                # End-anchored: the default TTRPC socket is .../containerd.sock.ttrpc
+                # and must not be mistaken for the default gRPC socket.
+                if sudo ss -lx | grep -qE '/run/containerd/containerd\.sock$'; then
+                  listeners="$(sudo ss -lx | grep containerd | awk '{print $5}' | tr '\n' ',')"
+                  procs="$(sudo pgrep -a containerd | tr '\n' ';')"
+                  echo "FAIL: default socket also listening; listeners=$listeners procs=$procs" >&2
+                  exit 1
+                fi
+                sudo stat -c 'guest-containerd-socket inode=%i mtime=%Y' /run/containerd-v4-egress/containerd.sock
+                echo SERVED-v4-config
 check-cachyos-gpu-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
