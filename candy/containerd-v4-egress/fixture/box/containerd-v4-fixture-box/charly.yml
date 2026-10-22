@@ -1,0 +1,16 @@
+# The throwaway box of the egress-validation fixture project. Generate-only: the
+# base is a plain external image because box generation never pulls it. Its single
+# candy is the config: step under test.
+containerd-v4-fixture-box:
+    candy:
+        description: scratch fixture box whose only payload is the version-4 containerd config step
+        base: quay.io/fedora/fedora:43
+        build:
+            - rpm
+        candy:
+            - containerd-v4-fixture-candy
+        plan:
+            - check: the fixture box generated
+              id: fixture-box-generated
+              context: [build]
+              command: "true"

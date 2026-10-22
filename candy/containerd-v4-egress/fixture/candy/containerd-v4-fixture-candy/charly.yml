@@ -1,0 +1,51 @@
+# The egress-validation subject: the STRUCTURED PRE-IMAGE of the canonical
+# CONTAINERD.md section 3.1 version-4 config. TOML is a non-data text output, so
+# the egress schema types its pre-image (JSON is a YAML subset, so one ingest path
+# covers both) — this file is that pre-image, authored ONCE. `config:` content is
+# validated at generate time, and the bed renders the accepted pre-image to TOML
+# and installs it, so no second copy of the values exists.
+#
+# The gRPC listener is the v4 plugin-path key, NOT a top-level `[grpc]` (which v4
+# ignores and which would bind the default system socket).
+containerd-v4-fixture-candy:
+    candy:
+        description: scratch fixture candy carrying the structured pre-image of the canonical containerd version-4 config and its egress validation
+        plan:
+            - run: validate the structured pre-image of the version-4 config through the egress validator
+              config: /etc/containerd/config.preimage.json
+              validate: containerd_config
+              content: |
+                {
+                  "version": 4,
+                  "plugins": {
+                    "io.containerd.cri.v1.runtime": {
+                      "containerd": {
+                        "default_runtime_name": "crun",
+                        "runtimes": {
+                          "crun": {
+                            "runtime_type": "io.containerd.runc.v2",
+                            "options": { "BinaryName": "/usr/bin/crun", "SystemdCgroup": true }
+                          },
+                          "krun": {
+                            "runtime_type": "io.containerd.runc.v2",
+                            "pod_annotations": ["krun.*"],
+                            "options": { "BinaryName": "/usr/bin/krun", "SystemdCgroup": true }
+                          }
+                        }
+                      }
+                    },
+                    "io.containerd.cri.v1.images": {
+                      "snapshotter": "overlayfs"
+                    },
+                    "io.containerd.server.v1.grpc": {
+                      "address": "/run/containerd-v4-egress/containerd.sock"
+                    },
+                    "io.containerd.server.v1.ttrpc": {
+                      "address": "/run/containerd-v4-egress/containerd.sock.ttrpc"
+                    }
+                  }
+                }
+            - check: the fixture candy carries the structured pre-image of the version-4 config
+              id: fixture-v4-config-present
+              context: [build]
+              command: "true"
