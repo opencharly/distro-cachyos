@@ -61,3 +61,16 @@ githubrunner-skill:
         name: githubrunner
         family: distros
         owner: cachyos-os-skills
+# Relocated by the skills-only carrier retirement (opencharly/opencharly#600,
+# #628): `crabbox-deploy` came from the `pod-charly-automation` carrier when the
+# operator settled its four-repo ambiguity on THIS repo — the one that holds the
+# two images it documents (`box/crabbox`, `box/crabbox-e2e`), both disposable beds
+# (`check-crabbox-pod`, `check-crabbox-e2e-pod`) and `plan/crabbox-loop-cutover.md`.
+# `family:` stays `automation`, so `/charly-automation:crabbox-deploy` still resolves.
+crabbox-deploy-skill:
+    skill:
+        name: crabbox-deploy
+        family: automation
+        owner: cachyos-os-skills
+        triggers:
+            - "crabbox CLI / local coordinator / remote-execution broker / composing the crabbox candies"

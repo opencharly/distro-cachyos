@@ -14,13 +14,14 @@ Canonical files:
   `candy/cachyos-selkies-skills/charly.yml` — the three skill CARRIER candies. Each
   declares a real `candy:` node (so it can be composed, and so an image that owns one
   of its skills carries its prose in `ai.opencharly.skill` — opencharly/sdk#434) and
-  holds that carrier's eleven `skill:` routing nodes in total
+  holds that carrier's twelve `skill:` routing nodes in total
   (`charly-cachyos`, `keepassxc-keyring`, `versa`; `cachyos`, `cachyos-pacstrap`,
-  `cachyos-pacstrap-builder`, `githubrunner`; `selkies-kde`, `selkies-kde-nvidia`,
-  `selkies-labwc`, `selkies-labwc-nvidia`), each carrying `name`/`family`/`owner`
-  and no body, with `triggers` on the two that are routed (`charly-cachyos`,
-  `cachyos`) and none on the other nine.
-- `.agents/skills/<name>/SKILL.md` — the eleven skill BODIES, one directory per
+  `cachyos-pacstrap-builder`, `githubrunner`, `crabbox-deploy`; `selkies-kde`,
+  `selkies-kde-nvidia`, `selkies-labwc`, `selkies-labwc-nvidia`), each carrying
+  `name`/`family`/`owner` and no body, with `triggers` on the three that are
+  routed (`charly-cachyos`, `cachyos`, `crabbox-deploy`) and none on the other
+  nine.
+- `.agents/skills/<name>/SKILL.md` — the twelve skill BODIES, one directory per
   node's `name:`, at THIS REPO'S ROOT and never in a carrier candy's directory:
   the root is the base the marketplace corpus reads and the directory a harness
   rooted here discovers natively (`deploykit.candyRepoRoot`, opencharly/sdk#445),
