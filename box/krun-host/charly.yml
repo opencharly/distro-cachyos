@@ -1,0 +1,65 @@
+krun-host:
+    candy:
+        description: |
+            The libkrun runtime host on the CachyOS base: the containerd engine with a
+            `krun` runtime handler, and the crun/libkrun/libkrunfw stack that handler
+            actually resolves.
+
+            ## Why both layers, and why the crun build is not interchangeable
+
+            containerd selects a runtime handler by name; `layer-containerd` supplies the
+            engine and the `krun` handler declaration. What that handler executes is
+            `crun`, and a distro crun advertises `+LIBKRUN` while carrying NONE of the
+            annotation vocabulary the handler reads — measured on Arch's `crun 1.30.1-1`:
+            one `krun` string in the binary, no `krun.*` keys, and a container started
+            through the handler still reports the HOST kernel. A build of the pinned
+            `ca04fdb6` commit with `--with-libkrun` carries 110 such strings and boots a
+            guest (`uname -r` → `6.12.109` against a `7.2.3` host). So `layer-krun` is
+            load-bearing here, not a convenience: without it this box installs, starts
+            containerd, accepts the handler, runs containers — and never boots a guest.
+
+            `layer-krun` also links `/usr/bin/krun` to its crun, because that is the
+            spelling the containerd handler names.
+        base: cachyos
+        candy:
+            - '@github.com/opencharly/layer-containerd/candy/layer-containerd:v2026.314.0705'
+            - '@github.com/opencharly/layer-krun:v2026.314.0707'
+        plan:
+            # The two checks that can FAIL for the defect this box exists to prevent.
+            # `crun --version` carrying `+LIBKRUN` passes for a build that cannot run a
+            # guest, so the annotation key is what is asserted here.
+            - check: crun carries the krun handler's annotation vocabulary, not just the flag
+              id: krun-crun-handler-vocabulary
+              exit_status: 0
+              command: |
+                  set -eu
+                  grep -aq 'krun.ram_mib' /usr/bin/crun || {
+                    echo "crun advertises +LIBKRUN but carries no krun handler vocabulary" >&2
+                    exit 1
+                  }
+                  echo "crun carries the krun handler vocabulary"
+            - check: the krun entry point crun's handler resolves is installed
+              id: krun-entry-point
+              file:
+                  file: /usr/bin/krun
+                  exists: true
+            - check: libkrun 1.x and libkrunfw are on the dynamic loader path
+              id: krun-libraries
+              exit_status: 0
+              command: |
+                  set -eu
+                  ldconfig -p | grep -q 'libkrun.so.1' || {
+                    echo "libkrun.so.1 is not on the loader path: crun's handler cannot dlopen it" >&2
+                    exit 1
+                  }
+                  ldconfig -p | grep -q 'libkrunfw.so.5' || {
+                    echo "libkrunfw.so.5 is not on the loader path: crun's handler cannot load the guest payload" >&2
+                    exit 1
+                  }
+            # NO containerd-handler or /dev/kvm check here, deliberately:
+            #   * the handler is asserted by `layer-containerd`'s OWN runtime-context check
+            #     (`containerd-krun-absent-before-config` + its PRESENCE sibling), so a second
+            #     assertion here would be the R2 duplication this box exists to avoid — and a
+            #     build-scope copy of it cannot see a running daemon anyway;
+            #   * `/dev/kvm` is a property of the VENUE, not of the image, so it belongs to the
+            #     R10 bed that runs on the disposable guest.
