@@ -3853,3 +3853,109 @@ cachyos-bootstrap-vm-skill:
     owner: cachyos-os-skills
     triggers:
       - "CachyOS images / `cachyos*` / `charly-cachyos` workstation profile / `box/cachyos` submodule"
+
+# krun-host-vm — the VM the krun bed runs on. Reuses the Arch cloud VM entity the
+# containerd beds boot (libvirt, user-mode network, generated key), so the bed needs
+# no new substrate; it differs only in what is APPLIED to the guest.
+#
+# Why a VM and not a pod: libkrun is a microVM runtime. Its crun handler dlopens
+# libkrun, loads the libkrunfw guest payload and needs /dev/kvm on the host it runs
+# on — none of which a pod lease can offer, so a pod bed would re-prove the containerd
+# contract under a different name rather than prove krun.
+# check-krun-host-vm — the R10 bed opencharly/layer-krun#6 records as owed.
+#
+# WHAT IT PROVES, and why each check can FAIL for the defect it exists to prevent:
+#
+#   * krun-crun-handler-vocabulary — the INSTALLED crun carries the handler's own
+#     annotation key. This is the check that matters: a distro crun advertises
+#     `+LIBKRUN` while carrying NONE of the vocabulary the handler reads (measured:
+#     Arch's crun 1.30.1-1 has ONE `krun` string and no `krun.*` keys, and a container
+#     started through a handler pointing at it still reports the HOST kernel; a build
+#     of ca04fdb6 with --with-libkrun has 110 and boots a 6.12.109 guest). So a
+#     `+LIBKRUN` assertion alone passes for a runtime that cannot run a guest.
+#   * krun-entry-point — `/usr/bin/krun` exists: that is the spelling the containerd
+#     CRI handler names.
+#   * krun-libraries — libkrun.so.1 AND libkrunfw.so.5 resolve through the loader.
+#   * krun-kvm — /dev/kvm exists on the guest that will host guests.
+#
+# The `grep -aq` form is deliberate: the check runs in a minimal guest where
+# `binutils` (`strings`) may not be installed, and adding a build dependency to a
+# runtime assertion is how a gate starts testing its own toolchain.
+check-krun-host-vm:
+    vm:
+        from: containerd-v4-vm
+        disposable: true
+        lifecycle: dev
+        description: >-
+            R10 bed for the libkrun runtime host (opencharly/layer-krun#6): applies
+            layer-krun to a disposable Arch guest and asserts the INSTALLED crun
+            carries the krun handler's annotation vocabulary (not merely the
+            +LIBKRUN flag), that the /usr/bin/krun entry point the containerd handler
+            names exists, that libkrun 1.x and libkrunfw resolve through the loader,
+            and that /dev/kvm is present for the guest it will host.
+        add_candy:
+            - '@github.com/opencharly/layer-krun:v2026.314.0707'
+            # The bed deploys onto a VM, so the "vm" deploy substrate must be in this
+            # bed's own candy closure — measured: without it, `deploy add` fails with
+            # `the "vm" deploy substrate is not available in this project — its deploy
+            # plugin (plugin-deploy-vm) is not in the candy closure`.
+            - '@github.com/opencharly/plugin-deploy-vm/candy/plugin-deploy-vm:v2026.314.0712'
+        install_opts:
+            allow_repo_changes: true
+            allow_root_tasks: true
+        plan:
+            - check: the installed crun carries the krun handler's annotation vocabulary, not just the +LIBKRUN flag
+              id: krun-crun-handler-vocabulary
+              context:
+                - runtime
+              exit_status: 0
+              stdout:
+                - contains: KRUN-HANDLER-VOCABULARY-PRESENT
+              command: |
+                set -eu
+                crun --version 2>&1 | grep -q '+LIBKRUN' || {
+                  echo "crun does not advertise +LIBKRUN at all" >&2
+                  exit 1
+                }
+                grep -aq 'krun.ram_mib' /usr/bin/crun || {
+                  echo "crun advertises +LIBKRUN but carries no krun handler vocabulary" >&2
+                  exit 1
+                }
+                echo KRUN-HANDLER-VOCABULARY-PRESENT
+            - check: the krun entry point the containerd handler names is installed
+              id: krun-entry-point
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                set -eu
+                test -x /usr/bin/krun || {
+                  echo "/usr/bin/krun is missing: the containerd handler has nothing to exec" >&2
+                  exit 1
+                }
+            - check: libkrun and libkrunfw resolve through the dynamic loader
+              id: krun-libraries
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                set -eu
+                ldconfig -p | grep -q 'libkrun.so.1' || {
+                  echo "libkrun.so.1 is not on the loader path: crun's handler cannot dlopen it" >&2
+                  exit 1
+                }
+                ldconfig -p | grep -q 'libkrunfw.so.5' || {
+                  echo "libkrunfw.so.5 is not on the loader path: the guest payload cannot be loaded" >&2
+                  exit 1
+                }
+            - check: the guest that will host krun guests exposes /dev/kvm
+              id: krun-kvm
+              context:
+                - runtime
+              exit_status: 0
+              command: |
+                set -eu
+                test -c /dev/kvm || {
+                  echo "/dev/kvm is absent: this venue cannot boot a libkrun guest" >&2
+                  exit 1
+                }
