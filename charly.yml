@@ -39,6 +39,10 @@ import:
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
     - arch: '@github.com/opencharly/distro-arch:v2026.274.1256'
+    # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
+    # the server it just started. An IMPORT, not a composition: the word registers from the
+    # imported repo's own discover tree (charly#1136), and no image gains the binary.
+    - owuicli: '@github.com/opencharly/plugin-openwebui:v2026.317.2055'
 discover:
     - path: box
       recursive: true
@@ -3831,6 +3835,101 @@ check-openwebui-pod:
                 - contains: VERSION_ID=20261018.0.612668
               command: |
                 grep -E '^(ID|VERSION_ID)=' /etc/os-release
+            # ===== the plugin round-trip: absence -> change -> presence =====
+            # The command word is IMPORTED at project level (`import: owuicli:`), so
+            # `charly openwebui` resolves on the host without composing the binary into any
+            # image. The entity these steps drive is a scratch file under /tmp, and the admin
+            # credential is the deployment's OWN generated secret, read into a shell variable
+            # and never echoed nor written into the entity (the node carries `auth.email` and
+            # no password at all).
+            #
+            # WHY EACH STEP CAN FAIL: step 1 fails if the server already holds the value (then
+            # the round-trip would prove nothing) or if `diff` reports drift without naming the
+            # surface; step 2 fails if `apply` errors or if the very next `diff` still sees
+            # drift; step 3 fails if a READ-BACK from the server does not carry the value, which
+            # is what separates "we posted it" from "the server has it".
+            - check: the entity declares a value the server does NOT have, so diff exits non-zero and names the models surface (the absence control the next two steps need)
+              id: openwebui-plugin-absent
+              context: [runtime]
+              timeout: 240s
+              exit_status: 0
+              command:
+                in_container: false
+                command: |
+                  set -eu
+                  dir=/tmp/owui-roundtrip
+                  rm -rf "$dir"; mkdir -p "$dir"
+                  {
+                    echo 'repo: example.com/owui-roundtrip'
+                    echo 'openwebui-config:'
+                    echo '    openwebui:'
+                    echo '        auth: {email: admin@openwebui.example}'
+                    echo '        config:'
+                    echo '            models:'
+                    echo '                DEFAULT_MODELS: bed-drift-proof'
+                    echo '                DEFAULT_PINNED_MODELS: null'
+                    echo '                MODEL_ORDER_LIST: []'
+                  } > "$dir/desired.yml"
+                  # Stream-clean read (stdout is the value alone; progress goes to stderr).
+                  pw=$(${CHARLY_BIN} secrets get charly/secret WEBUI_ADMIN_PASSWORD 2>/dev/null)
+                  if OPENWEBUI_PASSWORD="$pw" ${CHARLY_BIN} openwebui diff \
+                       --file "$dir/desired.yml" --server "http://127.0.0.1:${HOST_PORT:8080}" \
+                       > "$dir/absent.log" 2>&1; then
+                    echo "diff reported NO drift against a value the server cannot have yet" >&2
+                    cat "$dir/absent.log" >&2
+                    exit 1
+                  fi
+                  grep -q models "$dir/absent.log" || {
+                    echo "diff exited non-zero but did not name the models surface:" >&2
+                    cat "$dir/absent.log" >&2
+                    exit 1
+                  }
+                  echo "absent: diff exited non-zero and named the models surface"
+            - check: apply posts the surface in one call, and the diff that follows is CLEAN (the change, checked by the tool that would report drift)
+              id: openwebui-plugin-change
+              context: [runtime]
+              timeout: 240s
+              exit_status: 0
+              command:
+                in_container: false
+                command: |
+                  set -eu
+                  dir=/tmp/owui-roundtrip
+                  pw=$(${CHARLY_BIN} secrets get charly/secret WEBUI_ADMIN_PASSWORD 2>/dev/null)
+                  OPENWEBUI_PASSWORD="$pw" ${CHARLY_BIN} openwebui apply \
+                    --file "$dir/desired.yml" --server "http://127.0.0.1:${HOST_PORT:8080}" \
+                    > "$dir/apply.log" 2>&1
+                  cat "$dir/apply.log"
+                  if ! OPENWEBUI_PASSWORD="$pw" ${CHARLY_BIN} openwebui diff \
+                       --file "$dir/desired.yml" --server "http://127.0.0.1:${HOST_PORT:8080}" \
+                       > "$dir/present.log" 2>&1; then
+                    echo "diff still reports drift after apply:" >&2
+                    cat "$dir/present.log" >&2
+                    exit 1
+                  fi
+                  echo "change: apply posted the surface and the following diff is clean"
+            - check: a READ-BACK from the server carries the applied value, so presence is proven from the server and not from the file that asked for it
+              id: openwebui-plugin-present
+              context: [runtime]
+              timeout: 240s
+              exit_status: 0
+              stdout:
+                - contains: 'DEFAULT_MODELS: bed-drift-proof'
+              command:
+                in_container: false
+                command: |
+                  set -eu
+                  dir=/tmp/owui-roundtrip
+                  pw=$(${CHARLY_BIN} secrets get charly/secret WEBUI_ADMIN_PASSWORD 2>/dev/null)
+                  echo 'repo: example.com/owui-roundtrip' > "$dir/readback.yml"
+                  # The read-back entity is a bare file, so the EMAIL comes from the flag here
+                  # (the other two steps read it from the entity's `auth.email`); the password
+                  # is the same deployment secret, never written to disk.
+                  OPENWEBUI_PASSWORD="$pw" ${CHARLY_BIN} openwebui save \
+                    --file "$dir/readback.yml" --server "http://127.0.0.1:${HOST_PORT:8080}" \
+                    --email admin@openwebui.example \
+                    > "$dir/save.log" 2>&1
+                  sed -n '/DEFAULT_MODELS/p' "$dir/readback.yml"
 
 # ---------------------------------------------------------------------------
 # The verb/schema skills this repo's own candy owns — routing only.
