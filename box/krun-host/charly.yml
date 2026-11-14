@@ -22,7 +22,7 @@ krun-host:
             spelling the containerd handler names.
         base: cachyos
         candy:
-            - '@github.com/opencharly/layer-containerd/candy/layer-containerd:v2026.314.0705'
+            - '@github.com/opencharly/layer-containerd/candy/layer-containerd:v2026.318.0946'
             - '@github.com/opencharly/layer-krun:v2026.314.0707'
         plan:
             # The two checks that can FAIL for the defect this box exists to prevent.
