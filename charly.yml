@@ -4166,6 +4166,18 @@ check-comfyui-openwebui-pair:
                 image: comfyui
                 disposable: true
         plan:
+            # RCA (charly#1152): a deploy-level member is CONFIGURED by its deploy step but never
+            # STARTED -- the step prints "To start the container, run: charly start <bed>_<member>"
+            # and every bed phase still reports PASS. Until bring-up-members owns that, the bed
+            # starts its own member, visibly, as a run: step.
+            - run: start the deploy-level member, which its deploy step configures but does not start (charly#1152)
+              id: start-comfyui-peer
+              context: [runtime]
+              timeout: 300s
+              exit_status: 0
+              command:
+                in_container: false
+                command: "${CHARLY_BIN} start check-comfyui-openwebui-pair_comfyui-peer"
             - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
               id: pair-member-reachable
               context: [runtime]
