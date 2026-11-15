@@ -1015,8 +1015,79 @@ check-cachyos-comfyui-pod:
         image: comfyui
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU comfyui image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui pod and runs the inherited comfyui + dbus baked checks — ComfyUI HTTP UI liveness plus service/port/file/command probes.
+        description: Sole proof the CachyOS GPU comfyui image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui pod and runs the inherited comfyui + dbus baked checks (ComfyUI HTTP UI liveness plus service/port/file/command probes) AND the shipping candy's own contract — the pinned upstream tag, the app/state split (application in the image at /opt/comfyui, every mutable byte in the volume via --base-directory), the absence of the retired ltdrdata Manager checkout, and a real generation round trip (POST /prompt, then the SAME prompt id recorded success in /history).
         requires_shared: [nvidia-gpu]
+        plan:
+            - check: the serving ComfyUI reports the VERSION this bed pins, from its own API
+              id: comfyui-pinned-version
+              context: [runtime]
+              timeout: 30s
+              eventually: 3m
+              retry_interval: 2s
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
+                status: 200
+                body:
+                  - contains: '"comfyui_version": "0.45.3"'
+            - check: the APPLICATION lives in the image at the pinned tag, not in the state volume
+              id: comfyui-app-in-image
+              context: [runtime]
+              exit_status: 0
+              command:
+                command: |
+                  set -eu
+                  test -s /opt/comfyui/.charly-ref
+                  grep -qx 'v0.45.3' /opt/comfyui/.charly-ref
+                  test -x /opt/comfyui/start-comfyui.sh
+                  # the volume path must NOT hold the application
+                  test ! -e "${HOME}/ComfyUI/main.py"
+            - check: the retired ltdrdata Manager checkout is ABSENT — the built-in manager replaces it
+              id: comfyui-legacy-manager-absent
+              context: [runtime]
+              exit_status: 0
+              command:
+                command: |
+                  set -eu
+                  test ! -e /opt/comfyui/custom_nodes/ComfyUI-Manager
+            - check: the state tree the start script seeds is complete, inside the volume
+              id: comfyui-state-tree
+              context: [runtime]
+              exit_status: 0
+              command:
+                command: |
+                  set -eu
+                  for d in custom_nodes input output user models/checkpoints models/loras; do
+                    test -d "${HOME}/ComfyUI/$d" || { echo "missing state dir: $d" >&2; exit 1; }
+                  done
+            - check: a REAL generation round trip — the prompt is queued and the SAME prompt id reports success in /history
+              id: comfyui-generation-roundtrip
+              context: [runtime]
+              timeout: 300s
+              exit_status: 0
+              command:
+                in_container: false
+                command: |
+                  set -eu
+                  base="http://127.0.0.1:${HOST_PORT:8188}"
+                  wf='{"3":{"class_type":"KSampler","inputs":{"seed":7,"steps":4,"cfg":8,"sampler_name":"euler","scheduler":"normal","denoise":1,"model":["4",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]}},"4":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":"${COMFYUI_MODEL}"}},"5":{"class_type":"EmptyLatentImage","inputs":{"width":64,"height":64,"batch_size":1}},"6":{"class_type":"CLIPTextEncode","inputs":{"text":"a red cube","clip":["4",1]}},"7":{"class_type":"CLIPTextEncode","inputs":{"text":"blurry","clip":["4",1]}},"8":{"class_type":"VAEDecode","inputs":{"samples":["3",0],"vae":["4",2]}},"9":{"class_type":"SaveImage","inputs":{"filename_prefix":"bed","images":["8",0]}}}'
+                  pid=$(curl -fsS -X POST -H 'Content-Type: application/json' \
+                          --data "{\"prompt\":${wf},\"client_id\":\"charly-bed\"}" "$base/prompt" \
+                        | sed -E 's/.*"prompt_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+                  test -n "$pid"
+                  echo "queued prompt_id=$pid"
+                  i=0
+                  while [ "$i" -lt 100 ]; do
+                    h=$(curl -fsS "$base/history/$pid" || true)
+                    case "$h" in
+                      *"\"$pid\""*)
+                        case "$h" in
+                          *'"status_str": "success"'*|*'"completed": true'*) echo "history: $pid succeeded"; exit 0 ;;
+                        esac ;;
+                    esac
+                    i=$((i+1)); sleep 2
+                  done
+                  echo "prompt $pid did not reach success in /history" >&2
+                  exit 1
 check-cachyos-unsloth-studio-pod:
     pod:
         image: unsloth-studio
