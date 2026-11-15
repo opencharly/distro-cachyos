@@ -1065,11 +1065,16 @@ check-cachyos-comfyui-pod:
               timeout: 300s
               exit_status: 0
               command:
-                in_container: false
+                # IN the container, not on the host: the workflow must name the checkpoint the
+                # CONTAINER has, and $COMFYUI_MODEL only exists in its environment. A host-side
+                # ${COMFYUI_MODEL} does not resolve and the step SKIPS -- measured on run
+                # 2026.319.0028 ("unresolved variables"), which is a green over nothing.
+                in_container: true
                 command: |
                   set -eu
-                  base="http://127.0.0.1:${HOST_PORT:8188}"
-                  wf='{"3":{"class_type":"KSampler","inputs":{"seed":7,"steps":4,"cfg":8,"sampler_name":"euler","scheduler":"normal","denoise":1,"model":["4",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]}},"4":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":"${COMFYUI_MODEL}"}},"5":{"class_type":"EmptyLatentImage","inputs":{"width":64,"height":64,"batch_size":1}},"6":{"class_type":"CLIPTextEncode","inputs":{"text":"a red cube","clip":["4",1]}},"7":{"class_type":"CLIPTextEncode","inputs":{"text":"blurry","clip":["4",1]}},"8":{"class_type":"VAEDecode","inputs":{"samples":["3",0],"vae":["4",2]}},"9":{"class_type":"SaveImage","inputs":{"filename_prefix":"bed","images":["8",0]}}}'
+                  base="http://127.0.0.1:8188"
+                  test -n "$COMFYUI_MODEL"
+                  wf='{"3":{"class_type":"KSampler","inputs":{"seed":7,"steps":4,"cfg":8,"sampler_name":"euler","scheduler":"normal","denoise":1,"model":["4",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]}},"4":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":"$COMFYUI_MODEL"}},"5":{"class_type":"EmptyLatentImage","inputs":{"width":64,"height":64,"batch_size":1}},"6":{"class_type":"CLIPTextEncode","inputs":{"text":"a red cube","clip":["4",1]}},"7":{"class_type":"CLIPTextEncode","inputs":{"text":"blurry","clip":["4",1]}},"8":{"class_type":"VAEDecode","inputs":{"samples":["3",0],"vae":["4",2]}},"9":{"class_type":"SaveImage","inputs":{"filename_prefix":"bed","images":["8",0]}}}'
                   pid=$(curl -fsS -X POST -H 'Content-Type: application/json' \
                           --data "{\"prompt\":${wf},\"client_id\":\"charly-bed\"}" "$base/prompt" \
                         | sed -E 's/.*"prompt_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
