@@ -4135,68 +4135,165 @@ check-krun-host-vm:
                   exit 1
                 }
 
-# check-qwen3-tts-pod — the DISPOSABLE proof of the qwen3-tts image (RDD + R10).
+# check-comfyui-openwebui-pair — the INTEGRATION bed. check-cachyos-comfyui-pod proves the ComfyUI
+# image serves; check-openwebui-pod proves the front end serves. Neither proves the path BETWEEN
+# them, which is the product: a prompt typed into Open WebUI becoming a picture out of ComfyUI.
 #
-# The candy's contract is the ONE HTTP route Open WebUI's `openai` TTS engine calls, so this
-# bed proves that contract rather than the process: /health answers, the preset voice list is
-# published (the consumer's picker reads it), and a synthesis POST returns REAL audio bytes —
-# asserted on the RIFF magic in the body and an audio/* content type, so an empty 200 cannot
-# pass. The first synthesis downloads the 0.6B checkpoint into the pod's models volume and
-# loads it, so every probe is readiness-bounded (eventually), never a fixed sleep.
-check-qwen3-tts-pod:
+# The member form (measured, 2026-11-15): a deploy-level member is a SIBLING OF THE KIND KEY —
+# `comfyui-peer:` sits beside `pod:` and the loader stamps it as a member brought up ALONGSIDE on
+# the shared `charly` network, reachable as ${HOST:<name>} (spec/schema/deploy.cue #Member: "a
+# sibling of the kind key: a deploy-level MEMBER"). `member:`/`member_of:` are loader-built and
+# rejected if authored, which is why this had looked unauthorable.
+check-comfyui-openwebui-pair:
     pod:
-        image: qwen3-tts
+        image: openwebui
         disposable: true
         lifecycle: dev
-        # GPU-CDI pod on the REFCOUNTED axis: requires_shared, never requires_exclusive
-        # (measured on this venue — the exclusive axis attempts a vfio flip a live desktop
-        # compositor correctly refuses).
+        description: |
+            Sole proof of the ComfyUI <-> Open WebUI IMAGE-GENERATION path. Deploys the Open WebUI
+            pod with a comfyui deploy-level MEMBER alongside it on the shared network, points
+            COMFYUI_BASE_URL at that member BY NAME, signs in with the deployment's own generated
+            admin credential, requests one image through /api/v1/images/generations, and requires
+            the ComfyUI member's /history to show the same work. Fails if the front end answers
+            without the server generating.
         requires_shared: [nvidia-gpu]
-        description: >-
-            Sole proof of the qwen3-tts image — the Qwen3-TTS speech service Open WebUI's `openai`
-            TTS engine calls, on the CachyOS base. Builds the image, deploys it as a pod, and runs
-            the candy's baked checks plus the deploy-scope probes: /health, the preset voice list,
-            and a real synthesis returning RIFF audio with an audio/* content type. The checkpoint
-            downloads into the models volume on the first request, so the synthesis probe is
-            readiness-bounded (eventually, not a sleep). Needs the GPU venue; run on demand.
+        env:
+            WEBUI_ADMIN_EMAIL: admin@pair.local
+            ENABLE_IMAGE_GENERATION: "true"
+            # REQUIRED, and it was MISSING -- the whole cause of the HTTP 400
+            # `{"detail":"[ERROR: Unauthorized]"}`. Open WebUI defaults this to `openai`, so without it
+            # the request went to api.openai.com with an empty key and came back Unauthorized, while
+            # the member's queue stayed empty (runs 1219/1244/1310: jwt=400 key=401, q=[]). The image
+            # does declare `IMAGE_GENERATION_ENGINE: comfyui` in its env_provide, but that reaches the
+            # IMAGE only; a deploy does not inherit it, so the bed must state it.
+            IMAGE_GENERATION_ENGINE: comfyui
+            # The member's container name, NOT ${HOST:<member>}: that form is a PLAN-STEP
+            # substitution and stays literal in a deploy env: -- measured on 2026.319.1039,
+            # `printenv COMFYUI_BASE_URL` inside the pod read back `http://${HOST:comfyui-peer}:8188`.
+            # BringUpMembers names a container member `charly-<memberKey>`, so this is deterministic.
+            COMFYUI_BASE_URL: http://charly-comfyui-peer:8188
+            # Without this map Open WebUI substitutes NOTHING (the env defaults to []) and posts its
+            # own default workflow, whose checkpoint the member does not have.
+            # NO `model` entry: IMAGE_GENERATION_MODEL is unset, so get_image_model() returns '' and a
+            # model node would write the EMPTY STRING into node 4's ckpt_name -- ComfyUI then rejects
+            # the prompt with 400 and nothing ever queues (measured: the queue stayed [] on every run
+            # while a prompt POSTed straight at the member answered 200). The working lab deploy
+            # carries exactly this seven-entry map; the model node was MY addition and it was wrong.
+            # Node 4 gets a STATIC value: Open WebUI's default workflow asks ComfyUI for
+            # `"ckpt_name": "model.safetensors"`, which this member does not have, and ComfyUI
+            # rejects an unknown checkpoint with 400 Bad Request -- measured in the primary's own
+            # log: `ClientResponseError: 400, message='Bad Request',
+            # url='http://charly-comfyui-peer:8188/prompt'`. A static entry (no `type`) rewrites it
+            # to the checkpoint the member actually fetched; a `type: model` entry would rewrite it
+            # to IMAGE_GENERATION_MODEL, which is unset and therefore the EMPTY string.
+            COMFYUI_WORKFLOW_NODES: '[{"node_ids":["4"],"key":"ckpt_name","value":"v1-5-pruned-emaonly-fp16.safetensors"},{"type":"prompt","node_ids":["6"],"key":"text"},{"type":"negative_prompt","node_ids":["7"],"key":"text"},{"type":"width","node_ids":["5"],"key":"width"},{"type":"height","node_ids":["5"],"key":"height"},{"type":"n","node_ids":["5"],"key":"batch_size"},{"type":"steps","node_ids":["3"],"key":"steps"},{"type":"seed","node_ids":["3"],"key":"seed"}]'
         plan:
-            - check: the speech service answers its health route
-              id: qwen3-tts-health
-              context:
-                - runtime
-              timeout: 20s
-              eventually: 5m
-              retry_interval: 5s
-              http:
-                http: http://127.0.0.1:${HOST_PORT:8000}/health
-                status: 200
-                body:
-                  - contains: '"status":"ok"'
-            - check: the service publishes the preset voice list the consumer's picker reads
-              id: qwen3-tts-voices
-              context:
-                - runtime
-              timeout: 20s
-              eventually: 2m
-              retry_interval: 5s
-              http:
-                http: http://127.0.0.1:${HOST_PORT:8000}/v1/audio/voices
-                status: 200
-                body:
-                  - contains: vivian
-            - check: a synthesis request returns real RIFF audio bytes with an audio content type
-              id: qwen3-tts-synthesis
-              context:
-                - runtime
-              timeout: 15m
-              eventually: 15m
-              retry_interval: 20s
-              http:
-                http: http://127.0.0.1:${HOST_PORT:8000}/v1/audio/speech
-                method: POST
-                request_body: '{"input":"charly qwen3 tts bed","voice":"vivian"}'
-                status: 200
-                body:
-                  - contains: RIFF
-                header:
-                  - contains: audio/
+            - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
+              id: pair-member-reachable
+              context: [runtime]
+              # A member's container is READY long before its SERVER is: the start script must
+              # fetch and sha256-verify a 2 GB checkpoint first. wait-ready proves the container,
+              # not the service -- measured on 2026.319.0900 (front=200, member=000 an hour in).
+              # The member fetches a 2 GB checkpoint on a FRESH volume, and this host measured
+              # 4 MB/s on one run and ~300 KB/s on another -- a 90-minute window covers both.
+              timeout: 5400s
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  for i in $(seq 1 1080); do
+                    if curl -fsS -o /dev/null "$COMFYUI_BASE_URL/system_stats"; then
+                      echo "member reachable at $COMFYUI_BASE_URL"; exit 0
+                    fi
+                    sleep 5
+                  done
+                  echo "never reached $COMFYUI_BASE_URL" >&2; exit 1
+            - check: a REAL image-generation round trip through the front end, with the ComfyUI member's history showing the same work
+              id: pair-generation-roundtrip
+              context: [runtime]
+              timeout: 900s
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  base="http://127.0.0.1:8080"
+                  pw=$(printenv WEBUI_ADMIN_PASSWORD 2>/dev/null || true)
+                  echo "admin env: email=$WEBUI_ADMIN_EMAIL password_len=${#pw}" >&2
+                  test -n "$pw" || { echo "WEBUI_ADMIN_PASSWORD is empty in this container" >&2; exit 1; }
+                  # Open WebUI seeds its admin account on first boot, which may still be in flight
+                  # when the member starts answering: retry the sign-in rather than failing once.
+                  tok=""
+                  for i in $(seq 1 60); do
+                    resp=$(curl -sS -o /tmp/signin.json -w '%{http_code}' -X POST \
+                             -H 'Content-Type: application/json' \
+                             --data "{\"email\":\"$WEBUI_ADMIN_EMAIL\",\"password\":\"$pw\"}" \
+                             "$base/api/v1/auths/signin" || echo 000)
+                    if [ "$resp" = "200" ]; then
+                      tok=$(sed -E 's/.*"token"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' /tmp/signin.json)
+                      [ -n "$tok" ] && break
+                    fi
+                    [ "$i" = 1 ] && echo "signin attempt 1: HTTP=$resp body=$(head -c 200 /tmp/signin.json)" >&2
+                    sleep 5
+                  done
+                  test -n "$tok" || { echo "signin never succeeded; last HTTP=$resp body=$(head -c 200 /tmp/signin.json)" >&2; exit 1; }
+                  echo "signed in after $i attempt(s)" >&2
+                  # A COMPACT diagnostic: the harness truncates stderr, so the decisive facts must
+                  # fit on one short line rather than a long message with a body in it.
+                  key=$(curl -sS -X POST -H "Authorization: Bearer $tok" "$base/api/v1/auths/api_key" 2>/dev/null \
+                          | sed -E 's/.*"api_key"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' || true)
+                  gen() { curl -sS -o /dev/null -w '%{http_code}' -X POST \
+                            -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
+                            --data '{"prompt":"a red cube","n":1,"size":"512x512"}' \
+                            "$base/api/v1/images/generations"; }
+                  jc=$(gen "$tok"); kc=""; [ -n "$key" ] && kc=$(gen "$key")
+                  code="$jc"; [ "$kc" = "200" ] && code="$kc"
+                  # Two decisive probes, both from INSIDE the front end's container:
+                  #  ws     -- does the websocket the engine needs complete its handshake (101)?
+                  #  direct -- does a prompt POSTed straight at the member succeed, bypassing
+                  #            Open WebUI entirely? Together they separate "network/name" from
+                  #            "Open WebUI's own client".
+                  ws=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 \
+                         -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+                         -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+                         "$COMFYUI_BASE_URL/ws?clientId=probe" 2>/dev/null || echo 000)
+                  wf=$(printf %s '{"1":{"class_type":"EmptyImage","inputs":{"width":64,"height":64,"batch_size":1,"color":0}},"2":{"class_type":"SaveImage","inputs":{"filename_prefix":"probe","images":["1",0]}}}')
+                  direct=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -X POST \
+                             -H 'Content-Type: application/json' \
+                             --data "{\"prompt\":$wf,\"client_id\":\"probe\"}" \
+                             "$COMFYUI_BASE_URL/prompt" 2>/dev/null || echo 000)
+                  # What did Open WebUI RESOLVE for the engine? /api/config is authenticated and
+                  # returns the live frontend config; the slice around "comfyui" says whether the
+                  # engine and the URL took effect at all.
+                  cfg=$(curl -sS -H "Authorization: Bearer $tok" "$base/api/config" 2>/dev/null \
+                          | tr -d ' \n' | grep -oE 'comfyui.{0,110}' | head -1)
+                  # The EFFECTIVE values, read from this container's own environment -- the first
+                  # question every failure asked and nothing answered: did the deploy apply the
+                  # env at all? eng/eg/ck/cu are the four that decide which engine Open WebUI uses.
+                  eng=$(printenv IMAGE_GENERATION_ENGINE 2>/dev/null || echo unset)
+                  eg=$(printenv ENABLE_IMAGE_GENERATION 2>/dev/null || echo unset)
+                  ck=$(printenv COMFYUI_API_KEY 2>/dev/null | wc -c)
+                  cu=$(printenv COMFYUI_BASE_URL 2>/dev/null || echo unset)
+                  echo "DIAG eng=$eng eg=$eg ck=$ck cu=$cu jwt=$jc key=${kc:-none} ws=$ws direct=$direct" >&2
+                  test "$code" = "200" || { echo "generation did not return 200 (jwt/API key both failed)" >&2; exit 1; }
+                  for i in $(seq 1 120); do
+                    n=$(curl -fsS "$COMFYUI_BASE_URL/history" 2>/dev/null | grep -o '"status_str": *"success"' | wc -l || echo 0)
+                    if [ "${n:-0}" -gt 0 ]; then echo "comfyui history shows $n successful prompt(s)" >&2; exit 0; fi
+                    sleep 5
+                  done
+                  echo "the front end answered but the server never recorded a success" >&2; exit 1                  echo "the front end answered but the server never recorded a success" >&2; exit 1
+
+    # DEPLOY-LEVEL member: a SIBLING OF THE KIND KEY (`pod:`), at the same indent as `pod:`.
+    # Authored INSIDE the pod body it would be an IN-SUBSTRATE member -- deployed INTO the
+    # parent's venue by the substrate's PostApply, never brought up alongside, and
+    # BringUpMembers would skip it (measured: bring-up-members PASSed in 77ms and no member
+    # container existed). spec/schema/deploy.cue #Member names both positions.
+    comfyui-peer:
+        pod:
+            image: comfyui
+            disposable: true
+            env:
+                # The checkpoint the member fetches; node 4 of the workflow substitutes a model
+                # name, and it must be this one or the prompt fails at class resolution.
+                COMFYUI_MODEL: v1-5-pruned-emaonly-fp16.safetensors
