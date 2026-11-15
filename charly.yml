@@ -4161,23 +4161,7 @@ check-comfyui-openwebui-pair:
             WEBUI_ADMIN_EMAIL: admin@pair.local
             ENABLE_IMAGE_GENERATION: "true"
             COMFYUI_BASE_URL: http://${HOST:comfyui-peer}:8188
-        comfyui-peer:
-            pod:
-                image: comfyui
-                disposable: true
         plan:
-            # RCA (charly#1152): a deploy-level member is CONFIGURED by its deploy step but never
-            # STARTED -- the step prints "To start the container, run: charly start <bed>_<member>"
-            # and every bed phase still reports PASS. Until bring-up-members owns that, the bed
-            # starts its own member, visibly, as a run: step.
-            - run: start the deploy-level member, which its deploy step configures but does not start (charly#1152)
-              id: start-comfyui-peer
-              context: [runtime]
-              timeout: 300s
-              exit_status: 0
-              command:
-                in_container: false
-                command: "${CHARLY_BIN} start check-comfyui-openwebui-pair_comfyui-peer"
             - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
               id: pair-member-reachable
               context: [runtime]
@@ -4227,3 +4211,13 @@ check-comfyui-openwebui-pair:
                     sleep 5
                   done
                   echo "the front end answered but the server never recorded a success" >&2; exit 1
+
+    # DEPLOY-LEVEL member: a SIBLING OF THE KIND KEY (`pod:`), at the same indent as `pod:`.
+    # Authored INSIDE the pod body it would be an IN-SUBSTRATE member -- deployed INTO the
+    # parent's venue by the substrate's PostApply, never brought up alongside, and
+    # BringUpMembers would skip it (measured: bring-up-members PASSed in 77ms and no member
+    # container existed). spec/schema/deploy.cue #Member names both positions.
+    comfyui-peer:
+        pod:
+            image: comfyui
+            disposable: true
