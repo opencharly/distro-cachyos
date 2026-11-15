@@ -4175,13 +4175,15 @@ check-comfyui-openwebui-pair:
               # A member's container is READY long before its SERVER is: the start script must
               # fetch and sha256-verify a 2 GB checkpoint first. wait-ready proves the container,
               # not the service -- measured on 2026.319.0900 (front=200, member=000 an hour in).
-              timeout: 1500s
+              # The member fetches a 2 GB checkpoint on a FRESH volume, and this host measured
+              # 4 MB/s on one run and ~300 KB/s on another -- a 90-minute window covers both.
+              timeout: 5400s
               exit_status: 0
               command:
                 in_container: true
                 command: |
                   set -eu
-                  for i in $(seq 1 300); do
+                  for i in $(seq 1 1080); do
                     if curl -fsS -o /dev/null "$COMFYUI_BASE_URL/system_stats"; then
                       echo "member reachable at $COMFYUI_BASE_URL"; exit 0
                     fi
