@@ -4230,9 +4230,21 @@ check-comfyui-openwebui-pair:
                             "$base/api/v1/images/generations"; }
                   jc=$(gen "$tok"); kc=""; [ -n "$key" ] && kc=$(gen "$key")
                   code="$jc"; [ "$kc" = "200" ] && code="$kc"
-                  q=$(curl -sS "$COMFYUI_BASE_URL/queue" 2>/dev/null | head -c 60 | tr -d '\n')
-                  h=$(curl -sS "$COMFYUI_BASE_URL/history" 2>/dev/null | head -c 60 | tr -d '\n')
-                  echo "DIAG jwt=$jc key=${kc:-none} member=$COMFYUI_BASE_URL q=${q} h=${h}" >&2
+                  # Two decisive probes, both from INSIDE the front end's container:
+                  #  ws     -- does the websocket the engine needs complete its handshake (101)?
+                  #  direct -- does a prompt POSTed straight at the member succeed, bypassing
+                  #            Open WebUI entirely? Together they separate "network/name" from
+                  #            "Open WebUI's own client".
+                  ws=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 \
+                         -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+                         -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+                         "$COMFYUI_BASE_URL/ws?clientId=probe" 2>/dev/null || echo 000)
+                  wf=$(printf %s '{"1":{"class_type":"EmptyImage","inputs":{"width":64,"height":64,"batch_size":1,"color":0}},"2":{"class_type":"SaveImage","inputs":{"filename_prefix":"probe","images":["1",0]}}}')
+                  direct=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -X POST \
+                             -H 'Content-Type: application/json' \
+                             --data "{\"prompt\":$wf,\"client_id\":\"probe\"}" \
+                             "$COMFYUI_BASE_URL/prompt" 2>/dev/null || echo 000)
+                  echo "DIAG jwt=$jc key=${kc:-none} ws=$ws direct=$direct" >&2
                   test "$code" = "200" || { echo "generation did not return 200 (jwt/API key both failed)" >&2; exit 1; }
                   for i in $(seq 1 120); do
                     n=$(curl -fsS "$COMFYUI_BASE_URL/history" 2>/dev/null | grep -o '"status_str": *"success"' | wc -l || echo 0)
