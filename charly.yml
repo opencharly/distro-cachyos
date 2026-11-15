@@ -4135,15 +4135,72 @@ check-krun-host-vm:
                   exit 1
                 }
 
-# check-comfyui-openwebui-pair — the INTEGRATION bed. check-cachyos-comfyui-pod proves the ComfyUI
-# image serves; check-openwebui-pod proves the front end serves. Neither proves the path BETWEEN
-# them, which is the product: a prompt typed into Open WebUI becoming a picture out of ComfyUI.
+# check-qwen3-tts-pod — the DISPOSABLE proof of the qwen3-tts image (RDD + R10).
 #
-# The member form (measured, 2026-11-15): a deploy-level member is a SIBLING OF THE KIND KEY —
-# `comfyui-peer:` sits beside `pod:` and the loader stamps it as a member brought up ALONGSIDE on
-# the shared `charly` network, reachable as ${HOST:<name>} (spec/schema/deploy.cue #Member: "a
-# sibling of the kind key: a deploy-level MEMBER"). `member:`/`member_of:` are loader-built and
-# rejected if authored, which is why this had looked unauthorable.
+# The candy's contract is the ONE HTTP route Open WebUI's `openai` TTS engine calls, so this
+# bed proves that contract rather than the process: /health answers, the preset voice list is
+# published (the consumer's picker reads it), and a synthesis POST returns REAL audio bytes —
+# asserted on the RIFF magic in the body and an audio/* content type, so an empty 200 cannot
+# pass. The first synthesis downloads the 0.6B checkpoint into the pod's models volume and
+# loads it, so every probe is readiness-bounded (eventually), never a fixed sleep.
+check-qwen3-tts-pod:
+    pod:
+        image: qwen3-tts
+        disposable: true
+        lifecycle: dev
+        # GPU-CDI pod on the REFCOUNTED axis: requires_shared, never requires_exclusive
+        # (measured on this venue — the exclusive axis attempts a vfio flip a live desktop
+        # compositor correctly refuses).
+        requires_shared: [nvidia-gpu]
+        description: >-
+            Sole proof of the qwen3-tts image — the Qwen3-TTS speech service Open WebUI's `openai`
+            TTS engine calls, on the CachyOS base. Builds the image, deploys it as a pod, and runs
+            the candy's baked checks plus the deploy-scope probes: /health, the preset voice list,
+            and a real synthesis returning RIFF audio with an audio/* content type. The checkpoint
+            downloads into the models volume on the first request, so the synthesis probe is
+            readiness-bounded (eventually, not a sleep). Needs the GPU venue; run on demand.
+        plan:
+            - check: the speech service answers its health route
+              id: qwen3-tts-health
+              context:
+                - runtime
+              timeout: 20s
+              eventually: 5m
+              retry_interval: 5s
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8000}/health
+                status: 200
+                body:
+                  - contains: '"status":"ok"'
+            - check: the service publishes the preset voice list the consumer's picker reads
+              id: qwen3-tts-voices
+              context:
+                - runtime
+              timeout: 20s
+              eventually: 2m
+              retry_interval: 5s
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8000}/v1/audio/voices
+                status: 200
+                body:
+                  - contains: vivian
+            - check: a synthesis request returns real RIFF audio bytes with an audio content type
+              id: qwen3-tts-synthesis
+              context:
+                - runtime
+              timeout: 15m
+              eventually: 15m
+              retry_interval: 20s
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8000}/v1/audio/speech
+                method: POST
+                request_body: '{"input":"charly qwen3 tts bed","voice":"vivian"}'
+                status: 200
+                body:
+                  - contains: RIFF
+                header:
+                  - contains: audio/
+
 check-comfyui-openwebui-pair:
     pod:
         image: openwebui
@@ -4178,7 +4235,7 @@ check-comfyui-openwebui-pair:
             # model node would write the EMPTY STRING into node 4's ckpt_name -- ComfyUI then rejects
             # the prompt with 400 and nothing ever queues (measured: the queue stayed [] on every run
             # while a prompt POSTed straight at the member answered 200). The working lab deploy
-            # carries exactly this seven-entry map; the model node was MY addition and it was wrong.
+            # carries this same map plus its own model node; the model node was MY addition and it was wrong.
             # Node 4 gets a STATIC value: Open WebUI's default workflow asks ComfyUI for
             # `"ckpt_name": "model.safetensors"`, which this member does not have, and ComfyUI
             # rejects an unknown checkpoint with 400 Bad Request -- measured in the primary's own
@@ -4282,7 +4339,7 @@ check-comfyui-openwebui-pair:
                     if [ "${n:-0}" -gt 0 ]; then echo "comfyui history shows $n successful prompt(s)" >&2; exit 0; fi
                     sleep 5
                   done
-                  echo "the front end answered but the server never recorded a success" >&2; exit 1                  echo "the front end answered but the server never recorded a success" >&2; exit 1
+                  echo "the front end answered but the server never recorded a success" >&2; exit 1
 
     # DEPLOY-LEVEL member: a SIBLING OF THE KIND KEY (`pod:`), at the same indent as `pod:`.
     # Authored INSIDE the pod body it would be an IN-SUBSTRATE member -- deployed INTO the
