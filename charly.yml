@@ -4174,7 +4174,12 @@ check-comfyui-openwebui-pair:
             COMFYUI_BASE_URL: http://charly-comfyui-peer:8188
             # Without this map Open WebUI substitutes NOTHING (the env defaults to []) and posts its
             # own default workflow, whose checkpoint the member does not have.
-            COMFYUI_WORKFLOW_NODES: '[{"type":"model","node_ids":["4"],"key":"ckpt_name"},{"type":"prompt","node_ids":["6"],"key":"text"},{"type":"negative_prompt","node_ids":["7"],"key":"text"},{"type":"width","node_ids":["5"],"key":"width"},{"type":"height","node_ids":["5"],"key":"height"},{"type":"n","node_ids":["5"],"key":"batch_size"},{"type":"steps","node_ids":["3"],"key":"steps"},{"type":"seed","node_ids":["3"],"key":"seed"}]'
+            # NO `model` entry: IMAGE_GENERATION_MODEL is unset, so get_image_model() returns '' and a
+            # model node would write the EMPTY STRING into node 4's ckpt_name -- ComfyUI then rejects
+            # the prompt with 400 and nothing ever queues (measured: the queue stayed [] on every run
+            # while a prompt POSTed straight at the member answered 200). The working lab deploy
+            # carries exactly this seven-entry map; the model node was MY addition and it was wrong.
+            COMFYUI_WORKFLOW_NODES: '[{"type":"prompt","node_ids":["6"],"key":"text"},{"type":"negative_prompt","node_ids":["7"],"key":"text"},{"type":"width","node_ids":["5"],"key":"width"},{"type":"height","node_ids":["5"],"key":"height"},{"type":"n","node_ids":["5"],"key":"batch_size"},{"type":"steps","node_ids":["3"],"key":"steps"},{"type":"seed","node_ids":["3"],"key":"seed"}]'
         plan:
             - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
               id: pair-member-reachable
