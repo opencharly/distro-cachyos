@@ -4160,6 +4160,13 @@ check-comfyui-openwebui-pair:
         env:
             WEBUI_ADMIN_EMAIL: admin@pair.local
             ENABLE_IMAGE_GENERATION: "true"
+            # REQUIRED, and it was MISSING -- the whole cause of the HTTP 400
+            # `{"detail":"[ERROR: Unauthorized]"}`. Open WebUI defaults this to `openai`, so without it
+            # the request went to api.openai.com with an empty key and came back Unauthorized, while
+            # the member's queue stayed empty (runs 1219/1244/1310: jwt=400 key=401, q=[]). The image
+            # does declare `IMAGE_GENERATION_ENGINE: comfyui` in its env_provide, but that reaches the
+            # IMAGE only; a deploy does not inherit it, so the bed must state it.
+            IMAGE_GENERATION_ENGINE: comfyui
             # The member's container name, NOT ${HOST:<member>}: that form is a PLAN-STEP
             # substitution and stays literal in a deploy env: -- measured on 2026.319.1039,
             # `printenv COMFYUI_BASE_URL` inside the pod read back `http://${HOST:comfyui-peer}:8188`.
