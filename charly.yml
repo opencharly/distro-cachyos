@@ -4244,7 +4244,12 @@ check-comfyui-openwebui-pair:
                              -H 'Content-Type: application/json' \
                              --data "{\"prompt\":$wf,\"client_id\":\"probe\"}" \
                              "$COMFYUI_BASE_URL/prompt" 2>/dev/null || echo 000)
-                  echo "DIAG jwt=$jc key=${kc:-none} ws=$ws direct=$direct" >&2
+                  # What did Open WebUI RESOLVE for the engine? /api/config is authenticated and
+                  # returns the live frontend config; the slice around "comfyui" says whether the
+                  # engine and the URL took effect at all.
+                  cfg=$(curl -sS -H "Authorization: Bearer $tok" "$base/api/config" 2>/dev/null \
+                          | tr -d ' \n' | grep -oE 'comfyui.{0,110}' | head -1)
+                  echo "DIAG jwt=$jc key=${kc:-none} ws=$ws direct=$direct cfg=${cfg:-none}" >&2
                   test "$code" = "200" || { echo "generation did not return 200 (jwt/API key both failed)" >&2; exit 1; }
                   for i in $(seq 1 120); do
                     n=$(curl -fsS "$COMFYUI_BASE_URL/history" 2>/dev/null | grep -o '"status_str": *"success"' | wc -l || echo 0)
