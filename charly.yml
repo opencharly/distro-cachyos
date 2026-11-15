@@ -4176,12 +4176,12 @@ check-comfyui-openwebui-pair:
                 command: |
                   set -eu
                   for i in $(seq 1 60); do
-                    if curl -fsS -o /dev/null "${COMFYUI_BASE_URL}/system_stats"; then
-                      echo "member reachable at ${COMFYUI_BASE_URL}"; exit 0
+                    if curl -fsS -o /dev/null "$COMFYUI_BASE_URL/system_stats"; then
+                      echo "member reachable at $COMFYUI_BASE_URL"; exit 0
                     fi
                     sleep 5
                   done
-                  echo "never reached ${COMFYUI_BASE_URL}" >&2; exit 1
+                  echo "never reached $COMFYUI_BASE_URL" >&2; exit 1
             - check: a REAL image-generation round trip through the front end, with the ComfyUI member's history showing the same work
               id: pair-generation-roundtrip
               context: [runtime]
@@ -4207,7 +4207,7 @@ check-comfyui-openwebui-pair:
                   test "$code" = "200"
                   # The front end answered -- now require the SERVER to have generated the work.
                   for i in $(seq 1 60); do
-                    n=$(curl -fsS "${COMFYUI_BASE_URL}/history" | grep -o '"status_str": *"success"' | wc -l)
+                    n=$(curl -fsS "$COMFYUI_BASE_URL/history" | grep -o '"status_str": *"success"' | wc -l)
                     if [ "$n" -gt 0 ]; then echo "comfyui history shows $n successful prompt(s)"; exit 0; fi
                     sleep 5
                   done
