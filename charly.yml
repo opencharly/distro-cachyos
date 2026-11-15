@@ -4160,7 +4160,14 @@ check-comfyui-openwebui-pair:
         env:
             WEBUI_ADMIN_EMAIL: admin@pair.local
             ENABLE_IMAGE_GENERATION: "true"
-            COMFYUI_BASE_URL: http://${HOST:comfyui-peer}:8188
+            # The member's container name, NOT ${HOST:<member>}: that form is a PLAN-STEP
+            # substitution and stays literal in a deploy env: -- measured on 2026.319.1039,
+            # `printenv COMFYUI_BASE_URL` inside the pod read back `http://${HOST:comfyui-peer}:8188`.
+            # BringUpMembers names a container member `charly-<memberKey>`, so this is deterministic.
+            COMFYUI_BASE_URL: http://charly-comfyui-peer:8188
+            # Without this map Open WebUI substitutes NOTHING (the env defaults to []) and posts its
+            # own default workflow, whose checkpoint the member does not have.
+            COMFYUI_WORKFLOW_NODES: '[{"type":"model","node_ids":["4"],"key":"ckpt_name"},{"type":"prompt","node_ids":["6"],"key":"text"},{"type":"negative_prompt","node_ids":["7"],"key":"text"},{"type":"width","node_ids":["5"],"key":"width"},{"type":"height","node_ids":["5"],"key":"height"},{"type":"n","node_ids":["5"],"key":"batch_size"},{"type":"steps","node_ids":["3"],"key":"steps"},{"type":"seed","node_ids":["3"],"key":"seed"}]'
         plan:
             - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
               id: pair-member-reachable
@@ -4221,3 +4228,7 @@ check-comfyui-openwebui-pair:
         pod:
             image: comfyui
             disposable: true
+            env:
+                # The checkpoint the member fetches; node 4 of the workflow substitutes a model
+                # name, and it must be this one or the prompt fails at class resolution.
+                COMFYUI_MODEL: v1-5-pruned-emaonly-fp16.safetensors
