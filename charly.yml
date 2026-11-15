@@ -4201,9 +4201,9 @@ check-comfyui-openwebui-pair:
                   set -eu
                   base="http://127.0.0.1:8080"
                   pw=$(printenv WEBUI_ADMIN_PASSWORD 2>/dev/null || true)
-                  test -n "${pw:?}"
+                  test -n "$pw"
                   tok=$(curl -fsS -X POST -H 'Content-Type: application/json' \
-                          --data "{\"email\":\"${WEBUI_ADMIN_EMAIL}\",\"password\":\"$pw\"}" \
+                          --data "{\"email\":\"$WEBUI_ADMIN_EMAIL\",\"password\":\"$pw\"}" \
                           "$base/api/v1/auths/signin" | sed -E 's/.*"token"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
                   test -n "$tok"
                   echo "signed in"
