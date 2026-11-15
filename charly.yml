@@ -4169,13 +4169,16 @@ check-comfyui-openwebui-pair:
             - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
               id: pair-member-reachable
               context: [runtime]
-              timeout: 300s
+              # A member's container is READY long before its SERVER is: the start script must
+              # fetch and sha256-verify a 2 GB checkpoint first. wait-ready proves the container,
+              # not the service -- measured on 2026.319.0900 (front=200, member=000 an hour in).
+              timeout: 1500s
               exit_status: 0
               command:
                 in_container: true
                 command: |
                   set -eu
-                  for i in $(seq 1 60); do
+                  for i in $(seq 1 300); do
                     if curl -fsS -o /dev/null "$COMFYUI_BASE_URL/system_stats"; then
                       echo "member reachable at $COMFYUI_BASE_URL"; exit 0
                     fi
