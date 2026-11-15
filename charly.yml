@@ -4201,7 +4201,7 @@ check-comfyui-openwebui-pair:
                   set -eu
                   base="http://127.0.0.1:8080"
                   pw=$(printenv WEBUI_ADMIN_PASSWORD 2>/dev/null || true)
-                  echo "admin env: email=$WEBUI_ADMIN_EMAIL password_len=${#pw}"
+                  echo "admin env: email=$WEBUI_ADMIN_EMAIL password_len=${#pw}" >&2
                   test -n "$pw" || { echo "WEBUI_ADMIN_PASSWORD is empty in this container" >&2; exit 1; }
                   # Open WebUI seeds its admin account on first boot, which may still be in flight
                   # when the member starts answering: retry the sign-in rather than failing once.
@@ -4215,20 +4215,20 @@ check-comfyui-openwebui-pair:
                       tok=$(sed -E 's/.*"token"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' /tmp/signin.json)
                       [ -n "$tok" ] && break
                     fi
-                    [ "$i" = 1 ] && echo "signin attempt 1: HTTP=$resp"
+                    [ "$i" = 1 ] && echo "signin attempt 1: HTTP=$resp body=$(head -c 200 /tmp/signin.json)" >&2
                     sleep 5
                   done
                   test -n "$tok" || { echo "signin never succeeded; last HTTP=$resp body=$(head -c 200 /tmp/signin.json)" >&2; exit 1; }
-                  echo "signed in after $i attempt(s)"
+                  echo "signed in after $i attempt(s)" >&2
                   code=$(curl -sS -o /tmp/gen.json -w '%{http_code}' -X POST -H "Authorization: Bearer $tok" \
                           -H 'Content-Type: application/json' \
                           --data '{"prompt":"a red cube on a white table","n":1,"size":"512x512"}' \
                           "$base/api/v1/images/generations")
-                  echo "generations HTTP=$code body=$(head -c 300 /tmp/gen.json)"
+                  echo "generations HTTP=$code body=$(head -c 400 /tmp/gen.json)" >&2
                   test "$code" = "200" || { echo "generation did not return 200" >&2; exit 1; }
                   for i in $(seq 1 120); do
                     n=$(curl -fsS "$COMFYUI_BASE_URL/history" 2>/dev/null | grep -o '"status_str": *"success"' | wc -l || echo 0)
-                    if [ "${n:-0}" -gt 0 ]; then echo "comfyui history shows $n successful prompt(s)"; exit 0; fi
+                    if [ "${n:-0}" -gt 0 ]; then echo "comfyui history shows $n successful prompt(s)" >&2; exit 0; fi
                     sleep 5
                   done
                   echo "the front end answered but the server never recorded a success" >&2; exit 1                  echo "the front end answered but the server never recorded a success" >&2; exit 1
