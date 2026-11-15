@@ -4134,3 +4134,81 @@ check-krun-host-vm:
                   echo "/dev/kvm is absent: this venue cannot boot a libkrun guest" >&2
                   exit 1
                 }
+
+# check-comfyui-openwebui-pair — the INTEGRATION bed. check-cachyos-comfyui-pod proves the ComfyUI
+# image serves; check-openwebui-pod proves the front end serves. Neither proves the path BETWEEN
+# them, which is the product: a prompt typed into Open WebUI becoming a picture out of ComfyUI.
+#
+# The member form (measured, 2026-11-15): a deploy-level member is a SIBLING OF THE KIND KEY —
+# `comfyui-peer:` sits beside `pod:` and the loader stamps it as a member brought up ALONGSIDE on
+# the shared `charly` network, reachable as ${HOST:<name>} (spec/schema/deploy.cue #Member: "a
+# sibling of the kind key: a deploy-level MEMBER"). `member:`/`member_of:` are loader-built and
+# rejected if authored, which is why this had looked unauthorable.
+check-comfyui-openwebui-pair:
+    pod:
+        image: openwebui
+        disposable: true
+        lifecycle: dev
+        description: |
+            Sole proof of the ComfyUI <-> Open WebUI IMAGE-GENERATION path. Deploys the Open WebUI
+            pod with a comfyui deploy-level MEMBER alongside it on the shared network, points
+            COMFYUI_BASE_URL at that member BY NAME, signs in with the deployment's own generated
+            admin credential, requests one image through /api/v1/images/generations, and requires
+            the ComfyUI member's /history to show the same work. Fails if the front end answers
+            without the server generating.
+        requires_shared: [nvidia-gpu]
+        env:
+            WEBUI_ADMIN_EMAIL: admin@pair.local
+            ENABLE_IMAGE_GENERATION: "true"
+            COMFYUI_BASE_URL: http://${HOST:comfyui-peer}:8188
+        comfyui-peer:
+            pod:
+                image: comfyui
+                disposable: true
+        plan:
+            - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
+              id: pair-member-reachable
+              context: [runtime]
+              timeout: 300s
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  for i in $(seq 1 60); do
+                    if curl -fsS -o /dev/null "${COMFYUI_BASE_URL}/system_stats"; then
+                      echo "member reachable at ${COMFYUI_BASE_URL}"; exit 0
+                    fi
+                    sleep 5
+                  done
+                  echo "never reached ${COMFYUI_BASE_URL}" >&2; exit 1
+            - check: a REAL image-generation round trip through the front end, with the ComfyUI member's history showing the same work
+              id: pair-generation-roundtrip
+              context: [runtime]
+              timeout: 900s
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  base="http://127.0.0.1:8080"
+                  pw=$(printenv WEBUI_ADMIN_PASSWORD 2>/dev/null || true)
+                  test -n "${pw:?}"
+                  tok=$(curl -fsS -X POST -H 'Content-Type: application/json' \
+                          --data "{\"email\":\"${WEBUI_ADMIN_EMAIL}\",\"password\":\"$pw\"}" \
+                          "$base/api/v1/auths/signin" | sed -E 's/.*"token"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+                  test -n "$tok"
+                  echo "signed in"
+                  code=$(curl -sS -o /tmp/gen.json -w '%{http_code}' -X POST -H "Authorization: Bearer $tok" \
+                          -H 'Content-Type: application/json' \
+                          --data '{"prompt":"a red cube on a white table","n":1,"size":"512x512"}' \
+                          "$base/api/v1/images/generations")
+                  echo "generations HTTP=$code"
+                  test "$code" = "200"
+                  # The front end answered -- now require the SERVER to have generated the work.
+                  for i in $(seq 1 60); do
+                    n=$(curl -fsS "${COMFYUI_BASE_URL}/history" | grep -o '"status_str": *"success"' | wc -l)
+                    if [ "$n" -gt 0 ]; then echo "comfyui history shows $n successful prompt(s)"; exit 0; fi
+                    sleep 5
+                  done
+                  echo "the front end answered but the server never recorded a success" >&2; exit 1
