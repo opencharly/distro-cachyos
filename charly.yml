@@ -4220,26 +4220,19 @@ check-comfyui-openwebui-pair:
                   done
                   test -n "$tok" || { echo "signin never succeeded; last HTTP=$resp body=$(head -c 200 /tmp/signin.json)" >&2; exit 1; }
                   echo "signed in after $i attempt(s)" >&2
-                  # "[ERROR: Unauthorized]" can come from Open WebUI's own API or from the engine
-                  # behind it, so try an API KEY as well as the session JWT, and on failure print
-                  # what the MEMBER saw -- that is what distinguishes the two sides.
+                  # A COMPACT diagnostic: the harness truncates stderr, so the decisive facts must
+                  # fit on one short line rather than a long message with a body in it.
                   key=$(curl -sS -X POST -H "Authorization: Bearer $tok" "$base/api/v1/auths/api_key" 2>/dev/null \
                           | sed -E 's/.*"api_key"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' || true)
-                  echo "api_key minted: $( [ -n "$key" ] && echo yes || echo no )" >&2
-                  gen() { curl -sS -o /tmp/gen.json -w '%{http_code}' -X POST \
+                  gen() { curl -sS -o /dev/null -w '%{http_code}' -X POST \
                             -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
-                            --data '{"prompt":"a red cube on a white table","n":1,"size":"512x512"}' \
+                            --data '{"prompt":"a red cube","n":1,"size":"512x512"}' \
                             "$base/api/v1/images/generations"; }
-                  code=$(gen "$tok")
-                  echo "generations (jwt) HTTP=$code body=$(head -c 300 /tmp/gen.json)" >&2
-                  if [ "$code" != "200" ] && [ -n "$key" ]; then
-                    code=$(gen "$key")
-                    echo "generations (api_key) HTTP=$code body=$(head -c 300 /tmp/gen.json)" >&2
-                  fi
-                  if [ "$code" != "200" ]; then
-                    echo "comfyui side: queue=$(curl -sS "$COMFYUI_BASE_URL/queue" 2>/dev/null | head -c 200)" >&2
-                    echo "comfyui side: stats=$(curl -sS "$COMFYUI_BASE_URL/system_stats" 2>/dev/null | head -c 160)" >&2
-                  fi
+                  jc=$(gen "$tok"); kc=""; [ -n "$key" ] && kc=$(gen "$key")
+                  code="$jc"; [ "$kc" = "200" ] && code="$kc"
+                  q=$(curl -sS "$COMFYUI_BASE_URL/queue" 2>/dev/null | head -c 60 | tr -d '\n')
+                  h=$(curl -sS "$COMFYUI_BASE_URL/history" 2>/dev/null | head -c 60 | tr -d '\n')
+                  echo "DIAG jwt=$jc key=${kc:-none} member=$COMFYUI_BASE_URL q=${q} h=${h}" >&2
                   test "$code" = "200" || { echo "generation did not return 200 (jwt/API key both failed)" >&2; exit 1; }
                   for i in $(seq 1 120); do
                     n=$(curl -fsS "$COMFYUI_BASE_URL/history" 2>/dev/null | grep -o '"status_str": *"success"' | wc -l || echo 0)
