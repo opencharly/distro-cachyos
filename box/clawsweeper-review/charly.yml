@@ -1,0 +1,24 @@
+# The ClawSweeper review image, on the CachyOS base. Re-homed here from
+# distro-ubuntu under operator decision D-3 (opencharly/opencharly#1068): the org's
+# non-CachyOS images retire, and the review tool moves rather than disappearing with
+# the Ubuntu base it happened to live on.
+#
+# It is a one-shot tool, not a service: a caller runs it with the PR tree mounted
+# read-only and no GitHub token, and posts the JSON verdict itself.
+clawsweeper-review:
+    candy:
+        base: cachyos
+        platform:
+            - linux/amd64
+        description: |
+            The ClawSweeper review engine (pinned upstream, Node 24 + pnpm, Codex 0.162.1) on
+            the OpenCharly Ollama Cloud responses endpoint, built on the CachyOS (x86_64_v3)
+            base. Built for `--local-range`: no token, no GitHub writes, read-only target tree.
+            Advisory only — it never gates a merge.
+        candy:
+            # Pinned by the layer's release tag, like every other @github ref in this repo.
+            # v2026.320.1554 is the release that added the candy's `arch:` package set and
+            # fixed its Ubuntu ICU pin — i.e. the first tag whose dependency set is expressible
+            # on this base at all. Before it the candy declared only `ubuntu:`, so an image
+            # composed here installed no dependencies and died at the Node step.
+            - '@github.com/opencharly/layer-clawsweeper/candy/clawsweeper-review:v2026.320.1554'
