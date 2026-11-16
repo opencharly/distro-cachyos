@@ -4426,3 +4426,81 @@ check-cachyos-coder-tools-pod:
                 - contains: VERSION_ID=20261018.0.612668
               command: |
                 grep -E '^(ID|VERSION_ID)=' /etc/os-release
+
+# Re-homed from distro-ubuntu under operator decision D-3 (opencharly/opencharly#1068):
+# the non-CachyOS images retire, and the org's review tool moves to the CachyOS base
+# rather than disappearing with them.
+check-clawsweeper-review-pod:
+    pod:
+        image: clawsweeper-review
+        disposable: true
+        lifecycle: dev
+        plan:
+            - check: the entrypoint runs the engine to a report and never dies on its own permissions
+              id: review-verdict
+              description: |
+                A check bed exports NO secret, so `OLLAMA_API_KEY` can never resolve here (the
+                runner resolves only its own auto-exported variables — a key guard in a check
+                step is a DEAD assertion), and the model leg is therefore not exercised in this
+                bed. It is never faked either (R8). What IS proven: the fixture exists, the
+                entrypoint's flag contract holds, `jq` is present, the engine reaches the model
+                boundary, and nothing fails on the image's own permissions.
+              context: [runtime]
+              exit_status: 0
+              command: |
+                  set -euo pipefail
+                  # A check step prepares its own input: a `run:` step is SKIPPED in
+                  # verify-only mode (measured: "skipped — verify-only mode (mutating step)").
+                  rm -rf /tmp/fixture && mkdir -p /tmp/fixture
+                  git init -q -b main /tmp/fixture
+                  git -C /tmp/fixture config user.email fixture@example.invalid
+                  git -C /tmp/fixture config user.name fixture
+                  printf 'def add(a, b):\n    return a + b\n' > /tmp/fixture/calc.py
+                  git -C /tmp/fixture add calc.py
+                  git -C /tmp/fixture commit -qm "base: add() adds"
+                  printf 'def add(a, b):\n    return a - b\n' > /tmp/fixture/calc.py
+                  git -C /tmp/fixture add calc.py
+                  git -C /tmp/fixture commit -qm "defect: add() subtracts"
+
+                  command -v clawsweeper-review
+                  help="$(clawsweeper-review --help)"
+                  printf '%s\n' "$help" | grep -q -- '--local-range'
+                  printf '%s\n' "$help" | grep -q -- '--result-format json'
+                  jq --version
+
+                  base="$(git -C /tmp/fixture rev-parse HEAD~1)"
+                  out="$(CLAWSWEEPER_TARGET_REPO=opencharly/fixture BASE_SHA="$base" TARGET_DIR=/tmp/fixture clawsweeper-review 2>&1 || true)"
+                  printf '%s\n' "$out" | tail -3
+
+                  # The regression that killed every review: an unwritable CODEX_HOME dies at
+                  # "failed to initialize in-process app-server client: Permission denied"
+                  # before the model is reached.
+                  if printf '%s\n' "$out" | grep -q 'Permission denied'; then
+                    echo "the engine died on the image's own permissions"
+                    exit 1
+                  fi
+                  # It reached the model boundary: a report was produced. NO key-shaped
+                  # assertion — the check must not depend on the key being ABSENT, which is
+                  # the trap the layer's own runtime check was blocked for.
+                  printf '%s\n' "$out" | grep -q '"reports"'
+                  echo REVIEW-ENGINE-REACHED-MODEL-BOUNDARY
+        description: |
+            R10 proof of the review image: the engine converges, accepts an opencharly/* target
+            through the profile overlay, and reaches the model boundary. The live model
+            round-trip needs a key, which a check bed cannot supply — that leg is the advisory
+            workflow's job (opencharly/.github `clawsweeper-review.yml`).
+
+# ---------------------------------------------------------------------------
+# The verb/schema skills this repo's own candy owns — routing only.
+#
+# Each node carries `name`/`family`/`owner` (plus `triggers:` where the skill
+# generates DISPATCHER.md rows). The prose is the skill FILE at
+# `<repo root>/.agents/skills/<name>/SKILL.md`, never an inline `description:`
+# or `content:` — an inline body that disagrees with its file is a hard error
+# in the marketplace generator. `family:` is the marketplace family the skill
+# was authored under, kept so every existing `/charly-<family>:<name>` address
+# still resolves; `owner:` names the candy whose command/kind surface the
+# skill documents. This candy composes no image, so these nodes add nothing to
+# any `ai.opencharly.skill` OCI label; the bodies reach consumers through the
+# generated marketplace corpus.
+# ---------------------------------------------------------------------------
