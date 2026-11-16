@@ -4357,7 +4357,7 @@ check-comfyui-openwebui-pair:
 
 # =============================================================================
 # check-cachyos-coder-tools-pod — the R10 bed for `cachyos-coder-tools`, and the COMPENSATING
-# gate for FIVE of the six layer candies the retired non-CachyOS coder boxes were the
+# gate for FOUR of the six layer candies the retired non-CachyOS coder boxes were the
 # only live proof of (opencharly/opencharly#1068): layer-pixi, layer-language-runtimes,
 # layer-typst, layer-github-actions. The other two cannot be compensated here:
 # - layer-google-cloud-npm -> its required layer-google-cloud cannot complete install.sh

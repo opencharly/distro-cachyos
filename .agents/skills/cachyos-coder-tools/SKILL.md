@@ -1,6 +1,6 @@
 # cachyos-coder-tools
 
-The **minimal CachyOS tool gate** — the six layer candies that the retired non-CachyOS coder
+The **minimal CachyOS tool gate** — four of the six layer candies that the retired non-CachyOS coder
 workstations were the only live proof of, on the CachyOS (`x86_64_v3`) base, and nothing else.
 
 It lives in the **`opencharly/distro-cachyos`** repo as `box/cachyos-coder-tools`.
@@ -15,7 +15,7 @@ composes any of them, and each of their own repos declares no `pod:`/`vm:` entit
 dropping the coder beds without a replacement would have left six layer repos with no live proof
 whatsoever (R7).
 
-This image is that replacement. It is deliberately **minimal**: it proves those six candies and
+This image is that replacement. It is deliberately **minimal**: it proves four of those six candies and
 does not resurrect the workstation the cutover retires.
 
 **`layer-rpmfusion` is deliberately absent, and cannot be added.** RPM Fusion is a Fedora package
@@ -75,8 +75,7 @@ The bed `check-cachyos-coder-tools-pod` (in this repo's `charly.yml`, `disposabl
 functional evidence: it builds the image, deploys it, runs every composed candy's baked check, and
 adds one representative **binary** assertion per compensated candy —
 `/usr/local/bin/pixi`, `/usr/local/bin/typst`, `/usr/bin/act`, `/usr/local/bin/actionlint`,
-`$HOME/.npm-global/bin/firebase`, `/usr/local/bin/logcli`, `/usr/local/bin/promtool`,
-`/usr/local/bin/grafanactl`, `/usr/bin/dotnet`, `/usr/bin/php`, `/usr/bin/python3` — plus a
+`/usr/local/bin/actionlint`, `/usr/bin/dotnet`, `/usr/bin/php`, `/usr/bin/python3` — plus a
 base-identity probe.
 
 That binary set is the point: a candy whose per-distro section silently no-ops on CachyOS (the

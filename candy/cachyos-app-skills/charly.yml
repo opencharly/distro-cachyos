@@ -62,6 +62,6 @@ cachyos-coder-tools-skill:
         family: coder
         owner: cachyos-app-skills
         description: |-
-            The minimal CachyOS tool gate (box/cachyos-coder-tools) and the compensating gate for the six layer candies the retired non-CachyOS coder workstations were the only live proof of: language runtimes, pixi/uv, typst, the github-actions CLI pair, firebase and the grafana CLI set, on the CachyOS (x86_64_v3) base.
+            The minimal CachyOS tool gate (box/cachyos-coder-tools) and the compensating gate for four of the six layer candies the retired non-CachyOS coder workstations were the only live proof of: language runtimes, pixi/uv, typst, the github-actions CLI pair, on the CachyOS (x86_64_v3) base. It cannot cover `google-cloud-npm` (opencharly/layer-google-cloud#5) or `grafana-tools` (opencharly/layer-grafana-tools#4), both filed.
         triggers:
-            - "CachyOS tool gate / `box/cachyos-coder-tools` / the CachyOS home of the language-runtimes, pixi, typst, github-actions, google-cloud-npm and grafana-tools candies"
+            - "CachyOS tool gate / `box/cachyos-coder-tools` / the CachyOS home of the language-runtimes, pixi, typst and github-actions candies"
