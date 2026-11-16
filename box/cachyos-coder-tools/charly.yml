@@ -1,0 +1,59 @@
+cachyos-coder-tools:
+    candy:
+        # The MINIMAL CachyOS gate for the six layer candies that the retired
+        # non-CachyOS coder workstations were the only live proof of
+        # (opencharly/opencharly#1068): pixi, language-runtimes, typst,
+        # github-actions — FOUR of the six.
+        #
+        # THE SIXTH, google-cloud-npm (firebase), CANNOT BE COMPENSATED HERE: it requires
+        # layer-google-cloud, whose install.sh calls `gcloud components list` and fails inside
+        # a buildkit build container ("Failed to fetch component listing from server"), while
+        # the same installer succeeds in a plain container of this very base. Measured A/B:
+        # opencharly/layer-google-cloud#5. That is a build-VENUE defect, not a CachyOS one, so
+        # no composition choice on this base fixes it and a Fedora twin would not either.
+        #
+        # THE FIFTH, grafana-tools, is blocked by a candy defect: its plan shells out to `unzip`
+        # but the candy declares no distro: section at all, so nothing installs it, and no org
+        # candy provides unzip for pac (opencharly/layer-grafana-tools#4). Fixing that belongs in
+        # the owning candy, not in a box here.
+        #
+        # WHY MINIMAL AND NOT A CODER WORKSTATION: the compensation's job is to keep those
+        # six candies proven on the org's CachyOS base, not to resurrect the workstation the
+        # cutover retires. The first draft DID compose fedora-coder's full 26-candy stack and
+        # could not build: the composed `ai.opencharly.description` label reached 121,320
+        # bytes on one generated Containerfile line, over buildkit's hard 65,535-byte
+        # per-line limit ("failed to solve: dockerfile line greater than max allowed size of
+        # 65535"). That is a real, filed product limit on how large an image's candy chain
+        # may grow (opencharly/spec#293 carries the evidence); this image stays far under it
+        # by composing exactly the candies it exists to prove — which is also the smaller,
+        # honest scope.
+        #
+        # layer-rpmfusion is deliberately absent and CANNOT be added: RPM Fusion is a Fedora
+        # repository driven by dnf/rpmkeys/rpm -E %fedora with no Arch analogue, so it keeps
+        # its own minimal Fedora bed (distro-fedora's fedora-rpmfusion).
+        base: cachyos
+        platform:
+            - linux/amd64
+        description: |
+            The minimal CachyOS tool gate — the six layer candies the retired non-CachyOS
+            coder workstations were the only live proof of, on the CachyOS (x86_64_v3)
+            base, and nothing else. Composes the language runtimes (Go, PHP, .NET, Node,
+            Python, Rust via layer-language-runtimes), pixi and uv tooling, typst, the
+            github-actions CLI pair (act + actionlint) — plus pod-sshd so the pod has a
+            long-running service to deploy and probe. Deliberately NOT a coder
+            workstation: the six candies' own baked checks run here, and the composed IMAGE
+            is proven by the disposable bed check-cachyos-coder-tools-pod, which asserts one
+            representative binary per candy on the running container so a candy whose
+            per-distro section silently no-ops on CachyOS cannot pass.
+        candy:
+            # The skill carrier this image owns its skill in — see candy/cachyos-app-skills/charly.yml
+            - cachyos-app-skills
+
+            - '@github.com/opencharly/pod-sshd:v2026.272.0324'
+            - '@github.com/opencharly/layer-pixi:v2026.272.0440'
+            - '@github.com/opencharly/layer-language-runtimes:v2026.273.1816'
+            - '@github.com/opencharly/layer-typst:v2026.272.0407'
+            - '@github.com/opencharly/layer-github-actions:v2026.272.0135'
+        # No box-level plan: each compensated candy's claims belong to that candy, and the
+        # sshd claim to its candy. The composed IMAGE is proven by the disposable bed
+        # check-cachyos-coder-tools-pod.
