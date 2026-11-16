@@ -4387,7 +4387,7 @@ check-cachyos-coder-tools-pod:
         disposable: true
         lifecycle: dev
         description: >-
-            Sole proof of the cachyos-coder-tools image AND the compensating gate for the six
+            Sole proof of the cachyos-coder-tools image AND the compensating gate for four of the six
             layer candies the retired non-CachyOS coder boxes were the only live proof of
             (opencharly/opencharly#1068). Builds the minimal tool gate on the CachyOS
             (x86_64_v3) base, deploys it, and runs every composed candy's baked check plus

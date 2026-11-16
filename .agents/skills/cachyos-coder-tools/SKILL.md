@@ -55,8 +55,10 @@ This image stays far under both caps by composing exactly the candies it exists 
 ## Composition
 
 `cachyos-app-skills` (this image's skill carrier) · `pod-sshd` · `layer-pixi` ·
-`layer-language-runtimes` · `layer-typst` · `layer-github-actions` · `layer-google-cloud-npm` ·
-`layer-grafana-tools`
+`layer-language-runtimes` · `layer-typst` · `layer-github-actions`
+
+The two of the six it does NOT compose are named in "Why this image exists" and in the
+bed's own comment: `google-cloud-npm` and `grafana-tools`, each blocked by a filed candy defect.
 
 `pod-sshd` is there so the pod has a long-running service to deploy and probe. Ports are
 **inherited from the candy chain** (the box declares none); host mappings are auto-allocated on
@@ -75,7 +77,7 @@ The bed `check-cachyos-coder-tools-pod` (in this repo's `charly.yml`, `disposabl
 functional evidence: it builds the image, deploys it, runs every composed candy's baked check, and
 adds one representative **binary** assertion per compensated candy —
 `/usr/local/bin/pixi`, `/usr/local/bin/typst`, `/usr/bin/act`, `/usr/local/bin/actionlint`,
-`/usr/local/bin/actionlint`, `/usr/bin/dotnet`, `/usr/bin/php`, `/usr/bin/python3` — plus a
+`/usr/bin/dotnet`, `/usr/bin/php`, `/usr/bin/python3` — seven distinct paths, plus a
 base-identity probe.
 
 That binary set is the point: a candy whose per-distro section silently no-ops on CachyOS (the
