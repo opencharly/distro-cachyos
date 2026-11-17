@@ -5,5 +5,5 @@ comfyui:
             - linux/amd64
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/pod-comfyui:v2026.319.0108'
+            - '@github.com/opencharly/pod-comfyui:9050451de599ba0b5d95c3ab2883b3ace1f8d4b8'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
