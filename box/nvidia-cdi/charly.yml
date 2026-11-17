@@ -15,5 +15,5 @@ nvidia-cdi:
             # user-space or nvidia* binary is baked, and at check time that the container resolved
             # the INJECTED host driver at the running kernel module's version. The `-cdi` suffix on
             # every GPU box name is what makes that expectation visible.
-            - '@github.com/opencharly/layer-cdi:v2026.321.1630'
+            - '@github.com/opencharly/layer-cdi:v2026.321.1745'
             - '@github.com/opencharly/layer-cuda:v2026.321.1520'
