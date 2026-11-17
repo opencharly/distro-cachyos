@@ -1057,7 +1057,8 @@ check-cachyos-ai-toolkit-pod:
               command:
                 in_container: true
                 command: |
-                  python3 -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+                  test -x /home/user/.pixi/envs/default/bin/python3 || { echo "no venv python" >&2; exit 1; }
+                  /home/user/.pixi/envs/default/bin/python3 -c "import torch; print('torch', torch.__version__, 'cuda'
             - check: the pinned upstream COMMIT is what is checked out — not a branch that moved
               id: ai-toolkit-pinned-commit
               context: [runtime]
