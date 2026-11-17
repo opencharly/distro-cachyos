@@ -9,5 +9,5 @@ ai-toolkit:
             # that carries the pixi environment and the schema-race fix while that PR is in
             # review; it becomes a CalVer tag here the moment the candy lands, which is the
             # producer-first order (candy PR -> merge -> tag -> this pin).
-            - '@github.com/opencharly/pod-ai-toolkit:724b9d7d99ed0de55fcb3df6bf15d4d637044332'
+            - '@github.com/opencharly/pod-ai-toolkit:82f921dbaa69b03bc5c2f67e7c521852cb6053b2'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
