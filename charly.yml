@@ -1010,6 +1010,128 @@ check-cachyos-ollama-rocm-pod:
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS AMD ollama image composes on the plain CachyOS base and serves, and the sole consumer proving the ollama-rocm backend candy. Builds and deploys the ollama-rocm pod and runs the checks baked into the ollama, ollama-rocm and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the ROCm/HIP backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port. Without an AMD card passed through the server runs CPU inference, so this bed proves the backend SHIPS, not that it executes on a GPU.
+check-cachyos-ai-toolkit-pod:
+    pod:
+        image: ai-toolkit
+        disposable: true
+        lifecycle: dev
+        description: Sole proof the CachyOS GPU AI Toolkit training pod composes and serves on the Arch CUDA base. Builds and deploys the ai-toolkit pod and runs the inherited candy + dbus baked checks AND the shipping candy's own contract — the pinned upstream COMMIT (ai-toolkit publishes no tags), PyTorch seeing the real GPU, the diffusers revision carrying ZImagePipeline, the Z-Image model handler reporting arch=zimage, both supervised services (the UI server and its job worker) reaching RUNNING, the state tree spliced into the volume by symlink, and the shared LoRA shelf existing at the path pod-comfyui mounts as its models/loras.
+        requires_shared: [nvidia-gpu]
+        plan:
+            - check: both supervised services reach RUNNING — the UI server and the job worker
+              # Two services, so a dead worker cannot hide behind a live UI. supervisorctl
+              # reports the STATE by name, which is the thing that matters: a FATAL worker
+              # still leaves the GUI answering.
+              id: ai-toolkit-services-running
+              context: [runtime]
+              timeout: 120s
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  supervisorctl status | tee /tmp/st
+                  for svc in ai-toolkit-ui ai-toolkit-worker; do
+                    grep -qE "^${svc}[[:space:]]+RUNNING" /tmp/st || {
+                      echo "service not RUNNING: ${svc}" >&2
+                      exit 1
+                    }
+                  done
+            - check: the GUI answers on the toolkit port
+              id: ai-toolkit-ui-live
+              context: [runtime]
+              timeout: 30s
+              eventually: 3m
+              retry_interval: 5s
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8675}/
+                status: 200
+            - check: PyTorch sees the real GPU, not just an installed CUDA build
+              # The candy's own check proves `import torch` works at BUILD time, where there is
+              # no device. This is the runtime half: the device must actually enumerate.
+              id: ai-toolkit-cuda-device
+              context: [runtime]
+              stdout:
+                - contains: "cuda True"
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  test -x /home/user/.pixi/envs/default/bin/python3 || { echo "no venv python" >&2; exit 1; }
+                  /home/user/.pixi/envs/default/bin/python3 -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+            - check: the pinned upstream COMMIT is what is checked out — not a branch that moved
+              id: ai-toolkit-pinned-commit
+              context: [runtime]
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  ref=$(cat /opt/ai-toolkit/.charly-ref)
+                  test "$(git -C /opt/ai-toolkit rev-parse HEAD)" = "$ref"
+                  printf 'pinned commit: %s\n' "$ref"
+            - check: the pinned diffusers carries ZImagePipeline, and the handler reports arch=zimage
+              # The single contract every Z-Image job depends on. It is a property of the
+              # diffusers revision ai-toolkit pins, so it is asserted against the built image.
+              id: ai-toolkit-zimage-contract
+              context: [runtime]
+              stdout:
+                # BOTH halves of the description, not just the first: the check also prints
+                # "arch zimage" from the handler, so assert it here or the claim is half-proven.
+                - contains: ZImagePipeline
+                - contains: arch zimage
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  # The VENV interpreter explicitly, never bare `python3`: the claim is about the
+                  # diffusers THAT AI-TOOLKIT PINS, and a bare python3 may resolve to the system
+                  # interpreter, whose diffusers is a different package that proves nothing here.
+                  PY=/home/user/.pixi/envs/default/bin/python3
+                  test -x "$PY"
+                  "$PY" -c "from diffusers import ZImagePipeline; print('ZImagePipeline')"
+                  cd /opt/ai-toolkit
+                  "$PY" -c "from extensions_built_in.diffusion_models.z_image.z_image import ZImageModel; print('arch', ZImageModel.arch)"
+            - check: the mutable state is SPLICED into the volume, not left in the image
+              # ai-toolkit has no --base-directory flag, so the volume is linked in at start.
+              # If this regresses, training output silently lands in the image and is lost on
+              # rebuild — the exact failure the symlink exists to prevent.
+              id: ai-toolkit-state-spliced
+              context: [runtime]
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  for d in config output datasets; do
+                    test -L "/opt/ai-toolkit/$d" || { echo "not a symlink: /opt/ai-toolkit/$d" >&2; exit 1; }
+                    test -d "$HOME/ai-toolkit/$d" || { echo "missing volume dir: $HOME/ai-toolkit/$d" >&2; exit 1; }
+                  done
+                  echo "state dirs spliced"
+            - check: the shared LoRA shelf exists at the path the ComfyUI pod mounts as models/loras
+              # This is the PAIRING contract: pod-comfyui mounts the same host directory at
+              # ~/ComfyUI/models/loras, so a LoRA trained here is loadable there with no copy.
+              id: ai-toolkit-lora-shelf
+              context: [runtime]
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  test -d /workspace/shared-loras
+                  echo "shared LoRA shelf: /workspace/shared-loras"
+            - check: the shipped Z-Image LoRA example config is present in the volume's config dir
+              id: ai-toolkit-zimage-config
+              context: [runtime]
+              exit_status: 0
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  test -s "$HOME/ai-toolkit/config/z-image-lora-de-turbo.yml"
+                  echo "example config seeded"
+
 check-cachyos-comfyui-pod:
     pod:
         image: comfyui
