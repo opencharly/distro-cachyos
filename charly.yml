@@ -1081,10 +1081,14 @@ check-cachyos-ai-toolkit-pod:
                 in_container: true
                 command: |
                   set -eu
-                  python3 -c "from diffusers import ZImagePipeline; print('ZImagePipeline')"
+                  # The VENV interpreter explicitly, never bare `python3`: the claim is about the
+                  # diffusers THAT AI-TOOLKIT PINS, and a bare python3 may resolve to the system
+                  # interpreter, whose diffusers is a different package that proves nothing here.
+                  PY=/home/user/.pixi/envs/default/bin/python3
+                  test -x "$PY"
+                  "$PY" -c "from diffusers import ZImagePipeline; print('ZImagePipeline')"
                   cd /opt/ai-toolkit
-                  python3 -c "from extensions_built_in.diffusion_models.z_image.z_image import ZImageModel; print('arch', ZImageModel.arch)"
-                  python3 -c "import importlib.util" # keep the venv python, not system
+                  "$PY" -c "from extensions_built_in.diffusion_models.z_image.z_image import ZImageModel; print('arch', ZImageModel.arch)"
             - check: the mutable state is SPLICED into the volume, not left in the image
               # ai-toolkit has no --base-directory flag, so the volume is linked in at start.
               # If this regresses, training output silently lands in the image and is lost on
