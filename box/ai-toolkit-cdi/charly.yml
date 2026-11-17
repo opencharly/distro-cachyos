@@ -1,6 +1,6 @@
-ai-toolkit:
+ai-toolkit-cdi:
     candy:
-        base: nvidia
+        base: nvidia-cdi
         platform:
             - linux/amd64
         candy:

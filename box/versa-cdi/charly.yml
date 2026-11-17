@@ -1,4 +1,4 @@
-versa:
+versa-cdi:
     candy:
         enabled: true
         base: cachyos
@@ -12,7 +12,7 @@ versa:
 
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/layer-nvidia:v2026.320.1938' # GPU runtime (nvidia-utils + nvidia-container-toolkit) — formerly via base: nvidia
-            - '@github.com/opencharly/layer-cuda:v2026.320.2103' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
+            - '@github.com/opencharly/layer-cuda:v2026.321.1520' # CUDA toolkit (cuda + cudnn from Arch extra repo) — formerly via base: nvidia
             - '@github.com/opencharly/pod-marimo:v2026.320.2210' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
             - '@github.com/opencharly/pod-airflow:v2026.320.2222' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
             - '@github.com/opencharly/pod-osm-tools:v2026.274.0631' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI

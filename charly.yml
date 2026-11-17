@@ -948,7 +948,7 @@ check-cachyos-gpu-vm:
                 test -f /etc/qemu/qemu-ga.conf && systemctl is-active --quiet qemu-guest-agent && echo QGA-ACTIVE
     selkies-kde:
         pod:
-            image: selkies-kde-nvidia
+            image: selkies-kde-nvidia-cdi
 # Disposable R10 pod beds for the CachyOS GPU image family. Each drives the
 # full `charly check run` sequence (build → check box → deploy → check live →
 # fresh update → tear down) on the cachyos-namespace image of the same name.
@@ -960,14 +960,14 @@ check-cachyos-gpu-vm:
 # proved by `charly check box` alone and need no pod bed.
 check-cachyos-jupyter-ml-pod:
     pod:
-        image: jupyter-ml
+        image: jupyter-ml-cdi
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS GPU jupyter-ml image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml pod (cachyos.nvidia base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
         requires_shared: [nvidia-gpu]
 check-cachyos-ollama-pod:
     pod:
-        image: ollama
+        image: ollama-cdi
         disposable: true
         lifecycle: dev
         requires_shared: [nvidia-gpu]
@@ -1012,7 +1012,7 @@ check-cachyos-ollama-rocm-pod:
         description: Sole proof the CachyOS AMD ollama image composes on the plain CachyOS base and serves, and the sole consumer proving the ollama-rocm backend candy. Builds and deploys the ollama-rocm pod and runs the checks baked into the ollama, ollama-rocm and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the ROCm/HIP backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port. Without an AMD card passed through the server runs CPU inference, so this bed proves the backend SHIPS, not that it executes on a GPU.
 check-cachyos-ai-toolkit-pod:
     pod:
-        image: ai-toolkit
+        image: ai-toolkit-cdi
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS GPU AI Toolkit training pod composes and serves on the Arch CUDA base. Builds and deploys the ai-toolkit pod and runs the inherited candy + dbus baked checks AND the shipping candy's own contract — the pinned upstream COMMIT (ai-toolkit publishes no tags), PyTorch seeing the real GPU, the diffusers revision carrying ZImagePipeline, the Z-Image model handler reporting arch=zimage, both supervised services (the UI server and its job worker) reaching RUNNING, the state tree spliced into the volume by symlink, and the shared LoRA shelf existing at the path pod-comfyui mounts as its models/loras.
@@ -1134,7 +1134,7 @@ check-cachyos-ai-toolkit-pod:
 
 check-cachyos-comfyui-pod:
     pod:
-        image: comfyui
+        image: comfyui-cdi
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS GPU comfyui image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui pod and runs the inherited comfyui + dbus baked checks (ComfyUI HTTP UI liveness plus service/port/file/command probes) AND the shipping candy's own contract — the pinned upstream tag, the app/state split (application in the image at /opt/comfyui, every mutable byte in the volume via --base-directory), the absence of the retired ltdrdata Manager checkout, and a real generation round trip (POST /prompt, then the SAME prompt id recorded success in /history).
@@ -1217,14 +1217,14 @@ check-cachyos-comfyui-pod:
                   exit 1
 check-cachyos-unsloth-studio-pod:
     pod:
-        image: unsloth-studio
+        image: unsloth-studio-cdi
         disposable: true
         lifecycle: dev
         description: Sole proof the CachyOS GPU unsloth-studio fine-tuning notebook + API composes on the Arch CUDA base (no MCP candy, unlike jupyter-ml). Builds and deploys the unsloth-studio pod and runs the inherited unsloth-studio + notebook-finetuning + dbus baked checks — notebook/API HTTP liveness plus file/service/port/command probes.
         requires_shared: [nvidia-gpu]
 check-cachyos-immich-ml-pod:
     pod:
-        image: immich-ml
+        image: immich-ml-cdi
         disposable: true
         lifecycle: dev
         description: Sole proof the full 9-candy Immich photo stack (Immich + PostgreSQL + VectorChord + Redis + CUDA ML) composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the immich-ml pod (nodejs + python-ml + supervisord + postgresql + vectorchord + redis + immich + immich-ml) via the build [pac, aur] + npm multistage, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks.
@@ -1450,7 +1450,7 @@ check-selkies-labwc-nvidia-vm:
                 if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
     selkies-labwc-nvidia-pod:
         pod:
-            image: selkies-labwc-nvidia
+            image: selkies-labwc-nvidia-cdi
 check-selkies-kde-nvidia-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build needs >= 102.0 GiB of free space
     # on the build host's /tmp (charly vm builds the disk there); a host with less
@@ -1498,7 +1498,7 @@ check-selkies-kde-nvidia-vm:
                 if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -q 2>/dev/null | grep -qiE "Encoder.*Session|Encoder Stats"; then echo "NVENC-SESSION-ACTIVE"; else echo "NVENC-N/A (no passthrough GPU / software path)"; fi
     selkies-kde-nvidia-pod:
         pod:
-            image: selkies-kde-nvidia
+            image: selkies-kde-nvidia-cdi
 check-charly-selftest-pod:
     pod:
         image: charly-selftest
@@ -1633,7 +1633,7 @@ check-charly-selftest-pod:
 # never check-live'd itself.
 check-versa-pod:
     pod:
-        image: versa
+        image: versa-cdi
         disposable: true
         lifecycle: dev
         description: Sole proof the full OSM analytics + vector-tile pipeline (quackosm/tippecanoe/martin/maputnik + GPU geospatial extensions) plus the marimo MCP notebook surface composes and runs end-to-end on CachyOS. Builds (pixi/npm/cargo source builds — tippecanoe-from-source, martin Rust musl multistage) and deploys the versa pod, then runs notebook-render byte checks, martin /monaco tilejson HTTP probes, pipeline-artifact byte checks, GPU-extension import checks, and the marimo MCP read-only notebook-inspection tools.
@@ -2134,7 +2134,7 @@ cachyos-gpu:
     # charly-selkies-kde), so THIS deploy's bare streaming peer takes a unique name.
     selkies-kde-gpu-stream:
         pod:
-            image: selkies-kde-nvidia
+            image: selkies-kde-nvidia-cdi
 #  charly-cachyos — the operator CachyOS workstation profile (kind:local
 #  template). Shared layers are pulled by GITHUB REFERENCE from the main
 #  opencharly repo; the cachyos-exclusive layers (ghostty, keepassxc-keyring,
@@ -4470,7 +4470,7 @@ check-comfyui-openwebui-pair:
     # container existed). spec/schema/deploy.cue #Member names both positions.
     comfyui-peer:
         pod:
-            image: comfyui
+            image: comfyui-cdi
             disposable: true
             env:
                 # The checkpoint the member fetches; node 4 of the workflow substitutes a model

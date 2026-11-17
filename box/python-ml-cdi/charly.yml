@@ -1,6 +1,6 @@
-python-ml:
+python-ml-cdi:
     candy:
-        base: nvidia
+        base: nvidia-cdi
         platform:
             - linux/amd64
         candy:
