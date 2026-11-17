@@ -1009,7 +1009,7 @@ check-cachyos-ollama-rocm-pod:
         image: ollama-rocm
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS AMD ollama-cdi image composes on the plain CachyOS base and serves, and the sole consumer proving the ollama-rocm backend candy. Builds and deploys the ollama-rocm pod and runs the checks baked into the ollama, ollama-rocm and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the ROCm/HIP backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port. Without an AMD card passed through the server runs CPU inference, so this bed proves the backend SHIPS, not that it executes on a GPU.
+        description: Sole proof the CachyOS AMD ollama-rocm image composes on the plain CachyOS base and serves, and the sole consumer proving the ollama-rocm backend candy. Builds and deploys the ollama-rocm pod and runs the checks baked into the ollama, ollama-rocm and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the ROCm/HIP backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port. Without an AMD card passed through the server runs CPU inference, so this bed proves the backend SHIPS, not that it executes on a GPU.
 check-cachyos-ai-toolkit-pod:
     pod:
         image: ai-toolkit-cdi
