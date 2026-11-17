@@ -1075,7 +1075,10 @@ check-cachyos-ai-toolkit-pod:
               id: ai-toolkit-zimage-contract
               context: [runtime]
               stdout:
+                # BOTH halves of the description, not just the first: the check also prints
+                # "arch zimage" from the handler, so assert it here or the claim is half-proven.
                 - contains: ZImagePipeline
+                - contains: arch zimage
               exit_status: 0
               command:
                 in_container: true
