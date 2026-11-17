@@ -1,11 +1,11 @@
-selkies-labwc-nvidia:
+selkies-labwc-nvidia-cdi:
     candy:
         # labwc selkies flavor on the CachyOS GPU base (cachyos.nvidia) with REAL
         # NVENC: builder.pixi → arch.cuda-arch-builder, whose nvcc + ffnvcodec NVENC
         # headers let the selkies layer's build.sh compile pixelflux's real nvenc-sys
         # encoder (the stock arch-builder has no CUDA → NVENC stub). chrome + wlrctl
         # from the AUR → build:[pac, aur]. Renamed from selkies-desktop-nvidia.
-        base: nvidia
+        base: nvidia-cdi
         build:
             - pac
             - aur
