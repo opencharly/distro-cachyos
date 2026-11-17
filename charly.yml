@@ -716,7 +716,7 @@ check-cachyos-gpu-vm:
             # (Plasma + SDDM + graphical .target on the virtual head), CachyOS
             # theming, fonts/codecs/dev-gap. The WebRTC STREAMING desktop is NOT an
             # in-guest layer here — it runs as the nested selkies-kde pod below
-            # (kde-selkies moved into the selkies-kde-nvidia image). This mirrors the
+            # (kde-selkies moved into the selkies-kde-nvidia-cdi image). This mirrors the
             # workstation's dual-desktop split: bare-metal seat + headless stream.
             - '@github.com/opencharly/pod-kde-desktop:v2026.274.1033'
             - cachyos-kde-settings
@@ -751,7 +751,7 @@ check-cachyos-gpu-vm:
             verify: true
             # The guest add_layers' only builder need is the npm builder for
             # nodejs/claude-code; cuda-arch-builder is a node-capable superset (the
-            # NVENC pixi build of pixelflux now lives in the selkies-kde-nvidia image
+            # NVENC pixi build of pixelflux now lives in the selkies-kde-nvidia-cdi image
             # built on the host, not these guest layers).
             builder_image: arch.cuda-arch-builder
         plan:
@@ -963,7 +963,7 @@ check-cachyos-jupyter-ml-pod:
         image: jupyter-ml-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU jupyter-ml image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml pod (cachyos.nvidia base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
+        description: Sole proof the CachyOS GPU jupyter-ml-cdi image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml-cdi pod (cachyos.nvidia-cdi base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
         requires_shared: [nvidia-gpu]
 check-cachyos-ollama-pod:
     pod:
@@ -972,7 +972,7 @@ check-cachyos-ollama-pod:
         lifecycle: dev
         requires_shared: [nvidia-gpu]
         description: >-
-            Sole proof the CachyOS GPU ollama LLM-server image composes and serves on the Arch CUDA base, that the packaged CUDA backend is present, that the compiled-in command:ollama plugin works end-to-end, AND that real inference runs on the passed-through NVIDIA GPU. Builds and deploys the ollama pod and runs the checks baked into the ollama, ollama-cuda and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the CUDA backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port — plus the bed's own GPU-inference plan: nvidia-smi enumerates the card via CDI, a tiny model answers a prompt (a real generation pass), and `ollama ps` reports the model 100% GPU-resident (proving the CUDA backend executed it, not CPU fallback). The `requires_shared: [nvidia-gpu]` makes the arbiter flip the IOMMU group vfio→nvidia at deploy and back at teardown, so the pod reaches the card through CDI. On Arch the server comes from the split `ollama` package rather than the upstream tarball, so this bed is also the proof of that install path.
+            Sole proof the CachyOS GPU ollama LLM-server image composes and serves on the Arch CUDA base, that the packaged CUDA backend is present, that the compiled-in command:ollama plugin works end-to-end, AND that real inference runs on the passed-through NVIDIA GPU. Builds and deploys the ollama-cdi pod and runs the checks baked into the ollama, ollama-cuda and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the CUDA backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port — plus the bed's own GPU-inference plan: nvidia-smi enumerates the card via CDI, a tiny model answers a prompt (a real generation pass), and `ollama ps` reports the model 100% GPU-resident (proving the CUDA backend executed it, not CPU fallback). The `requires_shared: [nvidia-gpu]` makes the arbiter flip the IOMMU group vfio→nvidia at deploy and back at teardown, so the pod reaches the card through CDI. On Arch the server comes from the split `ollama` package rather than the upstream tarball, so this bed is also the proof of that install path.
         plan:
             - check: the passed-through NVIDIA GPU is visible inside the container via CDI — nvidia-smi enumerates the card
               id: ollama-gpu-visible
@@ -1009,13 +1009,13 @@ check-cachyos-ollama-rocm-pod:
         image: ollama-rocm
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS AMD ollama image composes on the plain CachyOS base and serves, and the sole consumer proving the ollama-rocm backend candy. Builds and deploys the ollama-rocm pod and runs the checks baked into the ollama, ollama-rocm and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the ROCm/HIP backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port. Without an AMD card passed through the server runs CPU inference, so this bed proves the backend SHIPS, not that it executes on a GPU.
+        description: Sole proof the CachyOS AMD ollama-cdi image composes on the plain CachyOS base and serves, and the sole consumer proving the ollama-rocm backend candy. Builds and deploys the ollama-rocm pod and runs the checks baked into the ollama, ollama-rocm and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the ROCm/HIP backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port. Without an AMD card passed through the server runs CPU inference, so this bed proves the backend SHIPS, not that it executes on a GPU.
 check-cachyos-ai-toolkit-pod:
     pod:
         image: ai-toolkit-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU AI Toolkit training pod composes and serves on the Arch CUDA base. Builds and deploys the ai-toolkit pod and runs the inherited candy + dbus baked checks AND the shipping candy's own contract — the pinned upstream COMMIT (ai-toolkit publishes no tags), PyTorch seeing the real GPU, the diffusers revision carrying ZImagePipeline, the Z-Image model handler reporting arch=zimage, both supervised services (the UI server and its job worker) reaching RUNNING, the state tree spliced into the volume by symlink, and the shared LoRA shelf existing at the path pod-comfyui mounts as its models/loras.
+        description: Sole proof the CachyOS GPU AI Toolkit training pod composes and serves on the Arch CUDA base. Builds and deploys the ai-toolkit-cdi pod and runs the inherited candy + dbus baked checks AND the shipping candy's own contract — the pinned upstream COMMIT (ai-toolkit publishes no tags), PyTorch seeing the real GPU, the diffusers revision carrying ZImagePipeline, the Z-Image model handler reporting arch=zimage, both supervised services (the UI server and its job worker) reaching RUNNING, the state tree spliced into the volume by symlink, and the shared LoRA shelf existing at the path pod-comfyui mounts as its models/loras.
         requires_shared: [nvidia-gpu]
         plan:
             - check: both supervised services reach RUNNING — the UI server and the job worker
@@ -1137,7 +1137,7 @@ check-cachyos-comfyui-pod:
         image: comfyui-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU comfyui image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui pod and runs the inherited comfyui + dbus baked checks (ComfyUI HTTP UI liveness plus service/port/file/command probes) AND the shipping candy's own contract — the pinned upstream tag, the app/state split (application in the image at /opt/comfyui, every mutable byte in the volume via --base-directory), the absence of the retired ltdrdata Manager checkout, and a real generation round trip (POST /prompt, then the SAME prompt id recorded success in /history).
+        description: Sole proof the CachyOS GPU comfyui-cdi image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui-cdi pod and runs the inherited comfyui + dbus baked checks (ComfyUI HTTP UI liveness plus service/port/file/command probes) AND the shipping candy's own contract — the pinned upstream tag, the app/state split (application in the image at /opt/comfyui, every mutable byte in the volume via --base-directory), the absence of the retired ltdrdata Manager checkout, and a real generation round trip (POST /prompt, then the SAME prompt id recorded success in /history).
         requires_shared: [nvidia-gpu]
         plan:
             - check: the serving ComfyUI reports the VERSION this bed pins, from its own API
@@ -1220,14 +1220,14 @@ check-cachyos-unsloth-studio-pod:
         image: unsloth-studio-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU unsloth-studio fine-tuning notebook + API composes on the Arch CUDA base (no MCP candy, unlike jupyter-ml). Builds and deploys the unsloth-studio pod and runs the inherited unsloth-studio + notebook-finetuning + dbus baked checks — notebook/API HTTP liveness plus file/service/port/command probes.
+        description: Sole proof the CachyOS GPU unsloth-studio fine-tuning notebook + API composes on the Arch CUDA base (no MCP candy, unlike jupyter-ml). Builds and deploys the unsloth-studio-cdi pod and runs the inherited unsloth-studio + notebook-finetuning + dbus baked checks — notebook/API HTTP liveness plus file/service/port/command probes.
         requires_shared: [nvidia-gpu]
 check-cachyos-immich-ml-pod:
     pod:
         image: immich-ml-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the full 9-candy Immich photo stack (Immich + PostgreSQL + VectorChord + Redis + CUDA ML) composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the immich-ml pod (nodejs + python-ml + supervisord + postgresql + vectorchord + redis + immich + immich-ml) via the build [pac, aur] + npm multistage, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks.
+        description: Sole proof the full 9-candy Immich photo stack (Immich + PostgreSQL + VectorChord + Redis + CUDA ML) composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the immich-ml-cdi pod (nodejs + python-ml + supervisord + postgresql + vectorchord + redis + immich + immich-ml) via the build [pac, aur] + npm multistage, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks.
         requires_shared: [nvidia-gpu]
 check-selkies-kde-pod:
     pod:
@@ -1408,7 +1408,7 @@ check-selkies-labwc-nvidia-vm:
         from: cachyos-gpu-vm
         disposable: true
         lifecycle: dev
-        description: Sole proof the labwc selkies desktop reaches REAL NVENC frame production inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod (cuda-arch-builder NVENC pixelflux build). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested --device nvidia.com/gpu=all selkies-labwc-nvidia pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC session probe plus chrome-devtools-mcp; the NVENC check N/As without a GPU.
+        description: Sole proof the labwc selkies desktop reaches REAL NVENC frame production inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod (cuda-arch-builder NVENC pixelflux build). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested --device nvidia.com/gpu=all selkies-labwc-nvidia-cdi pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC session probe plus chrome-devtools-mcp; the NVENC check N/As without a GPU.
         requires_exclusive: [nvidia-gpu]
         # Guest GPU stack so the passed-through RTX 4080 has a loaded driver +
         # nvidia-container-toolkit (CDI) + podman — the prerequisites for the nested
@@ -1460,7 +1460,7 @@ check-selkies-kde-nvidia-vm:
         from: cachyos-gpu-vm
         disposable: true
         lifecycle: dev
-        description: Sole proof the full KDE Plasma selkies desktop reaches REAL NVENC inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod — the KDE compositor variant of the labwc-nvidia bed (adds wl). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested selkies-kde-nvidia pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC probe plus the nested pod's kde-selkies wl and chrome-devtools-mcp probes; NVENC N/As without a GPU.
+        description: Sole proof the full KDE Plasma selkies desktop reaches REAL NVENC inside an RTX-4080 VFIO-passthrough VM via a nested GPU pod — the KDE compositor variant of the labwc-nvidia bed (adds wl). Pacstrap GPU-passthrough VM (preempts the nvidia-gpu holder) with podman + nvidia driver/CDI deploys a nested selkies-kde-nvidia-cdi pod, then asserts the selkies HTTPS :3000 stream (200) plus the in-guest nvidia-smi NVENC probe plus the nested pod's kde-selkies wl and chrome-devtools-mcp probes; NVENC N/As without a GPU.
         requires_exclusive: [nvidia-gpu]
         # Guest GPU stack (see check-selkies-labwc-nvidia-vm) — driver + CDI + podman
         # so the nested --device nvidia.com/gpu=all selkies-kde pod reaches the GPU.
@@ -2093,7 +2093,7 @@ cachyos-gpu:
             # plasma-desktop (deps) + SDDM + graphical.target; cachyos-kde-settings
             # (vendored) adds the CachyOS theming; fonts-extended + desktop-media
             # sync the host font/codec set; cachyos-extras fills the dev/CLI gap.
-            # The WebRTC streaming desktop is the nested selkies-kde-nvidia pod
+            # The WebRTC streaming desktop is the nested selkies-kde-nvidia-cdi pod
             # (real NVENC, :3000) deployed as a persistent in-guest quadlet — see
             # `nested:` below, NOT an in-guest layer. The bare-metal SDDM Plasma
             # seat (kde-desktop) drives the physical RTX monitors.
@@ -2107,7 +2107,7 @@ cachyos-gpu:
             - '@github.com/opencharly/layer-desktop-media:v2026.274.0607'
             - '@github.com/opencharly/layer-cachyos-extras:v2026.274.0610'
             # (in-guest kde-selkies layer REMOVED — the WebRTC streaming desktop is
-            # the nested selkies-kde-nvidia pod below; podman is its in-guest substrate.)
+            # the nested selkies-kde-nvidia-cdi pod below; podman is its in-guest substrate.)
             # VM-only additions. podman for GPU/CUDA containers; the guest agent +
             # workspace mount; nvidia-driver LAST — its reboot: true emits a
             # trailing RebootStep, so the guest reboots ONCE after everything is in
@@ -2899,7 +2899,7 @@ cachyos-gpu-vm:
             kernel_args: console=tty0 console=ttyS0,115200 modprobe.blacklist=nouveau nvidia-drm.modeset=1
         backend: libvirt
         # 100G (sparse qcow2): the full KDE+GPU+dev rootfs PLUS the nested
-        # selkies-kde-nvidia pod image (~15 GB) loaded into the guest user's
+        # selkies-kde-nvidia-cdi pod image (~15 GB) loaded into the guest user's
         # rootless podman storage (/home/cachy/.local/share/containers) — 50G
         # ran out of space mid-load. The disk grows on demand, so the larger
         # ceiling costs nothing until used.

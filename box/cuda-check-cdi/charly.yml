@@ -1,6 +1,6 @@
 cuda-check-cdi:
     candy:
-        # GPU compute-smoke image for the VFIO-passthrough check: cachyos.nvidia
+        # GPU compute-smoke image for the VFIO-passthrough check: cachyos.nvidia-cdi
         # (driver libs + nvidia-container-toolkit + CUDA) plus the locally-vendored
         # cuda-smoke layer (a baked nvcc-compiled vector-add that prints CUDA-OK).
         # The check-cachyos-gpu-vm bed loads this into the GPU VM guest and runs it
