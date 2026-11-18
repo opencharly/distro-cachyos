@@ -1,9 +1,11 @@
-selkies-kde-nvidia:
+selkies-labwc-nvidia-cdi:
     candy:
-        # Full KDE Plasma selkies flavor on the CachyOS GPU base (cachyos.nvidia) with
-        # REAL NVENC (builder.pixi → arch.cuda-arch-builder, same as selkies-labwc-nvidia).
-        # Headless de-SDDM Plasma nested in pixelflux. chrome + wlrctl from the AUR.
-        base: nvidia
+        # labwc selkies flavor on the CachyOS GPU base (cachyos.nvidia-cdi) with REAL
+        # NVENC: builder.pixi → arch.cuda-arch-builder, whose nvcc + ffnvcodec NVENC
+        # headers let the selkies layer's build.sh compile pixelflux's real nvenc-sys
+        # encoder (the stock arch-builder has no CUDA → NVENC stub). chrome + wlrctl
+        # from the AUR → build:[pac, aur]. Renamed from selkies-desktop-nvidia.
+        base: nvidia-cdi
         build:
             - pac
             - aur
@@ -16,7 +18,7 @@ selkies-kde-nvidia:
             - cachyos-selkies-skills
 
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/layer-selkies-kde-desktop:v2026.274.1343'
+            - '@github.com/opencharly/pod-selkies-desktop:v2026.274.1323'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
         plan:
             - check: command=strings ${HOME}/.pixi/envs/default/lib/python3.*/site-packages/pixelflux/pixelflux_wayland*.so | grep -q NvEncodeAPICreateInstance && echo NVENC-COMPILED
