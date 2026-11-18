@@ -29,6 +29,14 @@ defaults:
     registry: ghcr.io/opencharly
     build:
         - pac
+    # A builder map does not cross a namespace boundary, so a box composed FROM an import
+    # (podcdi.pod-cdi, vmnv.vm-nvidia) resolves its builder from THIS project's map, not
+    # from the imported repo's own. Declared here so both imported GPU base boxes compose.
+    builder:
+        aur: arch.arch-builder
+        cargo: arch.arch-builder
+        npm: arch.arch-builder
+        pixi: arch.arch-builder
     merge:
         auto: false
         max_mb: 128
@@ -39,6 +47,7 @@ import:
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
     - arch: '@github.com/opencharly/distro-arch:v2026.274.1256'
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.322.1325'
     # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
     # the server it just started. An IMPORT, not a composition: the word registers from the
     # imported repo's own discover tree (charly#1136), and no image gains the binary.

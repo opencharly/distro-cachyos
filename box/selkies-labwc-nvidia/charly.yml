@@ -5,7 +5,7 @@ selkies-labwc-nvidia:
         # headers let the selkies layer's build.sh compile pixelflux's real nvenc-sys
         # encoder (the stock arch-builder has no CUDA → NVENC stub). chrome + wlrctl
         # from the AUR → build:[pac, aur]. Renamed from selkies-desktop-nvidia.
-        base: nvidia
+        base: podcdi.pod-cdi
         build:
             - pac
             - aur

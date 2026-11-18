@@ -1,6 +1,6 @@
 comfyui:
     candy:
-        base: nvidia
+        base: podcdi.pod-cdi
         platform:
             - linux/amd64
         candy:

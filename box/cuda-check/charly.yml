@@ -5,7 +5,7 @@ cuda-check:
         # cuda-smoke layer (a baked nvcc-compiled vector-add that prints CUDA-OK).
         # The check-cachyos-gpu-vm bed loads this into the GPU VM guest and runs it
         # as a `--device nvidia.com/gpu=all` container to prove real device compute.
-        base: nvidia
+        base: podcdi.pod-cdi
         platform:
             - linux/amd64
         candy:

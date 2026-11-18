@@ -3,7 +3,7 @@ immich-ml:
         # CachyOS GPU base already carries cuda. pgvector is AUR-only on Arch, so
         # this image opts into build:[pac, aur] — the arch-builder's yay compiles
         # it (the postgresql layer declares the AUR package).
-        base: nvidia
+        base: podcdi.pod-cdi
         build:
             - pac
             - aur
