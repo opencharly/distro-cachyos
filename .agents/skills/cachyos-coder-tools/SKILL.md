@@ -1,3 +1,9 @@
+---
+name: cachyos-coder-tools
+description: |-
+  The minimal CachyOS tool gate (box/cachyos-coder-tools) and the compensating gate for four of the six layer candies the retired non-CachyOS coder workstations were the only live proof of: language runtimes, pixi/uv, typst, the github-actions CLI pair, on the CachyOS (x86_64_v3) base. It cannot cover `google-cloud-npm` (opencharly/layer-google-cloud#5) or `grafana-tools` (opencharly/layer-grafana-tools#4), both filed.
+---
+
 # cachyos-coder-tools
 
 The **minimal CachyOS tool gate** — four of the six layer candies that the retired non-CachyOS coder
