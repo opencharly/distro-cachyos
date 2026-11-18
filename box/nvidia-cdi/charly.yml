@@ -1,19 +1,15 @@
 nvidia-cdi:
     candy:
-        # CachyOS GPU base — the Arch-derived analogue of the Fedora `nvidia`
-        # image. Inherits build:[pac] + builder→arch.arch-builder from the cachyos
-        # base (same namespace). The nvidia + cuda layers are multi-distro and
-        # install the Arch GPU stack (nvidia-utils, nvidia-container-toolkit,
-        # cuda, cudnn, onnxruntime).
-        base: cachyos
+        # The CDI POD base. Its base is opencharly/pod-cdi, which composes layer-cdi and
+        # FAILS its own build when a driver user-space or an nvidia binary is baked in.
+        #
+        # The former base was `cachyos` with layer-nvidia composed alongside layer-cdi —
+        # the VM contract and the POD contract in one image. A pod must not bake a driver:
+        # the kernel module is host-global and the runtime injects the user-space per
+        # container through /etc/cdi/nvidia.yaml. `nvidia-ctk` is a HOST tool and never
+        # executes inside a container. opencharly/vm-nvidia is where layer-nvidia belongs.
+        base: podcdi.pod-cdi
         platform:
             - linux/amd64
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/layer-nvidia:v2026.320.1938'
-            # The CDI CONTRACT (opencharly/layer-cdi): build-time assertions that no driver
-            # user-space or nvidia* binary is baked, and a runtime probe that the container resolved
-            # the INJECTED host driver at the running kernel module's version. The `-cdi` suffix on
-            # every GPU box name is what makes that expectation visible.
-            - '@github.com/opencharly/layer-cdi:v2026.321.1745'
-            - '@github.com/opencharly/layer-cuda:v2026.321.1520'
