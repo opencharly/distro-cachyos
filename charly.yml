@@ -683,7 +683,7 @@ check-cachyos-gpu-vm:
         from: cachyos-gpu-vm
         disposable: true
         lifecycle: dev
-        description: Sole proof of the operator's dual-desktop GPU workstation config — a VFIO GPU-passthrough VM running BOTH a bare-metal KDE/SDDM seat AND a nested selkies-kde-nvidia streaming pod with real NVENC; the only bed exercising spice+wl+mcp + gpu-passthrough + preempt + nested + localpkg + multistage together. Pacstrap GPU-passthrough VM (preempts the preemptible nvidia-gpu holder) installs the KDE seat + nvidia driver/CDI + charly localpkg + npm AI CLIs, deploys a nested selkies-kde-nvidia quadlet, then over SSH runs ~14 command checks plus the inherited cachyos-gpu-desktop-check spice probes; GPU/NVENC checks N/A cleanly without a VFIO host.
+        description: Sole proof of the operator's dual-desktop GPU workstation config — a VFIO GPU-passthrough VM running BOTH a bare-metal KDE/SDDM seat AND a nested selkies-kde-nvidia-cdi streaming pod with real NVENC; the only bed exercising spice+wl+mcp + gpu-passthrough + preempt + nested + localpkg + multistage together. Pacstrap GPU-passthrough VM (preempts the preemptible nvidia-gpu holder) installs the KDE seat + nvidia driver/CDI + charly localpkg + npm AI CLIs, deploys a nested selkies-kde-nvidia quadlet, then over SSH runs ~14 command checks plus the inherited cachyos-gpu-desktop-check spice probes; GPU/NVENC checks N/A cleanly without a VFIO host.
         # Claims the single physical NVIDIA GPU. The resource arbiter
         # (candy/plugin-preempt's verb:arbiter — the former charly/preempt.go is
         # DELETED, K-wave 2) gracefully preempts any RUNNING preemptible holder of
@@ -956,7 +956,7 @@ check-cachyos-gpu-vm:
 # collide with an operator's production services on the canonical ports.
 # Deploy- and build-scope check coverage is inherited from the composed
 # layers (the "lowest level" principle) — the beds carry no check: of their
-# own. The GPU base (nvidia) and python-ml carry no service, so they are
+# own. The GPU base (nvidia-cdi) and python-ml-cdi carry no service, so they are
 # proved by `charly check box` alone and need no pod bed.
 check-cachyos-jupyter-ml-pod:
     pod:
@@ -972,7 +972,7 @@ check-cachyos-ollama-pod:
         lifecycle: dev
         requires_shared: [nvidia-gpu]
         description: >-
-            Sole proof the CachyOS GPU ollama LLM-server image composes and serves on the Arch CUDA base, that the packaged CUDA backend is present, that the compiled-in command:ollama plugin works end-to-end, AND that real inference runs on the passed-through NVIDIA GPU. Builds and deploys the ollama-cdi pod and runs the checks baked into the ollama, ollama-cuda and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the CUDA backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port — plus the bed's own GPU-inference plan: nvidia-smi enumerates the card via CDI, a tiny model answers a prompt (a real generation pass), and `ollama ps` reports the model 100% GPU-resident (proving the CUDA backend executed it, not CPU fallback). The `requires_shared: [nvidia-gpu]` makes the arbiter flip the IOMMU group vfio→nvidia at deploy and back at teardown, so the pod reaches the card through CDI. On Arch the server comes from the split `ollama` package rather than the upstream tarball, so this bed is also the proof of that install path.
+            Sole proof the CachyOS GPU ollama-cdi LLM-server image composes and serves on the Arch CUDA base, that the packaged CUDA backend is present, that the compiled-in command:ollama plugin works end-to-end, AND that real inference runs on the passed-through NVIDIA GPU. Builds and deploys the ollama-cdi pod and runs the checks baked into the ollama, ollama-cuda and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the CUDA backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port — plus the bed's own GPU-inference plan: nvidia-smi enumerates the card via CDI, a tiny model answers a prompt (a real generation pass), and `ollama ps` reports the model 100% GPU-resident (proving the CUDA backend executed it, not CPU fallback). The `requires_shared: [nvidia-gpu]` makes the arbiter flip the IOMMU group vfio→nvidia at deploy and back at teardown, so the pod reaches the card through CDI. On Arch the server comes from the split `ollama` package rather than the upstream tarball, so this bed is also the proof of that install path.
         plan:
             - check: the passed-through NVIDIA GPU is visible inside the container via CDI — nvidia-smi enumerates the card
               id: ollama-gpu-visible
