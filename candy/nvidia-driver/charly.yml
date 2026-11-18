@@ -19,6 +19,13 @@ nvidia-driver:
                     - opencl-nvidia
                     - nvidia-settings
                     - libva-nvidia-driver
+                    # Provides /usr/bin/nvidia-ctk, which charly-nvidia-cdi.service calls to
+                    # generate the CDI spec below. Without it the unit fails and the image
+                    # carries no nvidia-ctk at all (opencharly/pod-comfyui#22, where the
+                    # comfyui bed's check-image caught it: "the nvidia-ctk CLI binary lands on
+                    # the canonical /usr/bin path" FAILED, and `ls /usr/bin | grep -c nvidia`
+                    # in the built nvidia layer returned 0).
+                    - nvidia-container-toolkit
         plan:
             - run: write=/etc/modprobe.d/charly-nvidia.conf
               write: /etc/modprobe.d/charly-nvidia.conf
