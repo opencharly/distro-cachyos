@@ -47,7 +47,7 @@ import:
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
     - arch: '@github.com/opencharly/distro-arch:v2026.274.1256'
-    - podcdi: '@github.com/opencharly/pod-cdi:v2026.322.1325'
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.322.1717'
     # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
     # the server it just started. An IMPORT, not a composition: the word registers from the
     # imported repo's own discover tree (charly#1136), and no image gains the binary.
