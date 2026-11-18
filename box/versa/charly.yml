@@ -11,6 +11,13 @@ versa:
             - cachyos-app-skills
 
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
+            # layer-cuda now arrives through podcdi.pod-cdi -> layer-cdi, at v2026.321.1520,
+            # NOT at the v2026.320.2103 that pod-marimo and pod-airflow still require below.
+            # So this box resolves layer-cuda at two refs, which the resolver tolerates on
+            # `charly box validate` (0 warnings) but which is not what the former hold note
+            # claimed. Resolving it needs the pod-marimo/pod-airflow bump tracked as
+            # opencharly/pod-airflow#13; until then this comment states the condition instead
+            # of asserting it away. Deleting it was wrong: the collision did not disappear.
             - '@github.com/opencharly/pod-marimo:v2026.320.2210' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
             - '@github.com/opencharly/pod-airflow:v2026.320.2222' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
             - '@github.com/opencharly/pod-osm-tools:v2026.274.0631' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI
