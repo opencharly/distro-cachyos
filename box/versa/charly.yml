@@ -11,7 +11,7 @@ versa:
             - cachyos-app-skills
 
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            # Held at its CHAIN's release until opencharly/pod-airflow#13 lands: this box also composes
+            # Held at its CHAIN's release until opencharly/pod-airflow#13 lands: this box also composes [DONE: versa now bases on podcdi.pod-cdi, which supplies layer-cuda.]
             # pod-airflow -> pod-marimo, which still require layer-cuda v2026.320.2103, and one scope
             # may not resolve a candy at two refs. Bumping it alone makes `charly box validate` fail.
             - '@github.com/opencharly/pod-marimo:v2026.320.2210' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
