@@ -66,6 +66,44 @@ discover:
 # 2026-05 deploy→check unification moved repo-shipped disposable beds out of
 # deploy.yml). disposable: true is the sole authorization for the unattended
 # destroy+rebuild driven by `charly check run check-cachyos-vm`.
+# Disposable R10 bed for the ComfyUI POD, and the only proof that the CDI base
+# actually yields a runnable GPU container. This exists because the pod image
+# changed base from the VM contract (baked driver + nvidia-ctk) to the CDI
+# contract (host-injected driver): "the box builds" is not "the pod runs with a
+# GPU", and nothing in this repo asserted the second thing.
+check-comfyui-pod:
+    pod:
+        image: comfyui-cdi
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole proof that the ComfyUI pod built through the CDI base RUNS, that the
+            runtime injects the host driver (no baked user-space), and that the API
+            answers on 8188.
+        plan:
+            - check: the ComfyUI HTTP API answers on its published port
+              id: comfyui-api
+              http:
+                http: http://127.0.0.1:${HOST_PORT:45337}/system_stats
+                status: 200
+              eventually: 180s
+              retry_interval: 5s
+              context:
+                - runtime
+            - check: ComfyUI sees a CUDA device — the runtime injected the host driver
+              id: comfyui-cuda-device
+              context: [runtime]
+              sh:
+                script: |
+                  curl -fsS "http://127.0.0.1:8188/system_stats" | grep -q '"device_type": "cuda"'
+              eventually: 120s
+              retry_interval: 5s
+            - check: no driver user-space and no nvidia-ctk is baked into the image
+              id: comfyui-no-baked-driver
+              context: [runtime]
+              sh:
+                script: |
+                  ! command -v nvidia-ctk && ! ls /usr/lib64/libcuda.so* 2>/dev/null
 check-cachyos-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build stages a 25 GiB disk (the
     # cachyos-vm entity's disk_size) and the preflight requires disk + overhead —
