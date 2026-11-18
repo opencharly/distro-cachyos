@@ -263,12 +263,12 @@ charly-mcp-enable:
 # config — the acceptance gate for the live Part C migration:
 #   host (IOMMU on) → cachyos-gpu-vm (VFIO GPU passthrough, nvidia-open kernel
 #   module) running BOTH (a) the full in-guest KDE Plasma SDDM seat (the
-#   bare-metal desktop on the virtual head) AND (b) a nested selkies-kde-nvidia
+#   bare-metal desktop on the virtual head) AND (b) a nested selkies-kde-nvidia-cdi
 #   POD (the headless WebRTC streaming desktop, real NVENC).
 # The bed applies the nvidia toolkit + nvidia-driver kernel layer to the guest
 # (the driver layer reboots the guest, via the RebootStep), then runVM deploys
 # the nested `selkies-kde` pod as a PERSISTENT in-guest quadlet
-# (deployNestedPodsInGuest: host-build selkies-kde-nvidia → cp-box into the
+# (deployNestedPodsInGuest: host-build selkies-kde-nvidia-cdi → cp-box into the
 # guest → the guest's own project-free `charly deploy from-box`, lingering on so
 # it survives a guest reboot). This is the nested-pod-in-VM capability under
 # test. The deploy-scope checks below run inside the guest over SSH.
@@ -683,7 +683,7 @@ check-cachyos-gpu-vm:
         from: cachyos-gpu-vm
         disposable: true
         lifecycle: dev
-        description: Sole proof of the operator's dual-desktop GPU workstation config — a VFIO GPU-passthrough VM running BOTH a bare-metal KDE/SDDM seat AND a nested selkies-kde-nvidia-cdi streaming pod with real NVENC; the only bed exercising spice+wl+mcp + gpu-passthrough + preempt + nested + localpkg + multistage together. Pacstrap GPU-passthrough VM (preempts the preemptible nvidia-gpu holder) installs the KDE seat + nvidia driver/CDI + charly localpkg + npm AI CLIs, deploys a nested selkies-kde-nvidia quadlet, then over SSH runs ~14 command checks plus the inherited cachyos-gpu-desktop-check spice probes; GPU/NVENC checks N/A cleanly without a VFIO host.
+        description: Sole proof of the operator's dual-desktop GPU workstation config — a VFIO GPU-passthrough VM running BOTH a bare-metal KDE/SDDM seat AND a nested selkies-kde-nvidia-cdi streaming pod with real NVENC; the only bed exercising spice+wl+mcp + gpu-passthrough + preempt + nested + localpkg + multistage together. Pacstrap GPU-passthrough VM (preempts the preemptible nvidia-gpu holder) installs the KDE seat + nvidia driver/CDI + charly localpkg + npm AI CLIs, deploys a nested selkies-kde-nvidia-cdi quadlet, then over SSH runs ~14 command checks plus the inherited cachyos-gpu-desktop-check spice probes; GPU/NVENC checks N/A cleanly without a VFIO host.
         # Claims the single physical NVIDIA GPU. The resource arbiter
         # (candy/plugin-preempt's verb:arbiter — the former charly/preempt.go is
         # DELETED, K-wave 2) gracefully preempts any RUNNING preemptible holder of
@@ -2832,7 +2832,7 @@ cachyos-gpu-vm:
         # GPU-passthrough VM guest that receives a physical NVIDIA GPU via a VFIO
         # <hostdev>. Driven by the check-cachyos-gpu-vm bed, which mirrors the
         # operator workstation: a bare-metal KDE Plasma seat in-guest plus a nested
-        # selkies-kde-nvidia streaming pod (real NVENC) deployed as a persistent
+        # selkies-kde-nvidia-cdi streaming pod (real NVENC) deployed as a persistent
         # in-guest quadlet.
         #
         # SUBSTRATE = CachyOS bootstrap (pacstrap) under UEFI/OVMF. UEFI is
