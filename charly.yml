@@ -84,26 +84,45 @@ check-comfyui-pod:
             - check: the ComfyUI HTTP API answers on its published port
               id: comfyui-api
               http:
-                http: http://127.0.0.1:${HOST_PORT:45337}/system_stats
+                http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
                 status: 200
-              eventually: 180s
-              retry_interval: 5s
+              # On a FRESH volume the server is still fetching its 2 GB checkpoint when this
+              # first runs (pod-comfyui's own runtime check measures the same); the window makes
+              # a cold boot a wait instead of a failure.
+              eventually: 300s
+              retry_interval: 10s
               context:
                 - runtime
             - check: ComfyUI sees a CUDA device — the runtime injected the host driver
               id: comfyui-cuda-device
+              # `type` is the torch device type on each entry of `/system_stats.devices`
+              # (ComfyUI v0.45.3 server.py: `"type": d.type`), so it reads "cuda" only when the
+              # container actually resolved a GPU — which is what the CDI injection is for. An
+              # image that baked no driver and got no injection reports "cpu". Asserted through
+              # the documented `http:` verb with a body contains matcher, exactly as pod-comfyui
+              # asserts its own `/system_stats` liveness, so no tool has to exist in the image.
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
+                status: 200
+                body:
+                    - contains: '"type": "cuda"'
+              eventually: 300s
+              retry_interval: 10s
               context: [runtime]
-              sh:
-                script: |
-                  curl -fsS "http://127.0.0.1:8188/system_stats" | grep -q '"device_type": "cuda"'
-              eventually: 120s
-              retry_interval: 5s
-            - check: no driver user-space and no nvidia-ctk is baked into the image
+            - check: no host-side nvidia-ctk is baked into the image
               id: comfyui-no-baked-driver
+              # The LIBRARY half of "no baked driver" cannot be decided HERE: the CDI runtime
+              # mounts the HOST's library into this very container, so a path probe under
+              # /usr/lib{,64} finds the injected file on a CORRECT image. That half is proven at
+              # build time by layer-cdi's `cdi-no-baked-driver-libs`, which runs where no
+              # injection exists — one canonical assertion, not two. `nvidia-ctk` is different:
+              # it is a HOST CLI that no CDI spec injects, so its absence here IS the image's own
+              # state.
               context: [runtime]
-              sh:
-                script: |
-                  ! command -v nvidia-ctk && ! ls /usr/lib64/libcuda.so* 2>/dev/null
+              command:
+                command: |
+                  ! command -v nvidia-ctk
+                in_container: true
 check-cachyos-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build stages a 25 GiB disk (the
     # cachyos-vm entity's disk_size) and the preflight requires disk + overhead —
