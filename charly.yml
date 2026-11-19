@@ -29,6 +29,14 @@ defaults:
     registry: ghcr.io/opencharly
     build:
         - pac
+    # A builder map does not cross a namespace boundary (stated in box/cachyos), so a box
+    # composed FROM an import resolves its builder from THIS project, not from the
+    # imported repo. Declared here so podcdi.pod-cdi composes and builds.
+    builder:
+        aur: arch.arch-builder
+        cargo: arch.arch-builder
+        npm: arch.arch-builder
+        pixi: arch.arch-builder
     merge:
         auto: false
         max_mb: 128
@@ -39,6 +47,12 @@ import:
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
     - arch: '@github.com/opencharly/distro-arch:v2026.274.1256'
+    # The CDI POD base box. A pod takes its GPU driver from the HOST through the CDI
+    # spec, so its image must bake NO driver user-space and carry NO nvidia-ctk.
+    # pod-cdi composes layer-cdi and enforces that with its own plan steps.
+    # opencharly/vm-nvidia is the VM counterpart, which bakes the driver for a
+    # passthrough guest and is used by no pod.
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.322.1717'
     # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
     # the server it just started. An IMPORT, not a composition: the word registers from the
     # imported repo's own discover tree (charly#1136), and no image gains the binary.
@@ -52,6 +66,63 @@ discover:
 # 2026-05 deploy→check unification moved repo-shipped disposable beds out of
 # deploy.yml). disposable: true is the sole authorization for the unattended
 # destroy+rebuild driven by `charly check run check-cachyos-vm`.
+# Disposable R10 bed for the ComfyUI POD, and the only proof that the CDI base
+# actually yields a runnable GPU container. This exists because the pod image
+# changed base from the VM contract (baked driver + nvidia-ctk) to the CDI
+# contract (host-injected driver): "the box builds" is not "the pod runs with a
+# GPU", and nothing in this repo asserted the second thing.
+check-comfyui-pod:
+    pod:
+        image: comfyui-cdi
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole proof that the ComfyUI pod built through the CDI base RUNS, that the
+            runtime injects the host driver (no baked user-space), and that the API
+            answers on 8188.
+        plan:
+            - check: the ComfyUI HTTP API answers on its published port
+              id: comfyui-api
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
+                status: 200
+              # On a FRESH volume the server is still fetching its 2 GB checkpoint when this
+              # first runs (pod-comfyui's own runtime check measures the same); the window makes
+              # a cold boot a wait instead of a failure.
+              eventually: 300s
+              retry_interval: 10s
+              context:
+                - runtime
+            - check: ComfyUI sees a CUDA device — the runtime injected the host driver
+              id: comfyui-cuda-device
+              # `type` is the torch device type on each entry of `/system_stats.devices`
+              # (ComfyUI v0.45.3 server.py: `"type": d.type`), so it reads "cuda" only when the
+              # container actually resolved a GPU — which is what the CDI injection is for. An
+              # image that baked no driver and got no injection reports "cpu". Asserted through
+              # the documented `http:` verb with a body contains matcher, exactly as pod-comfyui
+              # asserts its own `/system_stats` liveness, so no tool has to exist in the image.
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
+                status: 200
+                body:
+                    - contains: '"type": "cuda"'
+              eventually: 300s
+              retry_interval: 10s
+              context: [runtime]
+            - check: no host-side nvidia-ctk is baked into the image
+              id: comfyui-no-baked-driver
+              # The LIBRARY half of "no baked driver" cannot be decided HERE: the CDI runtime
+              # mounts the HOST's library into this very container, so a path probe under
+              # /usr/lib{,64} finds the injected file on a CORRECT image. That half is proven at
+              # build time by layer-cdi's `cdi-no-baked-driver-libs`, which runs where no
+              # injection exists — one canonical assertion, not two. `nvidia-ctk` is different:
+              # it is a HOST CLI that no CDI spec injects, so its absence here IS the image's own
+              # state.
+              context: [runtime]
+              command:
+                command: |
+                  ! command -v nvidia-ctk
+                in_container: true
 check-cachyos-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build stages a 25 GiB disk (the
     # cachyos-vm entity's disk_size) and the preflight requires disk + overhead —
