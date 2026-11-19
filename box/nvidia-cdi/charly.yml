@@ -13,5 +13,12 @@ nvidia-cdi:
             - linux/amd64
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/layer-cdi:v2026.323.0156'
-            - '@github.com/opencharly/layer-cuda:v2026.323.0138'
+            - '@github.com/opencharly/layer-cdi:v2026.323.0302'
+            # v2026.323.0252 is the release that DROPS `require: layer-nvidia`
+            # (opencharly/layer-cuda#30). Until it, the toolkit dragged the VM driver
+            # user-space into every pod that composed it, so `layer-nvidia`'s
+            # `nvidia-ctk` assertions ran on an image whose composition deletes the
+            # binary, and its prefix-glob strip took `libcudart` after the stitch. The
+            # toolkit no longer names the driver, so a pod that composes it composes
+            # no driver layer — the substrate now decides, which is the whole point.
+            - '@github.com/opencharly/layer-cuda:v2026.323.0252'
