@@ -4496,6 +4496,12 @@ check-comfyui-openwebui-pair:
             # rejects with 400. The 0.13.3 image had no such gate, which is why the same
             # bed passed there.
             ENABLE_API_KEYS: "true"
+            # 0.13.4 reads image generation from CONNECTIONS in the config store; the legacy
+            # env (IMAGE_GENERATION_ENGINE/COMFYUI_*) is migrated ONCE into a connection at
+            # startup. With ENABLE_PERSISTENT_CONFIG=false the config answers from env-built
+            # defaults, the migrated connection is not visible, and the request fails (the
+            # pair DIAG showed ck=0 connections). Persist the config so the migration holds.
+            ENABLE_PERSISTENT_CONFIG: "true"
             ENABLE_IMAGE_GENERATION: "true"
             # REQUIRED, and it was MISSING -- the whole cause of the HTTP 400
             # `{"detail":"[ERROR: Unauthorized]"}`. Open WebUI defaults this to `openai`, so without it
