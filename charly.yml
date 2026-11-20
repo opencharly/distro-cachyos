@@ -56,7 +56,7 @@ import:
     # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
     # the server it just started. An IMPORT, not a composition: the word registers from the
     # imported repo's own discover tree (charly#1136), and no image gains the binary.
-    - owuicli: '@github.com/opencharly/plugin-openwebui:v2026.317.2055'
+    - owuicli: '@github.com/opencharly/plugin-openwebui:v2026.324.1215'
 discover:
     - path: box
       recursive: true
@@ -76,6 +76,18 @@ check-comfyui-pod:
         image: comfyui-cdi
         disposable: true
         lifecycle: dev
+        # The model cache is a HOST directory shared with the live ComfyUI deployment and the
+        # other ComfyUI beds, so the ~12 GB Z-Image set is fetched once, not once per run. The
+        # parent `comfyui` volume stays a FRESH named volume: only models are shared, while
+        # every mutable state file (custom_nodes, user, database) is still seeded from zero.
+        volume:
+            - name: comfyui-models
+              type: bind
+              host: ~/.local/share/charly/models/comfyui/models
+              path: /home/user/ComfyUI/models
+        # GPU-CDI pod on the refcounted axis: the bed asserts a CUDA device below, so it must
+        # claim the card through the arbiter (the older bed omitted this claim).
+        requires_shared: [nvidia-gpu]
         description: >-
             Sole proof that the ComfyUI pod built through the CDI base RUNS, that the
             runtime injects the host driver (no baked user-space), and that the API
@@ -86,13 +98,35 @@ check-comfyui-pod:
               http:
                 http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
                 status: 200
-              # On a FRESH volume the server is still fetching its 2 GB checkpoint when this
+              # On a FRESH volume the server is still fetching its model when this
               # first runs (pod-comfyui's own runtime check measures the same); the window makes
               # a cold boot a wait instead of a failure.
               eventually: 300s
               retry_interval: 10s
               context:
                 - runtime
+            - check: the running server reports the ComfyUI release this box pins (0.46.1)
+              id: comfyui-served-version
+              http:
+                http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
+                status: 200
+                body:
+                    - contains: '"comfyui_version": "0.46.1"'
+              eventually: 300s
+              retry_interval: 10s
+              context: [runtime]
+            - check: the bound pod runs with the image user's HOME, so the state volume and the models bind are used
+              id: comfyui-home-pinned
+              context: [runtime]
+              exit_status: 0
+              command:
+                command: |
+                  set -eu
+                  test "$(printenv HOME)" = /home/user
+                  test -s "/home/user/ComfyUI/models/checkpoints/$COMFYUI_MODEL"
+              # This bed is a host-owned bind: the nested `comfyui-models` volume at
+              # /home/user/ComfyUI/models makes charly run the container as root under keep-id,
+              # where HOME is /root. The check is RED before the candy pins HOME and GREEN after.
             - check: ComfyUI sees a CUDA device — the runtime injected the host driver
               id: comfyui-cuda-device
               # `type` is the torch device type on each entry of `/system_stats.devices`
@@ -1208,6 +1242,12 @@ check-cachyos-comfyui-pod:
         image: comfyui-cdi
         disposable: true
         lifecycle: dev
+        # Shared model cache, fresh state: see check-comfyui-pod.
+        volume:
+            - name: comfyui-models
+              type: bind
+              host: ~/.local/share/charly/models/comfyui/models
+              path: /home/user/ComfyUI/models
         description: Sole proof the CachyOS GPU comfyui-cdi image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui-cdi pod and runs the inherited comfyui + dbus baked checks (ComfyUI HTTP UI liveness plus service/port/file/command probes) AND the shipping candy's own contract — the pinned upstream tag, the app/state split (application in the image at /opt/comfyui, every mutable byte in the volume via --base-directory), the absence of the retired ltdrdata Manager checkout, and a real generation round trip (POST /prompt, then the SAME prompt id recorded success in /history).
         requires_shared: [nvidia-gpu]
         plan:
@@ -1221,7 +1261,7 @@ check-cachyos-comfyui-pod:
                 http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
                 status: 200
                 body:
-                  - contains: '"comfyui_version": "0.45.3"'
+                  - contains: '"comfyui_version": "0.46.1"'
             - check: the APPLICATION lives in the image at the pinned tag, not in the state volume
               id: comfyui-app-in-image
               context: [runtime]
@@ -1230,7 +1270,7 @@ check-cachyos-comfyui-pod:
                 command: |
                   set -eu
                   test -s /opt/comfyui/.charly-ref
-                  grep -qx 'v0.45.3' /opt/comfyui/.charly-ref
+                  grep -qx 'v0.46.1' /opt/comfyui/.charly-ref
                   test -x /opt/comfyui/start-comfyui.sh
                   # the volume path must NOT hold the application
                   test ! -e "${HOME}/ComfyUI/main.py"
@@ -4067,7 +4107,7 @@ check-openwebui-pod:
         image: openwebui
         disposable: true
         lifecycle: dev
-        description: Sole proof of the openwebui image on the CachyOS base — the Open Web UI chat front-end with its auto-config entrypoint, composed with agent-forwarding (GPG/SSH/direnv) and pod-dbus, mirroring the Fedora box candy-for-candy so the two are comparable. Builds the pod on cachyos (open-webui 0.13.3 from PyPI through pixi, on the 3.12 interpreter upstream requires), deploys it, and runs the candy baked checks — entrypoint present and executable, supervisord service running, HTTP 200 on the auto-allocated port, injected WEBUI_ADMIN_EMAIL, published port reachable — plus the python layer floor assertion and the served open-webui version read from /api/config. The HTTP probes are readiness-bounded (eventually 3m) because Open Web UI migrates its database before uvicorn binds.
+        description: Sole proof of the openwebui image on the CachyOS base — the Open Web UI chat front-end with its auto-config entrypoint, composed with agent-forwarding (GPG/SSH/direnv) and pod-dbus, mirroring the Fedora box candy-for-candy so the two are comparable. Builds the pod on cachyos (open-webui 0.13.4 from PyPI through pixi, on the 3.12 interpreter upstream requires), deploys it, and runs the candy baked checks — entrypoint present and executable, supervisord service running, HTTP 200 on the auto-allocated port, injected WEBUI_ADMIN_EMAIL, published port reachable — plus the python layer floor assertion and the served open-webui version read from /api/config. The HTTP probes are readiness-bounded (eventually 3m) because Open Web UI migrates its database before uvicorn binds.
         env:
             OPENAI_API_BASE_URL: https://api.openai.com/v1
             OPENAI_API_KEY: not-a-real-key
@@ -4075,7 +4115,7 @@ check-openwebui-pod:
         plan:
             # The box OWNS the pod-openwebui pin, so it owns the expectation: when the pin
             # advances, this line advances with it in the same change.
-            - check: the running service serves the open-webui version this box pins (0.13.3), read from its own /api/config
+            - check: the running service serves the open-webui version this box pins (0.13.4), read from its own /api/config
               id: openwebui-served-version
               context:
                 - runtime
@@ -4086,7 +4126,7 @@ check-openwebui-pod:
                 http: http://127.0.0.1:${HOST_PORT:8080}/api/config
                 status: 200
                 body:
-                  - contains: '"version":"0.13.3"'
+                  - contains: '"version":"0.13.4"'
             # A base DIGEST cannot be observed from the manifest at runtime — the only witness
             # that the image really came from the pinned base is the base's own /etc/os-release.
             # So it is asserted here, and VERSION_ID is the digest's fingerprint (the digest
@@ -4345,13 +4385,26 @@ check-qwen3-tts-pod:
         # (measured on this venue — the exclusive axis attempts a vfio flip a live desktop
         # compositor correctly refuses).
         requires_shared: [nvidia-gpu]
+        # The checkpoint cache is the HOST Hugging Face cache shared with the live Qwen3-TTS
+        # deployment, so the checkpoint is downloaded once, not once per bed run.
+        volume:
+            - name: models
+              type: bind
+              host: ~/.local/share/charly/models/huggingface
+        env:
+            # A short TTL so the bed proves the unload/reload state machine, but long
+            # enough that the health probe's 5s poll can observe the loaded window
+            # after a cold start (the 5s TTL raced that probe in run 2026.324.1211).
+            # The operator deployment sets 300.
+            QWEN3_TTS_IDLE_UNLOAD_S: "30"
         description: >-
             Sole proof of the qwen3-tts image — the Qwen3-TTS speech service Open WebUI's `openai`
             TTS engine calls, on the CachyOS base. Builds the image, deploys it as a pod, and runs
             the candy's baked checks plus the deploy-scope probes: /health, the preset voice list,
-            and a real synthesis returning RIFF audio with an audio/* content type. The checkpoint
-            downloads into the models volume on the first request, so the synthesis probe is
-            readiness-bounded (eventually, not a sleep). Needs the GPU venue; run on demand.
+            a real synthesis returning RIFF audio with an audio/* content type, and the idle
+            unload (after the TTL the checkpoint is released and the next request reloads it).
+            The checkpoint downloads into the models volume on the first request, so the synthesis
+            probe is readiness-bounded (eventually, not a sleep). Needs the GPU venue; run on demand.
         plan:
             - check: the speech service answers its health route
               id: qwen3-tts-health
@@ -4393,6 +4446,34 @@ check-qwen3-tts-pod:
                   - contains: RIFF
                 header:
                   - contains: audio/
+            - check: after the idle TTL the checkpoint is released, and the next request reloads it
+              id: qwen3-tts-idle-unload
+              context:
+                - runtime
+              timeout: 5m
+              command:
+                in_container: true
+                command: |
+                  set -eu
+                  base=http://127.0.0.1:8000
+                  # The synthesis step above used the model. The bed sets the product's idle
+                  # TTL to 30s; this loop POLLS the server's own /health state until the idle
+                  # unload fires, then asserts the unloaded state. The TTL is the mechanism
+                  # under test and the poll is bounded by the step timeout. (30s, not 5s: 5s
+                  # equalled the health probe interval, so the probe could miss the loaded
+                  # window; a TTL wider than the poll is a test-parameter choice, not a delay
+                  # masking a race.)
+                  for i in $(seq 1 150); do
+                    if curl -sS "$base/health" | grep -q '"loaded":false'; then break; fi
+                    sleep 1
+                  done
+                  curl -sS "$base/health" | grep -q '"status":"unloaded"'
+                  code=$(curl -sS -o /tmp/reload.wav -w '%{http_code}' -X POST \
+                    -H 'Content-Type: application/json' \
+                    --data '{"input":"reload after idle","voice":"vivian"}' \
+                    "$base/v1/audio/speech")
+                  test "$code" = 200
+                  head -c 4 /tmp/reload.wav | grep -q RIFF
 
 check-comfyui-openwebui-pair:
     pod:
@@ -4409,6 +4490,18 @@ check-comfyui-openwebui-pair:
         requires_shared: [nvidia-gpu]
         env:
             WEBUI_ADMIN_EMAIL: admin@pair.local
+            # 0.13.4 gates POST /api/v1/auths/api_key behind ENABLE_API_KEYS
+            # (routers/auths.py `_check_api_key_permission`); without it the bed's key
+            # request is 401 and the image call falls back to a JWT that the endpoint
+            # rejects with 400. The 0.13.3 image had no such gate, which is why the same
+            # bed passed there.
+            ENABLE_API_KEYS: "true"
+            # 0.13.4 reads image generation from CONNECTIONS in the config store; the legacy
+            # env (IMAGE_GENERATION_ENGINE/COMFYUI_*) is migrated ONCE into a connection at
+            # startup. With ENABLE_PERSISTENT_CONFIG=false the config answers from env-built
+            # defaults, the migrated connection is not visible, and the request fails (the
+            # pair DIAG showed ck=0 connections). Persist the config so the migration holds.
+            ENABLE_PERSISTENT_CONFIG: "true"
             ENABLE_IMAGE_GENERATION: "true"
             # REQUIRED, and it was MISSING -- the whole cause of the HTTP 400
             # `{"detail":"[ERROR: Unauthorized]"}`. Open WebUI defaults this to `openai`, so without it
@@ -4493,6 +4586,18 @@ check-comfyui-openwebui-pair:
                   # fit on one short line rather than a long message with a body in it.
                   key=$(curl -sS -X POST -H "Authorization: Bearer $tok" "$base/api/v1/auths/api_key" 2>/dev/null \
                           | sed -E 's/.*"api_key"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' || true)
+                  # 0.13.4: image generation reads a CONNECTION. The env migration creates the
+                  # ComfyUI connection but carries no checkpoint/node map from this bed, so the
+                  # default workflow's `model.safetensors` is rejected (400). Patch the connection
+                  # with the member's checkpoint and the bed's node map — the deploy-time full
+                  # config's job — then generate.
+                  cfg=$(curl -sS -H "Authorization: Bearer $tok" "$base/api/v1/images/config")
+                  # Open Web UI 0.13.4's normalize_image_connection drops a static node's
+                  # `value` (_workflow_nodes keeps only type/key/node_ids), so the checkpoint
+                  # cannot be set through the nodes map; put it in the WORKFLOW itself and keep
+                  # only the dynamic nodes.
+                  patched=$(printf '%s' "$cfg" | python3 -c 'import json,sys; cfg=json.load(sys.stdin); nodes=json.loads(sys.argv[1]); [c["config"].__setitem__("workflow", c["config"].get("workflow","").replace("model.safetensors","v1-5-pruned-emaonly-fp16.safetensors")) or c["config"].__setitem__("nodes",[n for n in nodes if n.get("key")!="ckpt_name"]) or c["config"].__setitem__("model_ids",["v1-5-pruned-emaonly-fp16.safetensors"]) for c in cfg.get("IMAGE_CONNECTIONS",[]) if c.get("type")=="comfyui"]; print(json.dumps(cfg))' "$COMFYUI_WORKFLOW_NODES")
+                  curl -sS -o /dev/null -X POST -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' --data "$patched" "$base/api/v1/images/config/update"
                   gen() { curl -sS -o /dev/null -w '%{http_code}' -X POST \
                             -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
                             --data '{"prompt":"a red cube","n":1,"size":"512x512"}' \
@@ -4543,6 +4648,12 @@ check-comfyui-openwebui-pair:
         pod:
             image: comfyui-cdi
             disposable: true
+            # Shared model cache, fresh state: see check-comfyui-pod.
+            volume:
+                - name: comfyui-models
+                  type: bind
+                  host: ~/.local/share/charly/models/comfyui/models
+                  path: /home/user/ComfyUI/models
             env:
                 # The checkpoint the member fetches; node 4 of the workflow substitutes a model
                 # name, and it must be this one or the prompt fails at class resolution.
