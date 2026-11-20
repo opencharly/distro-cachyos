@@ -115,6 +115,18 @@ check-comfyui-pod:
               eventually: 300s
               retry_interval: 10s
               context: [runtime]
+            - check: the bound pod runs with the image user's HOME, so the state volume and the models bind are used
+              id: comfyui-home-pinned
+              context: [runtime]
+              exit_status: 0
+              command:
+                command: |
+                  set -eu
+                  test "$(printenv HOME)" = /home/user
+                  test -s "/home/user/ComfyUI/models/checkpoints/$COMFYUI_MODEL"
+              # This bed is a host-owned bind: the nested `comfyui-models` volume at
+              # /home/user/ComfyUI/models makes charly run the container as root under keep-id,
+              # where HOME is /root. The check is RED before the candy pins HOME and GREEN after.
             - check: ComfyUI sees a CUDA device — the runtime injected the host driver
               id: comfyui-cuda-device
               # `type` is the torch device type on each entry of `/system_stats.devices`
