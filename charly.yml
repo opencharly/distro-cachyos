@@ -46,7 +46,7 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.274.1256'
+    - arch: '@github.com/opencharly/distro-arch:v2026.324.0908'
     # The CDI POD base box. A pod takes its GPU driver from the HOST through the CDI
     # spec, so its image must bake NO driver user-space and carry NO nvidia-ctk.
     # pod-cdi composes layer-cdi and enforces that with its own plan steps.
