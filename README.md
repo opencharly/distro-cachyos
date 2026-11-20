@@ -19,7 +19,7 @@ namespace.
 | Base / builder | `cachyos` (base), `cachyos-pacstrap-builder` (privileged), `cachyos-pacstrap` (`from: builder:pacstrap`) |
 | GPU base | `nvidia`, `python-ml` |
 | Streaming desktops | `selkies-labwc`, `selkies-labwc-nvidia`, `selkies-kde`, `selkies-kde-nvidia` |
-| Relocated app / fixture boxes | `versa`, `githubrunner`, `android-emulator`, `charly-selftest`, `comfyui`, `immich-ml`, `jupyter-ml`, `ollama`, `ollama-rocm`, `unsloth-studio`, `crabbox`, `cstream`, `punktfunk-*` |
+| Relocated app / fixture boxes | `versa`, `githubrunner`, `android-emulator`, `charly-selftest`, `comfyui`, `immich-cdi`, `jupyter-ml`, `ollama`, `ollama-rocm`, `unsloth-studio`, `crabbox`, `cstream`, `punktfunk-*` |
 | VMs | `cachyos-vm`, `cachyos-gpu-vm`, `cachyos-gpu-workstation-vm`, `cstream-vm`, `punktfunk-vm`, … |
 | Operator profile | `charly-cachyos` (`kind:local` template + `host:local` deploy) |
 | Check beds | `check-cachyos-vm`, `check-cachyos-mcp-vm`, `check-punktfunk-pod`, `check-selkies-*-pod`, `check-crabbox-pod`, … |

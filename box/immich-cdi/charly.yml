@@ -1,0 +1,24 @@
+immich-cdi:
+    candy:
+        # One image for the whole Immich stack: server + web + ML backend, on the CachyOS GPU
+        # base (cachyos + agent-forwarding + nvidia + cdi + cuda). The ML backend runs in-process
+        # on port 3003 — there is no separate immich-ml image any more
+        # (opencharly/pod-immich#13; #12 is the closed attempt with the same title). The `-cdi` suffix is the GPU-requiring marker this repo
+        # adopted in #196: the base composes layer-cdi, whose build-time assertions refuse a
+        # baked driver user-space and whose runtime probe checks the injected host driver.
+        # pgvector ships in Arch `extra` (extra/pgvector), so the postgresql candy resolves
+        # as plain pacman — no aur builder stage.
+        base: nvidia-cdi
+        build:
+            - pac
+        platform:
+            - linux/amd64
+        candy:
+            - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
+            - '@github.com/opencharly/layer-nodejs:v2026.272.0322'
+            - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
+            - '@github.com/opencharly/pod-postgresql:v2026.272.0233'
+            - '@github.com/opencharly/layer-vectorchord:v2026.273.1836'
+            - '@github.com/opencharly/pod-redis:v2026.272.0226'
+            - '@github.com/opencharly/pod-immich:v2026.324.1202'
+            - '@github.com/opencharly/pod-dbus:v2026.274.0648'
