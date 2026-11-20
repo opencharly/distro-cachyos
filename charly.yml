@@ -1234,7 +1234,7 @@ check-cachyos-comfyui-pod:
                 http: http://127.0.0.1:${HOST_PORT:8188}/system_stats
                 status: 200
                 body:
-                  - contains: '"comfyui_version": "0.45.3"'
+                  - contains: '"comfyui_version": "0.46.1"'
             - check: the APPLICATION lives in the image at the pinned tag, not in the state volume
               id: comfyui-app-in-image
               context: [runtime]
@@ -1243,7 +1243,7 @@ check-cachyos-comfyui-pod:
                 command: |
                   set -eu
                   test -s /opt/comfyui/.charly-ref
-                  grep -qx 'v0.45.3' /opt/comfyui/.charly-ref
+                  grep -qx 'v0.46.1' /opt/comfyui/.charly-ref
                   test -x /opt/comfyui/start-comfyui.sh
                   # the volume path must NOT hold the application
                   test ! -e "${HOME}/ComfyUI/main.py"

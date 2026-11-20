@@ -7,7 +7,7 @@ qwen3-tts:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/pod-qwen3-tts:fe33eb1c12536ec8c52c83aeed0ee96e375574d2'
+            - '@github.com/opencharly/pod-qwen3-tts:v2026.324.1315'
         # No box-level check PLAN: the candy's own plan proves the server script and that
         # the pixi environment imports torch/soundfile/qwen_tts. The composed IMAGE is
         # proven by the disposable bed `check-qwen3-tts-pod` in this repo's charly.yml.
