@@ -4490,6 +4490,12 @@ check-comfyui-openwebui-pair:
         requires_shared: [nvidia-gpu]
         env:
             WEBUI_ADMIN_EMAIL: admin@pair.local
+            # 0.13.4 gates POST /api/v1/auths/api_key behind ENABLE_API_KEYS
+            # (routers/auths.py `_check_api_key_permission`); without it the bed's key
+            # request is 401 and the image call falls back to a JWT that the endpoint
+            # rejects with 400. The 0.13.3 image had no such gate, which is why the same
+            # bed passed there.
+            ENABLE_API_KEYS: "true"
             ENABLE_IMAGE_GENERATION: "true"
             # REQUIRED, and it was MISSING -- the whole cause of the HTTP 400
             # `{"detail":"[ERROR: Unauthorized]"}`. Open WebUI defaults this to `openai`, so without it
