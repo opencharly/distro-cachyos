@@ -4586,6 +4586,18 @@ check-comfyui-openwebui-pair:
                   # fit on one short line rather than a long message with a body in it.
                   key=$(curl -sS -X POST -H "Authorization: Bearer $tok" "$base/api/v1/auths/api_key" 2>/dev/null \
                           | sed -E 's/.*"api_key"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' || true)
+                  # 0.13.4: image generation reads a CONNECTION. The env migration creates the
+                  # ComfyUI connection but carries no checkpoint/node map from this bed, so the
+                  # default workflow's `model.safetensors` is rejected (400). Patch the connection
+                  # with the member's checkpoint and the bed's node map — the deploy-time full
+                  # config's job — then generate.
+                  cfg=$(curl -sS -H "Authorization: Bearer $tok" "$base/api/v1/images/config")
+                  # Open Web UI 0.13.4's normalize_image_connection drops a static node's
+                  # `value` (_workflow_nodes keeps only type/key/node_ids), so the checkpoint
+                  # cannot be set through the nodes map; put it in the WORKFLOW itself and keep
+                  # only the dynamic nodes.
+                  patched=$(printf '%s' "$cfg" | python3 -c 'import json,sys; cfg=json.load(sys.stdin); nodes=json.loads(sys.argv[1]); [c["config"].__setitem__("workflow", c["config"].get("workflow","").replace("model.safetensors","v1-5-pruned-emaonly-fp16.safetensors")) or c["config"].__setitem__("nodes",[n for n in nodes if n.get("key")!="ckpt_name"]) or c["config"].__setitem__("model_ids",["v1-5-pruned-emaonly-fp16.safetensors"]) for c in cfg.get("IMAGE_CONNECTIONS",[]) if c.get("type")=="comfyui"]; print(json.dumps(cfg))' "$COMFYUI_WORKFLOW_NODES")
+                  curl -sS -o /dev/null -X POST -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' --data "$patched" "$base/api/v1/images/config/update"
                   gen() { curl -sS -o /dev/null -w '%{http_code}' -X POST \
                             -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
                             --data '{"prompt":"a red cube","n":1,"size":"512x512"}' \
