@@ -1293,12 +1293,12 @@ check-cachyos-unsloth-studio-pod:
         lifecycle: dev
         description: Sole proof the CachyOS GPU unsloth-studio fine-tuning notebook + API composes on the Arch CUDA base (no MCP candy, unlike jupyter-ml). Builds and deploys the unsloth-studio-cdi pod and runs the inherited unsloth-studio + notebook-finetuning + dbus baked checks — notebook/API HTTP liveness plus file/service/port/command probes.
         requires_shared: [nvidia-gpu]
-check-cachyos-immich-ml-pod:
+check-cachyos-immich-pod:
     pod:
-        image: immich-ml-cdi
+        image: immich-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the full 9-candy Immich photo stack (Immich + PostgreSQL + VectorChord + Redis + CUDA ML) composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the immich-ml-cdi pod (nodejs + python-ml + supervisord + postgresql + vectorchord + redis + immich + immich-ml) via the build [pac, aur] + npm multistage, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks.
+        description: Sole proof the whole Immich photo stack composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the single immich-cdi image (agent-forwarding + nodejs + supervisord + postgresql + vectorchord + redis + immich + dbus; the immich candy itself pulls ffmpeg) via the pacman + npm multistage build, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks. Its services are immich-db-init (oneshot), immich-server on port 2283 and immich-ml on port 3003 — the ML backend runs in-process from a self-contained CUDA venv (onnxruntime CUDAExecutionProvider), and Postgres needs cube + earthdistance + vectorchord (auto-detected). The deploy injects --device nvidia.com/gpu=all because the host has an NVIDIA device (detected, not declared), which is why requires_shared stays.
         requires_shared: [nvidia-gpu]
 check-selkies-kde-pod:
     pod:

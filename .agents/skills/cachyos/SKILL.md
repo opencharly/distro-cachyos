@@ -124,7 +124,7 @@ so they compose unchanged on CachyOS):
 - `cachyos.ollama` — Ollama LLM server
 - `cachyos.comfyui` — ComfyUI image generation
 - `cachyos.unsloth-studio` — Unsloth Studio fine-tuning UI
-- `cachyos.immich-ml` — Immich with the CUDA ML backend
+- `cachyos.immich-cdi` — the whole Immich stack in ONE image: server + web + the in-process CUDA ML backend on port 3003 (no separate ML image)
 - `cachyos.selkies-labwc-nvidia` — GPU NVENC Selkies streaming desktop (labwc flavor)
 - `cachyos.selkies-kde-nvidia` — GPU NVENC Selkies streaming desktop (full KDE Plasma flavor)
 - `cachyos.selkies-kde` — full KDE Plasma Selkies flavor on the plain cachyos base (VAAPI on an AMD/Intel render node, software x264 otherwise; the `-nvidia` sibling adds NVENC). The labwc cpu/amd flavor (`selkies-labwc`) lives in this same `box/cachyos` submodule.
