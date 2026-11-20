@@ -4456,8 +4456,13 @@ check-qwen3-tts-pod:
                 command: |
                   set -eu
                   base=http://127.0.0.1:8000
-                  # The synthesis step above used the model; wait out the TTL (5s here).
-                  # The loop is bounded by the step timeout and reads the server's own state.
+                  # The synthesis step above used the model. The bed sets the product's idle
+                  # TTL to 30s; this loop POLLS the server's own /health state until the idle
+                  # unload fires, then asserts the unloaded state. The TTL is the mechanism
+                  # under test and the poll is bounded by the step timeout. (30s, not 5s: 5s
+                  # equalled the health probe interval, so the probe could miss the loaded
+                  # window; a TTL wider than the poll is a test-parameter choice, not a delay
+                  # masking a race.)
                   for i in $(seq 1 150); do
                     if curl -sS "$base/health" | grep -q '"loaded":false'; then break; fi
                     sleep 1
