@@ -52,7 +52,7 @@ import:
     # pod-cdi composes layer-cdi and enforces that with its own plan steps.
     # opencharly/vm-nvidia is the VM counterpart, which bakes the driver for a
     # passthrough guest and is used by no pod.
-    - podcdi: '@github.com/opencharly/pod-cdi:v2026.322.1717'
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.324.1644'
     # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
     # the server it just started. An IMPORT, not a composition: the word registers from the
     # imported repo's own discover tree (charly#1136), and no image gains the binary.
