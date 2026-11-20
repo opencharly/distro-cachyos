@@ -76,6 +76,15 @@ check-comfyui-pod:
         image: comfyui-cdi
         disposable: true
         lifecycle: dev
+        # The model cache is a HOST directory shared with the live ComfyUI deployment and the
+        # other ComfyUI beds, so the ~12 GB Z-Image set is fetched once, not once per run. The
+        # parent `comfyui` volume stays a FRESH named volume: only models are shared, while
+        # every mutable state file (custom_nodes, user, database) is still seeded from zero.
+        volume:
+            - name: comfyui-models
+              type: bind
+              host: ~/.local/share/charly/models/comfyui/models
+              path: /home/user/ComfyUI/models
         # GPU-CDI pod on the refcounted axis: the bed asserts a CUDA device below, so it must
         # claim the card through the arbiter (the older bed omitted this claim).
         requires_shared: [nvidia-gpu]
@@ -1221,6 +1230,12 @@ check-cachyos-comfyui-pod:
         image: comfyui-cdi
         disposable: true
         lifecycle: dev
+        # Shared model cache, fresh state: see check-comfyui-pod.
+        volume:
+            - name: comfyui-models
+              type: bind
+              host: ~/.local/share/charly/models/comfyui/models
+              path: /home/user/ComfyUI/models
         description: Sole proof the CachyOS GPU comfyui-cdi image-generation server composes and serves on the Arch CUDA base. Builds and deploys the comfyui-cdi pod and runs the inherited comfyui + dbus baked checks (ComfyUI HTTP UI liveness plus service/port/file/command probes) AND the shipping candy's own contract — the pinned upstream tag, the app/state split (application in the image at /opt/comfyui, every mutable byte in the volume via --base-directory), the absence of the retired ltdrdata Manager checkout, and a real generation round trip (POST /prompt, then the SAME prompt id recorded success in /history).
         requires_shared: [nvidia-gpu]
         plan:
@@ -4358,6 +4373,12 @@ check-qwen3-tts-pod:
         # (measured on this venue — the exclusive axis attempts a vfio flip a live desktop
         # compositor correctly refuses).
         requires_shared: [nvidia-gpu]
+        # The checkpoint cache is the HOST Hugging Face cache shared with the live Qwen3-TTS
+        # deployment, so the checkpoint is downloaded once, not once per bed run.
+        volume:
+            - name: models
+              type: bind
+              host: ~/.local/share/charly/models/huggingface
         env:
             # A short TTL so the bed proves the unload/reload state machine, but long
             # enough that the health probe's 5s poll can observe the loaded window
@@ -4586,6 +4607,12 @@ check-comfyui-openwebui-pair:
         pod:
             image: comfyui-cdi
             disposable: true
+            # Shared model cache, fresh state: see check-comfyui-pod.
+            volume:
+                - name: comfyui-models
+                  type: bind
+                  host: ~/.local/share/charly/models/comfyui/models
+                  path: /home/user/ComfyUI/models
             env:
                 # The checkpoint the member fetches; node 4 of the workflow substitutes a model
                 # name, and it must be this one or the prompt fails at class resolution.
