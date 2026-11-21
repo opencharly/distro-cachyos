@@ -10,4 +10,4 @@ whisper:
             cache is a host bind (the shared store) and the candy pins HOME to the image
             user's home so a bound deployment uses it.
         candy:
-            - '@github.com/opencharly/layer-whisper:83121ac1f2fa0865e85db372340336df50f0ba3a'
+            - '@github.com/opencharly/layer-whisper:v2026.325.1751'
