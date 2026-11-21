@@ -4798,6 +4798,17 @@ check-clawsweeper-review-pod:
 # Whisper on CachyOS — the same engine, the same two beds, moved off Fedora.
 # The model cache is the shared host store, and the candy pins HOME so a
 # bound deployment uses it.
+#
+# NOTE — there is deliberately NO joint `check-whisper-*-pod` bed (whisper +
+# Open WebUI in one venue). A bed that drives the Open WebUI container through
+# the whisper container cannot currently be expressed: a sibling member gets its
+# own network (container DNS does not resolve across the two, and
+# ${HOST:<bed>:<port>} is host loopback, unreachable from inside a container),
+# and nesting the two makes the `command:` verb panic in the check-env path.
+# All three shapes are measured and filed as opencharly/charly#1153. The
+# integration is instead carried by the two beds below (the engine's own
+# behaviour, keyless and keyed), the consumer candy's committed projection
+# stubs, and a live round-trip at deploy time.
 # =============================================================================
 check-whisper-pod:
     pod:
