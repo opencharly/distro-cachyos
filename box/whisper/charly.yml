@@ -1,0 +1,13 @@
+whisper:
+    candy:
+        base: cachyos
+        platform:
+            - linux/amd64
+        description: |
+            OpenAI-compatible Whisper speech-to-text on the CachyOS (x86_64_v3) base.
+            The candy is the only thing this image exists to run — no dbus, no charly CLI —
+            so the image is layer-whisper on the CachyOS base and nothing else. The model
+            cache is a host bind (the shared store) and the candy pins HOME to the image
+            user's home so a bound deployment uses it.
+        candy:
+            - '@github.com/opencharly/layer-whisper:83121ac1f2fa0865e85db372340336df50f0ba3a'
