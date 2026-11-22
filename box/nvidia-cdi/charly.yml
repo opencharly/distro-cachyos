@@ -11,6 +11,16 @@ nvidia-cdi:
         base: podcdi.pod-cdi
         platform:
             - linux/amd64
+        # The AUR route, declared ONCE for every box that bases on this one. Builder
+        # maps do NOT cross a namespace boundary and this base's own chain (podcdi ->
+        # pod-cdi) declares none, so without this line a box that bases on `nvidia-cdi`
+        # and composes a candy declaring `distro.arch.aur` has no builder to route the
+        # declaration to and fails the build naming the candy. The two selkies CDI boxes
+        # declare only `pixi`, and they are exactly that shape. Same route the cachyos
+        # base declares; the other three formats are unchanged here (no box in this
+        # family declares an npm/pixi/cargo package it cannot already build).
+        builder:
+            aur: arch.arch-builder
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/layer-cdi:v2026.323.1618'

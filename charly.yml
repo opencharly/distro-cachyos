@@ -46,13 +46,13 @@ import:
     # + selkies images route their pixi/npm/cargo/aur builders to arch.arch-builder
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
-    - arch: '@github.com/opencharly/distro-arch:v2026.325.1112'
+    - arch: '@github.com/opencharly/distro-arch:v2026.326.1455'
     # The CDI POD base box. A pod takes its GPU driver from the HOST through the CDI
     # spec, so its image must bake NO driver user-space and carry NO nvidia-ctk.
     # pod-cdi composes layer-cdi and enforces that with its own plan steps.
     # opencharly/vm-nvidia is the VM counterpart, which bakes the driver for a
     # passthrough guest and is used by no pod.
-    - podcdi: '@github.com/opencharly/pod-cdi:v2026.325.1329'
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.326.1530'
     # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
     # the server it just started. An IMPORT, not a composition: the word registers from the
     # imported repo's own discover tree (charly#1136), and no image gains the binary.
@@ -1068,7 +1068,7 @@ check-cachyos-jupyter-ml-pod:
         image: jupyter-ml-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU jupyter-ml-cdi image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml-cdi pod (cachyos.nvidia-cdi base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
+        description: Sole proof the CachyOS GPU jupyter-ml-cdi image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml-cdi pod (podcdi.pod-cdi base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
         requires_shared: [nvidia-gpu]
 check-cachyos-ollama-pod:
     pod:
@@ -1617,6 +1617,32 @@ check-selkies-kde-nvidia-vm:
     selkies-kde-nvidia-pod:
         pod:
             image: selkies-kde-nvidia-cdi
+check-aur-probe-pod:
+    pod:
+        image: aur-probe
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole proof that the cachyos AUR route works under the unified builder
+            mechanism (opencharly/sdk#608). A minimal box on `base: cachyos` composes one
+            candy that declares a single AUR package under `distro.arch.aur`, with no
+            `builder:` map of its own and NO `aur` in its `build:` list: the build must
+            route the declaration through the map the cachyos base declares, install the
+            package, and the deployed pod must run it. It is the witness that a `build:`
+            removal from the other boxes cannot silently drop an AUR package, and it can
+            fail on exactly that: without the route the build stops naming the candy.
+        plan:
+            - check: yay, the AUR package this box's candy declares, runs inside the deployed pod
+              id: aur-probe-yay-in-pod
+              context: [runtime]
+              eventually: 60s
+              retry_interval: 3s
+              exit_status: 0
+              stdout:
+                  - matches: "yay v[0-9]"
+              command:
+                command: yay --version
+                in_container: true
 check-charly-selftest-pod:
     pod:
         image: charly-selftest

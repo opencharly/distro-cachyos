@@ -8,13 +8,12 @@ immich-cdi:
         # baked driver user-space and whose runtime probe checks the injected host driver.
         # pgvector ships in Arch `extra` (extra/pgvector), so the postgresql candy resolves
         # as plain pacman — no aur builder stage.
-        base: nvidia-cdi
+        base: podcdi.pod-cdi
         build:
             - pac
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/layer-nodejs:v2026.272.0322'
             - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
             - '@github.com/opencharly/pod-postgresql:v2026.272.0233'
