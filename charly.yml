@@ -1340,6 +1340,13 @@ check-cachyos-immich-pod:
         lifecycle: dev
         description: Sole proof the whole Immich photo stack composes and reaches steady-state together on the Arch CUDA base — the heaviest multi-service pod bed. Builds and deploys the single immich-cdi image (agent-forwarding + nodejs + supervisord + postgresql + vectorchord + redis + immich + dbus; the immich candy itself pulls ffmpeg) via the pacman + npm multistage build, then runs the inherited multi-service HTTP/port/service/command/file/package liveness checks. Its services are immich-db-init (oneshot), immich-server on port 2283 and immich-ml on port 3003 — the ML backend runs in-process from a self-contained CUDA venv (onnxruntime CUDAExecutionProvider), and Postgres needs cube + earthdistance + vectorchord (auto-detected). The deploy injects --device nvidia.com/gpu=all because the host has an NVIDIA device (detected, not declared), which is why requires_shared stays.
         requires_shared: [nvidia-gpu]
+        # The post-start readiness probe: `charly start` and the `charly start` inside
+        # `charly update` wait for it before returning, so a check-live pass never probes
+        # the multi-service stack before its database and server accept work
+        # (opencharly/charly#1234). It runs inside the container via `sh -c`.
+        probes:
+            readiness:
+                command: curl -fsS http://127.0.0.1:2283/api/server/ping
 check-selkies-kde-pod:
     pod:
         image: selkies-kde
