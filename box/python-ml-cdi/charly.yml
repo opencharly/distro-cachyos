@@ -1,8 +1,7 @@
 python-ml-cdi:
     candy:
-        base: nvidia-cdi
+        base: podcdi.pod-cdi
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/layer-python-ml:v2026.290.1914'
