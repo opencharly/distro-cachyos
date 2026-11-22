@@ -17,14 +17,13 @@ aur-probe:
                     package:
                         - yay-bin
         plan:
-            - check: the AUR-installed yay binary is present at /usr/bin/yay
-              id: aur-probe-yay-binary
-              file:
-                file: /usr/bin/yay
-                exists: true
+            - check: the AUR-installed yay is on PATH (the aur builder installs it via pacman, which puts it under /usr/sbin here)
+              id: aur-probe-yay-on-path
+              exit_status: 0
+              command: command -v yay
             - check: yay runs and reports its version
               id: aur-probe-yay-version
               exit_status: 0
               stdout:
                 - matches: "yay v[0-9]"
-              command: /usr/bin/yay --version
+              command: yay --version

@@ -16,12 +16,20 @@ aur-probe:
             - pac
         candy:
             - aur-probe
+            # The builder plugin this box routes to, pinned at a release whose OpResolve
+            # reply carries `BuilderPackageOutput` — the contract that makes the package
+            # reach the image (opencharly/sdk#608). An out-of-process plugin is selected
+            # from the project's own candy closure (the connect path's pass-1), so a
+            # project that composes the aur route must name the plugin here; measured: with
+            # no project pin the build served v2026.271.2317, whose reply carries a payload
+            # and no package, and the image shipped without yay while the build stayed
+            # green (opencharly/sdk#615).
+            - '@github.com/opencharly/plugin-builder-aur/candy/plugin-builder-aur:v2026.326.0746'
         plan:
-            - check: the AUR-installed yay binary the candy declares reaches the image
+            - check: the AUR-installed yay the candy declares reaches the image, on PATH
               id: aur-probe-image-yay
-              file:
-                file: /usr/bin/yay
-                exists: true
+              exit_status: 0
+              command: command -v yay
             - check: yay runs inside the built image
               id: aur-probe-image-yay-version
               exit_status: 0
