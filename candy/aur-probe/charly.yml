@@ -1,0 +1,30 @@
+aur-probe:
+    candy:
+        description: |
+            Witness for the cachyos AUR route under the unified builder mechanism
+            (opencharly/sdk#608). It declares ONE tiny AUR package and nothing else, so
+            a build of any box composing it either routes that declaration to a builder
+            box and installs the package, or fails naming the candy.
+
+            The declaration is the whole point: `build:` lists OS package formats only,
+            and `aur` is deliberately absent from every `build:` list in this repo now.
+            The package reaches the image because this candy declares it under
+            `distro.arch.aur` and the box's builder map routes `aur` to
+            `arch.arch-builder` — inherited here from `base: cachyos`, which declares it.
+        distro:
+            arch:
+                aur:
+                    package:
+                        - yay-bin
+        plan:
+            - check: the AUR-installed yay binary is present at /usr/bin/yay
+              id: aur-probe-yay-binary
+              file:
+                file: /usr/bin/yay
+                exists: true
+            - check: yay runs and reports its version
+              id: aur-probe-yay-version
+              exit_status: 0
+              stdout:
+                - matches: "yay v[0-9]"
+              command: /usr/bin/yay --version

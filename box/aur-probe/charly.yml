@@ -1,0 +1,30 @@
+aur-probe:
+    candy:
+        description: |
+            Minimal image for the cachyos AUR route: the cachyos base plus one candy that
+            declares a single AUR package. Nothing else — no workload, no service — so the
+            only thing a build of it can prove or fail on is whether the declaration is
+            routed to a builder box and installed.
+
+            It declares no `builder:` map of its own: the route is inherited from
+            `base: cachyos`, which routes `aur` to `arch.arch-builder`. A box that had to
+            repeat that map would be the duplication this mechanism exists to remove.
+        base: cachyos
+        platform:
+            - linux/amd64
+        build:
+            - pac
+        candy:
+            - aur-probe
+        plan:
+            - check: the AUR-installed yay binary the candy declares reaches the image
+              id: aur-probe-image-yay
+              file:
+                file: /usr/bin/yay
+                exists: true
+            - check: yay runs inside the built image
+              id: aur-probe-image-yay-version
+              exit_status: 0
+              stdout:
+                - matches: "yay v[0-9]"
+              command: yay --version
