@@ -3,7 +3,6 @@ charly-selftest:
         base: cachyos
         build:
             - pac
-            - aur
         candy:
             - '@github.com/opencharly/pod-charly-mcp:v2026.274.0406'
             - '@github.com/opencharly/layer-container-nesting:v2026.271.2309'

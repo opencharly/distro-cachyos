@@ -6,7 +6,6 @@ selkies-kde-nvidia-cdi:
         base: nvidia-cdi
         build:
             - pac
-            - aur
         builder:
             pixi: arch.cuda-arch-builder
         platform:
@@ -14,7 +13,6 @@ selkies-kde-nvidia-cdi:
         candy:
             # The skill carrier this image owns its skill in — see candy/cachyos-selkies-skills/charly.yml
             - cachyos-selkies-skills
-
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/layer-selkies-kde-desktop:v2026.274.1343'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
