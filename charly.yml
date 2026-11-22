@@ -1610,6 +1610,32 @@ check-selkies-kde-nvidia-vm:
     selkies-kde-nvidia-pod:
         pod:
             image: selkies-kde-nvidia-cdi
+check-aur-probe-pod:
+    pod:
+        image: aur-probe
+        disposable: true
+        lifecycle: dev
+        description: >-
+            Sole proof that the cachyos AUR route works under the unified builder
+            mechanism (opencharly/sdk#608). A minimal box on `base: cachyos` composes one
+            candy that declares a single AUR package under `distro.arch.aur`, with no
+            `builder:` map of its own and NO `aur` in its `build:` list: the build must
+            route the declaration through the map the cachyos base declares, install the
+            package, and the deployed pod must run it. It is the witness that a `build:`
+            removal from the other boxes cannot silently drop an AUR package, and it can
+            fail on exactly that: without the route the build stops naming the candy.
+        plan:
+            - check: yay, the AUR package this box's candy declares, runs inside the deployed pod
+              id: aur-probe-yay-in-pod
+              context: [runtime]
+              eventually: 60s
+              retry_interval: 3s
+              exit_status: 0
+              stdout:
+                  - matches: "yay v[0-9]"
+              command:
+                command: yay --version
+                in_container: true
 check-charly-selftest-pod:
     pod:
         image: charly-selftest
