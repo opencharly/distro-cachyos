@@ -1068,7 +1068,7 @@ check-cachyos-jupyter-ml-pod:
         image: jupyter-ml-cdi
         disposable: true
         lifecycle: dev
-        description: Sole proof the CachyOS GPU jupyter-ml-cdi image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml-cdi pod (cachyos.nvidia-cdi base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
+        description: Sole proof the CachyOS GPU jupyter-ml-cdi image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml-cdi pod (podcdi.pod-cdi base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
         requires_shared: [nvidia-gpu]
 check-cachyos-ollama-pod:
     pod:
