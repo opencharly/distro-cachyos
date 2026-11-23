@@ -4534,8 +4534,7 @@ check-comfyui-openwebui-pair:
             # startup. With ENABLE_PERSISTENT_CONFIG=false the config answers from env-built
             # defaults, the migrated connection is not visible, and the request fails (the
             # pair DIAG showed ck=0 connections). Persist the config so the migration holds.
-            ENABLE_PERSISTENT_CONFIG: "true"
-            ENABLE_IMAGE_GENERATION: "true"
+            ENABLE_PERSISTENT_CONFIG: "false"
             # REQUIRED, and it was MISSING -- the whole cause of the HTTP 400
             # `{"detail":"[ERROR: Unauthorized]"}`. Open WebUI defaults this to `openai`, so without it
             # the request went to api.openai.com with an empty key and came back Unauthorized, while
@@ -4543,26 +4542,16 @@ check-comfyui-openwebui-pair:
             # does declare `IMAGE_GENERATION_ENGINE: comfyui` in its env_provide, but that reaches the
             # IMAGE only; a deploy does not inherit it, so the bed must state it.
             IMAGE_GENERATION_ENGINE: comfyui
-            # The member's container name, NOT ${HOST:<member>}: that form is a PLAN-STEP
-            # substitution and stays literal in a deploy env: -- measured on 2026.319.1039,
-            # `printenv COMFYUI_BASE_URL` inside the pod read back `http://${HOST:comfyui-peer}:8188`.
-            # BringUpMembers names a container member `charly-<memberKey>`, so this is deterministic.
+            # A deploy-level MEMBER does not receive the provider's env_provide (sibling-pod
+            # limitation); the live separate-deploy path does, and is proven there. This bed
+            # hands the member's URL and the canonical Qwen workflows/maps to the consumer
+            # explicitly so the pair itself is what is under test.
             COMFYUI_BASE_URL: http://charly-comfyui-peer:8188
-            # Without this map Open WebUI substitutes NOTHING (the env defaults to []) and posts its
-            # own default workflow, whose checkpoint the member does not have.
-            # NO `model` entry: IMAGE_GENERATION_MODEL is unset, so get_image_model() returns '' and a
-            # model node would write the EMPTY STRING into node 4's ckpt_name -- ComfyUI then rejects
-            # the prompt with 400 and nothing ever queues (measured: the queue stayed [] on every run
-            # while a prompt POSTed straight at the member answered 200). The working lab deploy
-            # carries this same map plus its own model node; the model node was MY addition and it was wrong.
-            # Node 4 gets a STATIC value: Open WebUI's default workflow asks ComfyUI for
-            # `"ckpt_name": "model.safetensors"`, which this member does not have, and ComfyUI
-            # rejects an unknown checkpoint with 400 Bad Request -- measured in the primary's own
-            # log: `ClientResponseError: 400, message='Bad Request',
-            # url='http://charly-comfyui-peer:8188/prompt'`. A static entry (no `type`) rewrites it
-            # to the checkpoint the member actually fetched; a `type: model` entry would rewrite it
-            # to IMAGE_GENERATION_MODEL, which is unset and therefore the EMPTY string.
-            COMFYUI_WORKFLOW_NODES: '[{"node_ids":["4"],"key":"ckpt_name","value":"v1-5-pruned-emaonly-fp16.safetensors"},{"type":"prompt","node_ids":["6"],"key":"text"},{"type":"negative_prompt","node_ids":["7"],"key":"text"},{"type":"width","node_ids":["5"],"key":"width"},{"type":"height","node_ids":["5"],"key":"height"},{"type":"n","node_ids":["5"],"key":"batch_size"},{"type":"steps","node_ids":["3"],"key":"steps"},{"type":"seed","node_ids":["3"],"key":"seed"}]'
+            COMFYUI_WORKFLOW_B64: 'ewogICI0NTEiOiB7ImNsYXNzX3R5cGUiOiAiVU5FVExvYWRlciIsICJpbnB1dHMiOiB7InVuZXRfbmFtZSI6ICJxd2VuX2ltYWdlXzIuMV90dXJib19pbnQ4X2NvbnZyb3Quc2FmZXRlbnNvcnMiLCAid2VpZ2h0X2R0eXBlIjogImRlZmF1bHQifX0sCiAgIjQ1MyI6IHsiY2xhc3NfdHlwZSI6ICJDTElQTG9hZGVyIiwgImlucHV0cyI6IHsiY2xpcF9uYW1lIjogInF3ZW4zdmxfOGJfaW50OF9jb252cm90LnNhZmV0ZW5zb3JzIiwgInR5cGUiOiAicXdlbl9pbWFnZSIsICJkZXZpY2UiOiAiZGVmYXVsdCJ9fSwKICAiNDU0IjogeyJjbGFzc190eXBlIjogIlZBRUxvYWRlciIsICJpbnB1dHMiOiB7InZhZV9uYW1lIjogInF3ZW5faW1hZ2VfMi4xX3ZhZV9iZjE2LnNhZmV0ZW5zb3JzIn19LAogICI0NTIiOiB7ImNsYXNzX3R5cGUiOiAiVGV4dEVuY29kZVF3ZW5JbWFnZTIxIiwgImlucHV0cyI6IHsiY2xpcCI6IFsiNDUzIiwgMF0sICJwcm9tcHQiOiAiUFJPTVBUIiwgIm5lZ2F0aXZlX3Byb21wdCI6ICIiLCAicmVzb2x1dGlvbiI6IDEwMjR9fSwKICAiNDU2IjogeyJjbGFzc190eXBlIjogIkVtcHR5TGF0ZW50SW1hZ2UiLCAiaW5wdXRzIjogeyJ3aWR0aCI6IDEwMjQsICJoZWlnaHQiOiAxMDI0LCAiYmF0Y2hfc2l6ZSI6IDF9fSwKICAiNDg4IjogeyJjbGFzc190eXBlIjogIlJhbmRvbU5vaXNlIiwgImlucHV0cyI6IHsibm9pc2Vfc2VlZCI6IDB9fSwKICAiNDg3IjogeyJjbGFzc190eXBlIjogIktTYW1wbGVyU2VsZWN0IiwgImlucHV0cyI6IHsic2FtcGxlcl9uYW1lIjogImV1bGVyIn19LAogICI0ODQiOiB7ImNsYXNzX3R5cGUiOiAiTWFudWFsU2lnbWFzIiwgImlucHV0cyI6IHsic2lnbWFzIjogIjEuMCwgMC45Nzg0NTMsIDAuOTU0MTgsIDAuOTI2NjI2LCAwLjg5NTA4LCAwLjg0NTE0OCwgMC43MDQ1MzQsIDAuNDE0NTY4LCAwIn19LAogICI0OTAiOiB7ImNsYXNzX3R5cGUiOiAiUXdlbkltYWdlMjFDYWNoZSIsICJpbnB1dHMiOiB7Im1vZGVsIjogWyI0NTEiLCAwXSwgImRldmljZSI6ICJhdXRvIiwgImR0eXBlIjogImRlZmF1bHQifX0sCiAgIjQ4OSI6IHsiY2xhc3NfdHlwZSI6ICJDRkdHdWlkZXIiLCAiaW5wdXRzIjogeyJtb2RlbCI6IFsiNDkwIiwgMF0sICJwb3NpdGl2ZSI6IFsiNDUyIiwgMF0sICJuZWdhdGl2ZSI6IFsiNDUyIiwgMV0sICJjZmciOiAxLjB9fSwKICAiNDg2IjogeyJjbGFzc190eXBlIjogIlNhbXBsZXJDdXN0b21BZHZhbmNlZCIsICJpbnB1dHMiOiB7Im5vaXNlIjogWyI0ODgiLCAwXSwgImd1aWRlciI6IFsiNDg5IiwgMF0sICJzYW1wbGVyIjogWyI0ODciLCAwXSwgInNpZ21hcyI6IFsiNDg0IiwgMF0sICJsYXRlbnRfaW1hZ2UiOiBbIjQ1NiIsIDBdfX0sCiAgIjQ1NyI6IHsiY2xhc3NfdHlwZSI6ICJWQUVEZWNvZGUiLCAiaW5wdXRzIjogeyJzYW1wbGVzIjogWyI0ODYiLCAwXSwgInZhZSI6IFsiNDU0IiwgMF19fSwKICAiNDYxIjogeyJjbGFzc190eXBlIjogIlNhdmVJbWFnZSIsICJpbnB1dHMiOiB7ImltYWdlcyI6IFsiNDU3IiwgMF0sICJmaWxlbmFtZV9wcmVmaXgiOiAiUXdlbl9pbWFnZV8yLjEifX0KfQo='
+            COMFYUI_WORKFLOW_NODES: '[{"type":"prompt","node_ids":["452"],"key":"prompt"},{"type":"width","node_ids":["456"],"key":"width"},{"type":"height","node_ids":["456"],"key":"height"},{"type":"n","node_ids":["456"],"key":"batch_size"},{"type":"seed","node_ids":["488"],"key":"noise_seed"}]'
+            IMAGES_EDIT_COMFYUI_BASE_URL: http://charly-comfyui-peer:8188
+            IMAGES_EDIT_COMFYUI_WORKFLOW_B64: 'ewogICIxNjEiOiB7ImNsYXNzX3R5cGUiOiAiVU5FVExvYWRlciIsICJpbnB1dHMiOiB7InVuZXRfbmFtZSI6ICJxd2VuX2ltYWdlX2VkaXRfMjUxMV9pbnQ4X2NvbnZyb3Quc2FmZXRlbnNvcnMiLCAid2VpZ2h0X2R0eXBlIjogImRlZmF1bHQifX0sCiAgIjE2MiI6IHsiY2xhc3NfdHlwZSI6ICJDTElQTG9hZGVyIiwgImlucHV0cyI6IHsiY2xpcF9uYW1lIjogInF3ZW5fMi41X3ZsXzdiX2ZwOF9zY2FsZWQuc2FmZXRlbnNvcnMiLCAidHlwZSI6ICJxd2VuX2ltYWdlIiwgImRldmljZSI6ICJkZWZhdWx0In19LAogICIxNDYiOiB7ImNsYXNzX3R5cGUiOiAiVkFFTG9hZGVyIiwgImlucHV0cyI6IHsidmFlX25hbWUiOiAicXdlbl9pbWFnZV92YWUuc2FmZXRlbnNvcnMifX0sCiAgIjQxIjogeyJjbGFzc190eXBlIjogIkxvYWRJbWFnZSIsICJpbnB1dHMiOiB7ImltYWdlIjogInVwbG9hZC5wbmcifX0sCiAgIjE2MCI6IHsiY2xhc3NfdHlwZSI6ICJGbHV4S29udGV4dEltYWdlU2NhbGUiLCAiaW5wdXRzIjogeyJpbWFnZSI6IFsiNDEiLCAwXX19LAogICIxNTEiOiB7ImNsYXNzX3R5cGUiOiAiVGV4dEVuY29kZVF3ZW5JbWFnZUVkaXRQbHVzIiwgImlucHV0cyI6IHsiY2xpcCI6IFsiMTYyIiwgMF0sICJwcm9tcHQiOiAiUFJPTVBUIiwgInZhZSI6IFsiMTQ2IiwgMF0sICJpbWFnZTEiOiBbIjE2MCIsIDBdfX0sCiAgIjE0OSI6IHsiY2xhc3NfdHlwZSI6ICJUZXh0RW5jb2RlUXdlbkltYWdlRWRpdFBsdXMiLCAiaW5wdXRzIjogeyJjbGlwIjogWyIxNjIiLCAwXSwgInByb21wdCI6ICIiLCAidmFlIjogWyIxNDYiLCAwXSwgImltYWdlMSI6IFsiMTYwIiwgMF19fSwKICAiMTQ4IjogeyJjbGFzc190eXBlIjogIkZsdXhLb250ZXh0TXVsdGlSZWZlcmVuY2VMYXRlbnRNZXRob2QiLCAiaW5wdXRzIjogeyJjb25kaXRpb25pbmciOiBbIjE1MSIsIDBdLCAicmVmZXJlbmNlX2xhdGVudHNfbWV0aG9kIjogImluZGV4X3RpbWVzdGVwX3plcm8ifX0sCiAgIjE0NyI6IHsiY2xhc3NfdHlwZSI6ICJGbHV4S29udGV4dE11bHRpUmVmZXJlbmNlTGF0ZW50TWV0aG9kIiwgImlucHV0cyI6IHsiY29uZGl0aW9uaW5nIjogWyIxNDkiLCAwXSwgInJlZmVyZW5jZV9sYXRlbnRzX21ldGhvZCI6ICJpbmRleF90aW1lc3RlcF96ZXJvIn19LAogICIxNDUiOiB7ImNsYXNzX3R5cGUiOiAiTW9kZWxTYW1wbGluZ0F1cmFGbG93IiwgImlucHV0cyI6IHsibW9kZWwiOiBbIjE2MSIsIDBdLCAic2hpZnQiOiAzLjF9fSwKICAiMTUyIjogeyJjbGFzc190eXBlIjogIkNGR05vcm0iLCAiaW5wdXRzIjogeyJtb2RlbCI6IFsiMTQ1IiwgMF0sICJzdHJlbmd0aCI6IDEuMH19LAogICIxNTMiOiB7ImNsYXNzX3R5cGUiOiAiTG9yYUxvYWRlck1vZGVsT25seSIsICJpbnB1dHMiOiB7Im1vZGVsIjogWyIxNTIiLCAwXSwgImxvcmFfbmFtZSI6ICJRd2VuLUltYWdlLUVkaXQtMjUxMS1MaWdodG5pbmctNHN0ZXBzLVYxLjAtYmYxNi5zYWZldGVuc29ycyIsICJzdHJlbmd0aF9tb2RlbCI6IDEuMH19LAogICIxNTYiOiB7ImNsYXNzX3R5cGUiOiAiVkFFRW5jb2RlIiwgImlucHV0cyI6IHsicGl4ZWxzIjogWyIxNjAiLCAwXSwgInZhZSI6IFsiMTQ2IiwgMF19fSwKICAiMTY5IjogeyJjbGFzc190eXBlIjogIktTYW1wbGVyIiwgImlucHV0cyI6IHsibW9kZWwiOiBbIjE1MyIsIDBdLCAicG9zaXRpdmUiOiBbIjE0OCIsIDBdLCAibmVnYXRpdmUiOiBbIjE0NyIsIDBdLCAibGF0ZW50X2ltYWdlIjogWyIxNTYiLCAwXSwgInNlZWQiOiAwLCAic3RlcHMiOiA0LCAiY2ZnIjogMS4wLCAic2FtcGxlcl9uYW1lIjogImV1bGVyIiwgInNjaGVkdWxlciI6ICJzaW1wbGUiLCAiZGVub2lzZSI6IDEuMH19LAogICIxNTgiOiB7ImNsYXNzX3R5cGUiOiAiVkFFRGVjb2RlIiwgImlucHV0cyI6IHsic2FtcGxlcyI6IFsiMTY5IiwgMF0sICJ2YWUiOiBbIjE0NiIsIDBdfX0sCiAgIjE5NSI6IHsiY2xhc3NfdHlwZSI6ICJTYXZlSW1hZ2UiLCAiaW5wdXRzIjogeyJpbWFnZXMiOiBbIjE1OCIsIDBdLCAiZmlsZW5hbWVfcHJlZml4IjogIlF3ZW5fRWRpdF8yNTExIn19Cn0K'
+            IMAGES_EDIT_COMFYUI_WORKFLOW_NODES: '[{"type":"image","node_ids":["41"],"key":"image"},{"type":"prompt","node_ids":["151"],"key":"prompt"},{"type":"seed","node_ids":["169"],"key":"seed"}]'
         plan:
             - check: the front end reaches the ComfyUI MEMBER BY NAME over the shared network, so the URL is a real name resolution and not a host-port coincidence
               id: pair-member-reachable
@@ -4624,13 +4613,8 @@ check-comfyui-openwebui-pair:
                   # default workflow's `model.safetensors` is rejected (400). Patch the connection
                   # with the member's checkpoint and the bed's node map — the deploy-time full
                   # config's job — then generate.
-                  cfg=$(curl -sS -H "Authorization: Bearer $tok" "$base/api/v1/images/config")
-                  # Open Web UI 0.13.4's normalize_image_connection drops a static node's
-                  # `value` (_workflow_nodes keeps only type/key/node_ids), so the checkpoint
-                  # cannot be set through the nodes map; put it in the WORKFLOW itself and keep
-                  # only the dynamic nodes.
-                  patched=$(printf '%s' "$cfg" | python3 -c 'import json,sys; cfg=json.load(sys.stdin); nodes=json.loads(sys.argv[1]); [c["config"].__setitem__("workflow", c["config"].get("workflow","").replace("model.safetensors","v1-5-pruned-emaonly-fp16.safetensors")) or c["config"].__setitem__("nodes",[n for n in nodes if n.get("key")!="ckpt_name"]) or c["config"].__setitem__("model_ids",["v1-5-pruned-emaonly-fp16.safetensors"]) for c in cfg.get("IMAGE_CONNECTIONS",[]) if c.get("type")=="comfyui"]; print(json.dumps(cfg))' "$COMFYUI_WORKFLOW_NODES")
-                  curl -sS -o /dev/null -X POST -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' --data "$patched" "$base/api/v1/images/config/update"
+                  # The connection is env-derived from the provide (ENABLE_PERSISTENT_CONFIG=false);
+                  # no config/update patch is needed.
                   gen() { curl -sS -o /dev/null -w '%{http_code}' -X POST \
                             -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
                             --data '{"prompt":"a red cube","n":1,"size":"512x512"}' \
