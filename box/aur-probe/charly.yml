@@ -23,8 +23,10 @@ aur-probe:
             # project that composes the aur route must name the plugin here; measured: with
             # no project pin the build served v2026.271.2317, whose reply carries a payload
             # and no package, and the image shipped without yay while the build stayed
-            # green (opencharly/sdk#615).
-            - '@github.com/opencharly/plugin-builder-aur/candy/plugin-builder-aur:v2026.326.0746'
+            # green (opencharly/sdk#615). The host now REFUSES such a reply at its first message
+            # (opencharly/sdk#619), so this pin is a normal out-of-process dependency rather than a
+            # stopgap: a stale one fails loudly instead of shipping an image without the package.
+            - '@github.com/opencharly/plugin-builder-aur/candy/plugin-builder-aur:v2026.327.0012'
         plan:
             - check: the AUR-installed yay the candy declares reaches the image, on PATH
               id: aur-probe-image-yay
