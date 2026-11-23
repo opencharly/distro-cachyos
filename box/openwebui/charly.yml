@@ -18,7 +18,7 @@ openwebui:
             entrypoint's env/secrets projection.
         candy:
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            - '@github.com/opencharly/pod-openwebui:v2026.324.1208'
+            - '@github.com/opencharly/pod-openwebui:v2026.326.1709'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
         # No box-level check PLAN: the entrypoint + WEBUI_ADMIN_EMAIL probes live on the
         # openwebui candy, and the pixi python is proven by its supervised service — one
