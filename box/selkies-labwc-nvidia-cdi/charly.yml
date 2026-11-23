@@ -1,21 +1,23 @@
 selkies-labwc-nvidia-cdi:
     candy:
-        # labwc selkies flavor on the CachyOS GPU base (cachyos.nvidia-cdi) with REAL
+        # labwc selkies flavor on the CachyOS GPU POD base (podcdi.pod-cdi) with REAL
         # NVENC: builder.pixi → arch.cuda-arch-builder, whose nvcc + ffnvcodec NVENC
         # headers let the selkies layer's build.sh compile pixelflux's real nvenc-sys
         # encoder (the stock arch-builder has no CUDA → NVENC stub). chrome + wlrctl
         # from the aur builder (no build: opt-in — opencharly/sdk#608). Renamed from selkies-desktop-nvidia.
-        base: nvidia-cdi
+        base: podcdi.pod-cdi
         build:
             - pac
         builder:
             pixi: arch.cuda-arch-builder
+            # The AUR route the retired `nvidia-cdi` alias declared; a builder map does
+            # not cross a namespace boundary, so it is carried here (opencharly/layer-cuda#34).
+            aur: arch.arch-builder
         platform:
             - linux/amd64
         candy:
             # The skill carrier this image owns its skill in — see candy/cachyos-selkies-skills/charly.yml
             - cachyos-selkies-skills
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/pod-selkies-desktop:v2026.274.1323'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
         plan:

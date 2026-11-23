@@ -1,10 +1,19 @@
 unsloth-studio-cdi:
     candy:
-        base: nvidia-cdi
+        # The CDI POD base directly (opencharly/layer-cuda#34): the former `nvidia-cdi`
+        # alias was `podcdi.pod-cdi` plus its OWN re-pins of `layer-cdi`/`layer-cuda`, so
+        # every box based on it froze those two layers at tags the POD contract had already
+        # moved past. The base it now names carries the current pair.
+        base: podcdi.pod-cdi
         platform:
             - linux/amd64
+        # The AUR route, carried here because a builder map does NOT cross a namespace
+        # boundary and `podcdi.pod-cdi`'s own chain declares none: a box that composes a
+        # candy declaring `distro.arch.aur` has no builder to route the declaration to
+        # without this line. Same route the `cachyos` base declares.
+        builder:
+            aur: arch.arch-builder
         candy:
-            - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
             - '@github.com/opencharly/pod-unsloth-studio:v2026.290.1913'
             - '@github.com/opencharly/layer-notebook-finetuning:v2026.272.0321'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
