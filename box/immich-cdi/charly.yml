@@ -19,5 +19,5 @@ immich-cdi:
             - '@github.com/opencharly/pod-postgresql:v2026.272.0233'
             - '@github.com/opencharly/layer-vectorchord:v2026.273.1836'
             - '@github.com/opencharly/pod-redis:v2026.272.0226'
-            - '@github.com/opencharly/pod-immich:v2026.326.1824'
+            - '@github.com/opencharly/pod-immich:v2026.327.0043'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'

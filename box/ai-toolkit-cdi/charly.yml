@@ -7,5 +7,5 @@ ai-toolkit-cdi:
             # The MERGED tag. opencharly/pod-ai-toolkit#3 landed and tag-on-merge cut
             # v2026.321.1053, so this pin names a released ref rather than a branch head —
             # the producer-first order (candy PR -> merge -> tag -> this pin) is complete.
-            - '@github.com/opencharly/pod-ai-toolkit:v2026.321.1053'
+            - '@github.com/opencharly/pod-ai-toolkit:v2026.327.0042'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
