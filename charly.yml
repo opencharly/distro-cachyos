@@ -1076,11 +1076,9 @@ check-cachyos-ollama-pod:
         disposable: true
         lifecycle: dev
         requires_shared: [nvidia-gpu]
-        env:
-            # Override the box's four-model vision default: this bed proves the PULL MECHANISM,
-            # and a model no other step touches is the discriminator. The 6 GB box default would
-            # also make every run pay a full download.
-            OLLAMA_PULL_MODELS: "smollm2:135m"
+        # NO OLLAMA_PULL_MODELS override: the deployed pod carries the BOX's four-model default, so
+        # the bed pulls and proves exactly what ships. The list is read back from the runtime env
+        # (below), never restated here — one canonical list (R2).
         description: >-
             Sole proof the CachyOS GPU ollama-cdi LLM-server image composes and serves on the Arch CUDA base, that the packaged CUDA backend is present, that the compiled-in command:ollama plugin works end-to-end, AND that real inference runs on the passed-through NVIDIA GPU. Builds and deploys the ollama-cdi pod and runs the checks baked into the ollama, ollama-cuda and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the CUDA backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port — plus the bed's own GPU-inference plan: nvidia-smi enumerates the card via CDI, a tiny model answers a prompt (a real generation pass), and `ollama ps` reports the model 100% GPU-resident (proving the CUDA backend executed it, not CPU fallback). The `requires_shared: [nvidia-gpu]` makes the arbiter flip the IOMMU group vfio→nvidia at deploy and back at teardown, so the pod reaches the card through CDI. On Arch the server comes from the split `ollama` package rather than the upstream tarball, so this bed is also the proof of that install path.
         plan:
@@ -1098,17 +1096,38 @@ check-cachyos-ollama-pod:
               timeout: 5m
               exit_status: 0
               command: ollama run qwen2.5:0.5b "What is 2+2? Reply with just the number."
-            # The R7 discriminator for the wrapper's PULL: smollm2:135m is declared only via the
-            # bed's OLLAMA_PULL_MODELS and is pulled by no other step, so this goes RED on an
-            # image whose service still execs `ollama serve` directly.
-            - check: the wrapper pulled the declared default model at container start, with no other step pulling it
-              id: ollama-default-model-pulled
+            # The R7 discriminator for the box's default set: every model the deployed env declares
+            # must be in the store, pulled by the wrapper at container start — no step in this plan
+            # pulls them. RED on an image whose service still execs `ollama serve` directly, and RED
+            # for a mistyped or removed tag. The list comes FROM `OLLAMA_PULL_MODELS` (the box's),
+            # so it is never restated here; a bounded wait covers the start-time pull.
+            - check: every model the box declares in OLLAMA_PULL_MODELS is present in the model store
+              id: ollama-default-models-present
               context:
                 - runtime
+              timeout: 20m
               exit_status: 0
-              command: ollama list
-              stdout:
-                - contains: "smollm2:135m"
+              command:
+                command: |
+                  models="$OLLAMA_PULL_MODELS"
+                  if [ -z "$models" ]; then echo "the deployed env declares no OLLAMA_PULL_MODELS"; exit 1; fi
+                  echo "declared: $models"
+                  i=0
+                  while [ "$i" -lt 540 ]; do
+                    all=1
+                    for m in $models; do
+                      repo=$(echo "$m" | cut -d: -f1)
+                      ollama list | grep -q "^$repo:" || all=0
+                    done
+                    [ "$all" -eq 1 ] && break
+                    sleep 2
+                    i=$((i+1))
+                  done
+                  for m in $models; do
+                    repo=$(echo "$m" | cut -d: -f1)
+                    if ollama list | grep -q "^$repo:"; then echo "PRESENT $m"; else echo "MISSING $m"; exit 1; fi
+                  done
+                in_container: true
             - check: the model is resident on the GPU — ollama ps reports 100% GPU in the processor column, proving the CUDA backend executed the generation rather than CPU fallback
               id: ollama-gpu-resident
               context:
