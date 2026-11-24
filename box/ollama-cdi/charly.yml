@@ -3,11 +3,14 @@ ollama-cdi:
         base: podcdi.pod-cdi
         platform:
             - linux/amd64
-        # The default models this GPU ollama pod always carries. Small vision-capable models
-        # sized for the VRAM left beside ComfyUI/strata on a 16 GB card (measured: ~2.79 GiB
-        # free with ComfyUI idle-but-loaded): each runs fully on the GPU in that window.
-        # Pulled once at container start by the pod-ollama wrapper; idempotent, so later
-        # starts are no-ops. The store is the persistent `models` volume.
+        # The default models this GPU ollama pod always carries: small vision-capable models,
+        # chosen by SIZING ESTIMATE for the VRAM left beside ComfyUI/strata on a 16 GB card
+        # (measured free window: ~2.79 GiB with ComfyUI idle-but-loaded; q4_0/q4_K_M download
+        # sizes 1.9 / 1.95 / 1.43 / 0.87 GB). One of them, qwen3-vl:2b-instruct-q4_K_M, was
+        # measured running at 100% GPU (1.9 GiB / 1.9 GiB) in a free window; the others are
+        # sized to fit the same window, not individually measured. Pulled once at container
+        # start by the pod-ollama wrapper; idempotent, so later starts are no-ops. The store is
+        # the persistent `models` volume.
         env:
             OLLAMA_PULL_MODELS: "qwen3-vl:2b-instruct-q4_K_M qwen3.5:2b-q4_K_M lfm3-vl:2b-qad-q4_0 bonsai-2:2b-q2_0"
         candy:

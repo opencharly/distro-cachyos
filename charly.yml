@@ -1096,16 +1096,25 @@ check-cachyos-ollama-pod:
               timeout: 5m
               exit_status: 0
               command: ollama run qwen2.5:0.5b "What is 2+2? Reply with just the number."
-            # The R7 discriminator for the box's default set: every model the deployed env declares
-            # must be in the store, pulled by the wrapper at container start — no step in this plan
-            # pulls them. RED on an image whose service still execs `ollama serve` directly, and RED
-            # for a mistyped or removed tag. The list comes FROM `OLLAMA_PULL_MODELS` (the box's),
-            # so it is never restated here; a bounded wait covers the start-time pull.
+            # The R7 discriminator for the box's default set: EVERY model the deployed env declares
+            # must be in the store, put there by the SERVICE WRAPPER'S start-time pull — no step in
+            # this plan pulls them. It goes RED on an image whose service still execs `ollama serve`
+            # directly, and RED for a mistyped or removed tag (exact match, `grep -qxF "$m"`).
+            #
+            # This is an ASSERTION with a bounded wait, not a second pull. Two earlier versions of
+            # this check failed for reasons unrelated to the store and are recorded here so they are
+            # not retried: (1) run 2026.328.0220 started a SECOND scratch wrapper on another port and
+            # sat out its deadline because that second `ollama serve` never answered; (2) run
+            # 2026.328.0315 pulled the models ITSELF and was killed while racing the wrapper's own
+            # concurrent pull of the same 6 GB. And run 2026.328.0152 failed because THAT run raised
+            # the bed's GPU gate to 2 GiB on a contended card, so the wrapper refused to start the
+            # server at all and the start-time pull never ran — an artefact of the gate experiment,
+            # not of this check. The wrapper pulls at start; this asserts the result.
             - check: every model the box declares in OLLAMA_PULL_MODELS is present in the model store
               id: ollama-default-models-present
               context:
                 - runtime
-              timeout: 20m
+              timeout: 40m
               exit_status: 0
               command:
                 command: |
@@ -1113,19 +1122,17 @@ check-cachyos-ollama-pod:
                   if [ -z "$models" ]; then echo "the deployed env declares no OLLAMA_PULL_MODELS"; exit 1; fi
                   echo "declared: $models"
                   i=0
-                  while [ "$i" -lt 540 ]; do
+                  while [ "$i" -lt 900 ]; do
                     all=1
                     for m in $models; do
-                      repo=$(echo "$m" | cut -d: -f1)
-                      ollama list | grep -q "^$repo:" || all=0
+                      ollama list | awk 'NR>1 {print $1}' | grep -qxF "$m" || all=0
                     done
-                    [ "$all" -eq 1 ] && break
+                    if [ "$all" -eq 1 ]; then break; fi
                     sleep 2
                     i=$((i+1))
                   done
                   for m in $models; do
-                    repo=$(echo "$m" | cut -d: -f1)
-                    if ollama list | grep -q "^$repo:"; then echo "PRESENT $m"; else echo "MISSING $m"; exit 1; fi
+                    if ollama list | awk 'NR>1 {print $1}' | grep -qxF "$m"; then echo "PRESENT $m"; else echo "MISSING $m"; exit 1; fi
                   done
                 in_container: true
             - check: the model is resident on the GPU — ollama ps reports 100% GPU in the processor column, proving the CUDA backend executed the generation rather than CPU fallback
