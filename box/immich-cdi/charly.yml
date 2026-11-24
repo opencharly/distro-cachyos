@@ -15,7 +15,7 @@ immich-cdi:
             - linux/amd64
         candy:
             - '@github.com/opencharly/layer-nodejs:v2026.272.0322'
-            - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
+            - '@github.com/opencharly/layer-supervisord:v2026.314.0710'
             - '@github.com/opencharly/pod-postgresql:v2026.272.0233'
             - '@github.com/opencharly/layer-vectorchord:v2026.273.1836'
             - '@github.com/opencharly/pod-redis:v2026.272.0226'

@@ -19,7 +19,7 @@ punktfunk-client:
             # else — which has no decoder to advertise. A compositor changes nothing about
             # that; using the renderer does. The hardware decode path additionally needs a
             # non-lavapipe Vulkan ICD, which the punktfunk-client candy now installs.
-            - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
+            - '@github.com/opencharly/layer-supervisord:v2026.314.0710'
             - '@github.com/opencharly/pod-sway:v2026.274.0758'
             # The renderer opens a PipeWire playback stream for the session's audio. The
             # `pipewire` binary arrives as a dependency of punktfunk-client, but nothing

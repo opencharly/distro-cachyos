@@ -33,7 +33,7 @@ punktfunk-host:
             `capture lost — rebuilding pipeline`.
         base: cachyos
         candy:
-            - '@github.com/opencharly/layer-supervisord:v2026.271.1817'
+            - '@github.com/opencharly/layer-supervisord:v2026.314.0710'
             - '@github.com/opencharly/pod-sway:v2026.274.0758'
             # The capture path, and not optional: a session resolves to
             # `capture: Portal`, so punktfunk asks xdg-desktop-portal's ScreenCast
