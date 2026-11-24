@@ -1076,6 +1076,11 @@ check-cachyos-ollama-pod:
         disposable: true
         lifecycle: dev
         requires_shared: [nvidia-gpu]
+        env:
+            # Override the box's four-model vision default: this bed proves the PULL MECHANISM,
+            # and a model no other step touches is the discriminator. The 6 GB box default would
+            # also make every run pay a full download.
+            OLLAMA_PULL_MODELS: "smollm2:135m"
         description: >-
             Sole proof the CachyOS GPU ollama-cdi LLM-server image composes and serves on the Arch CUDA base, that the packaged CUDA backend is present, that the compiled-in command:ollama plugin works end-to-end, AND that real inference runs on the passed-through NVIDIA GPU. Builds and deploys the ollama-cdi pod and runs the checks baked into the ollama, ollama-cuda and dbus candies — server HTTP/API liveness, binary/service/port/file probes, the CUDA backend library, and the host-side charly ollama help/version/list steps over the auto-allocated host port — plus the bed's own GPU-inference plan: nvidia-smi enumerates the card via CDI, a tiny model answers a prompt (a real generation pass), and `ollama ps` reports the model 100% GPU-resident (proving the CUDA backend executed it, not CPU fallback). The `requires_shared: [nvidia-gpu]` makes the arbiter flip the IOMMU group vfio→nvidia at deploy and back at teardown, so the pod reaches the card through CDI. On Arch the server comes from the split `ollama` package rather than the upstream tarball, so this bed is also the proof of that install path.
         plan:
@@ -1093,6 +1098,17 @@ check-cachyos-ollama-pod:
               timeout: 5m
               exit_status: 0
               command: ollama run qwen2.5:0.5b "What is 2+2? Reply with just the number."
+            # The R7 discriminator for the wrapper's PULL: smollm2:135m is declared only via the
+            # bed's OLLAMA_PULL_MODELS and is pulled by no other step, so this goes RED on an
+            # image whose service still execs `ollama serve` directly.
+            - check: the wrapper pulled the declared default model at container start, with no other step pulling it
+              id: ollama-default-model-pulled
+              context:
+                - runtime
+              exit_status: 0
+              command: ollama list
+              stdout:
+                - contains: "smollm2:135m"
             - check: the model is resident on the GPU — ollama ps reports 100% GPU in the processor column, proving the CUDA backend executed the generation rather than CPU fallback
               id: ollama-gpu-resident
               context:
