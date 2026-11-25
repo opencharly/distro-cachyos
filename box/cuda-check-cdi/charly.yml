@@ -11,4 +11,7 @@ cuda-check-cdi:
         platform:
             - linux/amd64
         candy:
+            # CLASS 3 — this image COMPILES with nvcc, so it composes the toolkit itself; the
+            # pod base no longer pulls it (pod-cdi#17).
+            - '@github.com/opencharly/layer-cuda:v2026.329.2022'
             - cuda-smoke
