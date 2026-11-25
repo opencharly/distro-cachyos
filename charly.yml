@@ -125,9 +125,9 @@ check-comfyui-pod:
                   test "$(printenv HOME)" = /home/user
                   test -s "/home/user/ComfyUI/models/checkpoints/$COMFYUI_MODEL"
               # This bed is a host-owned bind on a CDI pod: the `comfyui-models` volume makes
-              # charly run the container as root under userns=host (keep-id cannot apply the CDI
-              # device's file mounts — crun mount_setattr EPERM, exit 126), where the runtime HOME
-              # is /root. The check is RED before the candy pins HOME and GREEN after.
+              # charly run the container as its image user under keep-id, so HOME is the image
+              # home and the model cache lands under /home/user. Any other HOME means the unit is
+              # running as some other user, which no charly pod may do (D-HW-10).
             - check: ComfyUI sees a CUDA device — the runtime injected the host driver
               id: comfyui-cuda-device
               # `type` is the torch device type on each entry of `/system_stats.devices`
@@ -1396,11 +1396,10 @@ check-cachyos-immich-bound-pod:
         disposable: true
         lifecycle: dev
         # The same image as check-cachyos-immich-pod, but carrying a HOST-OWNED volume. That one
-        # difference selects the other user-namespace shape: a CDI pod with a bind runs as
-        # container root under userns=host (keep-id cannot apply the device's file mounts — crun
-        # mount_setattr EPERM, exit 126), where the runtime HOME is /root unless the generator
-        # pins it to the image's home. The volume is an empty host directory under /tmp, so the
-        # bed proves ownership and writability without any pre-seeded data.
+        # difference selects keep-id: the unit runs as the image user, which under keep-id IS the
+        # invoking host user, so the bound directory is writable with no chown and HOME is the
+        # image's own home (no pin, no container root — D-HW-10). The volume is an empty host
+        # directory under /tmp, so the bed proves ownership and writability without seeded data.
         requires_shared: [nvidia-gpu]
         volume:
             - name: external
@@ -1408,15 +1407,15 @@ check-cachyos-immich-bound-pod:
               host: /tmp/charly-immich-bound-bed
               path: /home/user/.immich/external
         description: >-
-            Sole proof that a CDI Immich deploy carrying a host-owned volume runs with the image
-            user's HOME and needs no chown: the generator pins HOME to ai.opencharly.home, so the
-            DB socket, the media location and every XDG base directory resolve under /home/user
-            instead of /root, and a write into the bound directory lands as the invoking host user.
+            Proof that a CDI Immich deploy carrying a host-owned volume runs as its image user and
+            needs no chown: keep-id maps that user onto the invoking host user, so HOME is
+            /home/user, the DB socket, the media location and every XDG base directory resolve
+            under it, and a write into the bound directory lands as the invoking host user.
         probes:
             readiness:
                 command: curl -fsS http://127.0.0.1:2283/api/server/ping
         plan:
-            - check: the workload runs with the image user's home, not container root's /root
+            - check: the workload runs as the image user, whose home is /home/user
               id: immich-bound-home
               context: [runtime]
               exit_status: 0
