@@ -11,12 +11,12 @@ versa:
             - cachyos-app-skills
 
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            # This box is CLASS 1: it composes NO toolkit. The base (podcdi) is now the
-            # REQUIRE-FREE contract — layer-cuda no longer arrives through it. Any layer-cuda
-            # still resolved here comes ONLY from pod-marimo/pod-airflow's own requires,
-            # which pin it at their refs (the remaining half of the double resolution,
-            # tracked by opencharly/pod-marimo#12 and opencharly/opencharly#1172); retiring
-            # those requires is their own cutover, not this box's.
+            # The base (podcdi) is the REQUIRE-FREE contract — layer-cuda no longer arrives
+            # through it. This box still CARRIES the toolkit: pod-marimo/pod-airflow COMPOSE
+            # layer-cuda themselves, so the built image has it (opencharly/opencharly#1291 is
+            # the per-pod cutover that removes it). Until that lands this box is NOT a
+            # toolkit-free class-1 box; the double resolution's producer half is
+            # opencharly/pod-marimo#12 and opencharly/opencharly#1172.
             - '@github.com/opencharly/pod-marimo:v2026.320.2210' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
             - '@github.com/opencharly/pod-airflow:v2026.320.2222' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
             - '@github.com/opencharly/pod-osm-tools:v2026.274.0631' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI
