@@ -1,11 +1,11 @@
 cachyos-gpu-desktop-check:
     candy:
         description: |
-            Shared desktop/GPU-stream verification layer for the CachyOS GPU workstation
+            Shared desktop/GPU verification layer for the CachyOS GPU workstation
             Carries no install beyond the desktop-interaction test tools (ydotool)
             and a deploy-scope check block. Both the disposable bed
             (check-cachyos-gpu-vm) and the persistent operator deploy (cachyos-gpu)
-            add_layer this, so the SAME monitor / SPICE / selkies / GPU checks run
+            add_layer this, so the SAME monitor / SPICE / GPU checks run
             against both from one source (R3). Verifiable at deploy scope: the KDE
             session is present and the GPU-passthrough desktop renders over SPICE.
         require:
@@ -18,12 +18,12 @@ cachyos-gpu-desktop-check:
             # deploy. Mirrors how candy/k3s-server require:s plugin-kube. Remote @github
             # ref (plugin-spice lives in its own standalone repo since the cutover).
             - '@github.com/opencharly/plugin-spice/candy/plugin-spice:v2026.272.0430'
-        # Shared desktop/GPU-stream verification layer for the CachyOS GPU workstation.
+        # Shared desktop/GPU verification layer for the CachyOS GPU workstation.
         # It carries NO install beyond the desktop-interaction TEST TOOLS (R9) and a
         # deploy-scope `check:` block. Both the disposable bed (check-cachyos-gpu-vm, on
         # cachyos-gpu-vm) AND the persistent operator deploy (cachyos-gpu) add_layer
         # this, and `charly check live <vm>` collects an applied layer's deploy-scope checks
-        # (collectAddLayerDeployCheck) — so the SAME monitor / SPICE / selkies checks
+        # (collectAddLayerDeployCheck) — so the SAME monitor / SPICE checks
         # run against BOTH deployments from ONE source (R3), satisfying
         # "all check tests work on both the check and the prod deployment".
         #
@@ -246,29 +246,3 @@ cachyos-gpu-desktop-check:
                     echo "WL-SHOT-OK (spectacle headless capture unavailable on this session)"
                   fi
                 fi
-            - check: |
-                command=for i in $(seq 1 30); do curl -ksf https://127.0.0.1:3000/ >/dev/null 2>&1 && break; sleep 2; done
-                curl -ksf -o /dev/null -w '%{http_code}' https://127.0.0.1:3000/ | grep -q 200 && echo SELKIES-STREAM-200
-              id: kde-selkies-stream-https
-              stdout:
-                contains: SELKIES-STREAM-200
-              context:
-                - runtime
-              command: |
-                for i in $(seq 1 30); do curl -ksf https://127.0.0.1:3000/ >/dev/null 2>&1 && break; sleep 2; done
-                curl -ksf -o /dev/null -w '%{http_code}' https://127.0.0.1:3000/ | grep -q 200 && echo SELKIES-STREAM-200
-            - check: |
-                command=body=$(curl -ksf https://127.0.0.1:3000/ 2>/dev/null)
-                [ -n "$body" ] || { echo "FAIL: empty body from https://127.0.0.1:3000/"; exit 1; }
-                printf '%s' "$body" | grep -qiE 'pixelflux|selkies|webrtc|<html' || { echo "FAIL: :3000 served a page with no selkies/webrtc markers (length=${#body})"; printf '%s\n' "$body" | head -3; exit 1; }
-                echo SELKIES-HTML-OK
-              id: kde-selkies-html-content
-              stdout:
-                contains: SELKIES-HTML-OK
-              context:
-                - runtime
-              command: |
-                body=$(curl -ksf https://127.0.0.1:3000/ 2>/dev/null)
-                [ -n "$body" ] || { echo "FAIL: empty body from https://127.0.0.1:3000/"; exit 1; }
-                printf '%s' "$body" | grep -qiE 'pixelflux|selkies|webrtc|<html' || { echo "FAIL: :3000 served a page with no selkies/webrtc markers (length=${#body})"; printf '%s\n' "$body" | head -3; exit 1; }
-                echo SELKIES-HTML-OK

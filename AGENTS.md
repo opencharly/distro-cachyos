@@ -1,8 +1,8 @@
 # AGENTS.md — distro-cachyos
 
 The **CachyOS image family** — charly's `box/cachyos`. It OWNS the CachyOS
-base/pacstrap stack, the selkies streaming-desktop images, and the relocated
-CachyOS-rooted app/fixture boxes, discovered from `box/` and `candy/`. It imports
+base/pacstrap stack and the relocated CachyOS-rooted app/fixture boxes, discovered
+from `box/` and `candy/`. It imports
 `opencharly/distro-arch` under the `arch` namespace; every shared candy is an
 `@github.com/opencharly/<layer-*|pod-*|plugin-*>[:subdir]:<tag>` ref.
 
@@ -10,18 +10,16 @@ Canonical files:
 
 - `charly.yml` — the root manifest: the `arch` namespace import, the `discover:`
   tree, and the inline VM / app / check-bed entities.
-- `candy/cachyos-app-skills/charly.yml`, `candy/cachyos-os-skills/charly.yml`,
-  `candy/cachyos-selkies-skills/charly.yml` — the three skill CARRIER candies. Each
-  declares a real `candy:` node (so it can be composed, and so an image that owns one
-  of its skills carries its prose in `ai.opencharly.skill` — opencharly/sdk#434) and
-  holds that carrier's twelve `skill:` routing nodes in total
-  (`charly-cachyos`, `keepassxc-keyring`, `versa`; `cachyos`, `cachyos-pacstrap`,
-  `cachyos-pacstrap-builder`, `githubrunner`, `crabbox-deploy`; `selkies-kde`,
-  `selkies-kde-nvidia`, `selkies-labwc`, `selkies-labwc-nvidia`), each carrying
-  `name`/`family`/`owner` and no body, with `triggers` on the three that are
-  routed (`charly-cachyos`, `cachyos`, `crabbox-deploy`) and none on the other
-  nine.
-- `.agents/skills/<name>/SKILL.md` — the twelve skill BODIES, one directory per
+- `candy/cachyos-app-skills/charly.yml`, `candy/cachyos-os-skills/charly.yml`
+  — the two skill CARRIER candies. Each declares a real `candy:` node (so it can be
+  composed, and so an image that owns one of its skills carries its prose in
+  `ai.opencharly.skill` — opencharly/sdk#434) and holds that carrier's seven
+  `skill:` routing nodes in total (`charly-cachyos`, `keepassxc-keyring`;
+  `cachyos`, `cachyos-pacstrap`, `cachyos-pacstrap-builder`, `githubrunner`,
+  `crabbox-deploy`), each carrying `name`/`family`/`owner` and no body, with
+  `triggers` on the three that are routed (`charly-cachyos`, `cachyos`,
+  `crabbox-deploy`) and none on the other four.
+- `.agents/skills/<name>/SKILL.md` — the seven skill BODIES, one directory per
   node's `name:`, at THIS REPO'S ROOT and never in a carrier candy's directory:
   the root is the base the marketplace corpus reads and the directory a harness
   rooted here discovers natively (`deploykit.candyRepoRoot`, opencharly/sdk#445),
@@ -40,11 +38,7 @@ Canonical files:
 - `/charly-vm:cachyos-bootstrap-vm` — the CachyOS bootstrap VM + its disposable
   check bed.
 - `/charly-local:charly-cachyos` — the operator workstation profile.
-- `/charly-selkies:selkies-labwc`, `/charly-selkies:selkies-labwc-nvidia`,
-  `/charly-selkies:selkies-kde`, `/charly-selkies:selkies-kde-nvidia` — the CPU
-  and GPU streaming desktops; `/charly-selkies:selkies` for the engine.
 - `/charly-distros:githubrunner` — the rootless self-hosted GitHub Actions runner box.
-- `/charly-versa:versa` — the marimo + Airflow + OSM/GTFS analytics image.
 - `/charly-infrastructure:keepassxc-keyring` — the KeePassXC Secret Service wiring
   for a `target: local` host.
 - `/charly-image:image` + `/charly-image:layer` — composition and candy
@@ -57,7 +51,7 @@ Canonical files:
   `validate / validate`, defined in `opencharly/.github`); this repo has **no
   per-repo candy gate** and ships only `.github/workflows/tag-on-merge.yml`.
 - The functional evidence is the disposable check beds (`check-cachyos-vm`,
-  `check-cachyos-mcp-vm`, `check-selkies-*-pod`, `check-crabbox-pod`, …) and the
+  `check-cachyos-mcp-vm`, `check-crabbox-pod`, …) and the
   `plan:` `check:` steps on every box and candy. A docs-only change runs no
   runtime bed — the documentation-only change class runs the non-runtime
   standards only.

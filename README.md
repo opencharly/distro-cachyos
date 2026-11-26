@@ -1,12 +1,12 @@
 # distro-cachyos
 
 The **CachyOS image family** for [OpenCharly](https://github.com/opencharly/charly) —
-x86_64_v3-optimized Arch, plus the CachyOS streaming-desktop and GPU images.
+x86_64_v3-optimized Arch, plus the CachyOS GPU images.
 
 This repo is mounted as a git submodule at `box/cachyos` of the main repo. It
 OWNS its CachyOS stack locally: the `cachyos` base, the
-`cachyos-pacstrap`/`cachyos-pacstrap-builder` bootstrap pair, the selkies
-streaming-desktop images, and the relocated CachyOS-rooted app/fixture boxes. Its
+`cachyos-pacstrap`/`cachyos-pacstrap-builder` bootstrap pair, and the relocated
+CachyOS-rooted app/fixture boxes. Its
 CachyOS-exclusive candy layers live locally under `candy/`; every shared candy is
 an `@github.com/opencharly/<layer-*|pod-*|plugin-*>[:subdir]:<tag>` ref. The Arch
 base/builder stack is imported from `opencharly/distro-arch` under the `arch`
@@ -18,21 +18,20 @@ namespace.
 |---|---|
 | Base / builder | `cachyos` (base), `cachyos-pacstrap-builder` (privileged), `cachyos-pacstrap` (`from: builder:pacstrap`) |
 | GPU base | `nvidia`, `python-ml` |
-| Streaming desktops | `selkies-labwc`, `selkies-labwc-nvidia`, `selkies-kde`, `selkies-kde-nvidia` |
-| Relocated app / fixture boxes | `versa`, `githubrunner`, `android-emulator`, `charly-selftest`, `comfyui`, `immich-cdi`, `jupyter-ml`, `ollama`, `ollama-rocm`, `unsloth-studio`, `crabbox`, `cstream`, `punktfunk-*` |
-| VMs | `cachyos-vm`, `cachyos-gpu-vm`, `cachyos-gpu-workstation-vm`, `cstream-vm`, `punktfunk-vm`, … |
+| Relocated app / fixture boxes | `githubrunner`, `charly-selftest`, `comfyui`, `immich-cdi`, `jupyter-ml`, `ollama`, `ollama-rocm`, `unsloth-studio`, `crabbox`, `punktfunk-vm` |
+| VMs | `cachyos-vm`, `cachyos-gpu-vm`, `cachyos-gpu-workstation-vm`, `punktfunk-vm`, … |
 | Operator profile | `charly-cachyos` (`kind:local` template + `host:local` deploy) |
-| Check beds | `check-cachyos-vm`, `check-cachyos-mcp-vm`, `check-punktfunk-pod`, `check-selkies-*-pod`, `check-crabbox-pod`, … |
+| Check beds | `check-cachyos-vm`, `check-cachyos-mcp-vm`, `check-punktfunk-vm`, `check-crabbox-pod`, … |
 
 ## Dependency direction
 
 `opencharly/distro-arch` is the only namespace this repo imports:
-`cachyos-pacstrap-builder` bases on `arch.arch`, and the cachyos base and
-selkies-*-nvidia images route their builders to `arch.arch-builder` /
+`cachyos-pacstrap-builder` bases on `arch.arch`, and the cachyos base and the
+GPU boxes route their builders to `arch.arch-builder` /
 `arch.cuda-arch-builder`. The import is one-directional — arch imports nothing
 back. Main imports THIS repo (under the `cachyos` namespace) to build the
 relocated boxes; the former main↔cachyos mutual cycle is dissolved. The image DAG
-is acyclic (`versa → cachyos → docker.io/cachyos-v3`;
+is acyclic (`comfyui-cdi → cachyos → docker.io/cachyos-v3`;
 `cachyos-pacstrap-builder → arch.arch → quay.io/archlinux/archlinux:base-<ver>`).
 
 ## Build
@@ -101,9 +100,6 @@ config schema is newer than the binary supports).
 
 - Owning skills: `/charly-distros:cachyos`, `/charly-distros:cachyos-pacstrap`,
   `/charly-distros:cachyos-pacstrap-builder`, `/charly-distros:githubrunner`,
-  `/charly-selkies:selkies-kde`, `/charly-selkies:selkies-kde-nvidia`,
-  `/charly-selkies:selkies-labwc`, `/charly-selkies:selkies-labwc-nvidia`,
-  `/charly-versa:versa`,
   `/charly-local:charly-cachyos`, `/charly-infrastructure:keepassxc-keyring`
 - Bootstrap VM: `/charly-vm:cachyos-bootstrap-vm`
 - Arch base: `/charly-distros:arch` (imported under the `arch` namespace)
