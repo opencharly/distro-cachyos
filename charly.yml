@@ -1139,7 +1139,16 @@ check-cachyos-ollama-pod:
               id: ollama-gpu-resident
               context:
                 - runtime
-              command: ollama ps
+              command: |
+                set -eu
+                # LOAD a model WITH a keep-alive first. `ollama ps` lists only LOADED models, and a
+                # bare `ollama ps` at this point lists none: the preceding checks can run after the
+                # server's default keep-alive window, so the check was red on a CLEAN image and its
+                # subject (the CUDA backend executed) was already proven by ollama-gpu-inference.
+                m=$(ollama list | awk 'NR>1 {print $1}' | head -1)
+                curl -fsS http://127.0.0.1:11434/api/generate \
+                  -d "{\"model\":\"$m\",\"prompt\":\"hi\",\"keep_alive\":\"10m\",\"stream\":false}" >/dev/null
+                ollama ps
               stdout:
                 - contains: "100% GPU"
 # check-cachyos-ollama-rocm-pod — the AMD sibling of check-cachyos-ollama-pod, and
