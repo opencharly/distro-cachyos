@@ -4,9 +4,9 @@ ai-toolkit-cdi:
         platform:
             - linux/amd64
         candy:
-            # The MERGED tag. opencharly/pod-ai-toolkit#4 landed and tag-on-merge cut
-            # v2026.327.0042 (the skill-file frontmatter fix), so this pin names a released
-            # ref rather than a branch head — the producer-first order (candy PR -> merge ->
-            # tag -> this pin) is complete.
+            # The MERGED tag. v2026.327.0939 is the release that DROPS this pod's
+            # `layer-cuda` composition (opencharly/opencharly#1291), so the box is a genuine
+            # class-1, toolkit-free image; it names a released ref rather than a branch head —
+            # the producer-first order (candy PR -> merge -> tag -> this pin) is complete.
             - '@github.com/opencharly/pod-ai-toolkit:v2026.327.0939'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
