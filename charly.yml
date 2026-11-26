@@ -1146,7 +1146,7 @@ check-cachyos-ollama-pod:
                 # server's default keep-alive window, so the check was red on a CLEAN image and its
                 # subject (the CUDA backend executed) was already proven by ollama-gpu-inference.
                 m=$(ollama list | awk 'NR>1 {print $1}' | head -1)
-                curl -s http://127.0.0.1:11434/api/generate \
+                curl -fsS http://127.0.0.1:11434/api/generate \
                   -d "{\"model\":\"$m\",\"prompt\":\"hi\",\"keep_alive\":\"10m\",\"stream\":false}" >/dev/null
                 ollama ps
               stdout:
