@@ -8,5 +8,5 @@ ai-toolkit-cdi:
             # v2026.327.0042 (the skill-file frontmatter fix), so this pin names a released
             # ref rather than a branch head — the producer-first order (candy PR -> merge ->
             # tag -> this pin) is complete.
-            - '@github.com/opencharly/pod-ai-toolkit:v2026.327.0042'
+            - '@github.com/opencharly/pod-ai-toolkit:v2026.327.0939'
             - '@github.com/opencharly/pod-dbus:v2026.274.0648'
