@@ -11,16 +11,12 @@ versa:
             - cachyos-app-skills
 
             - '@github.com/opencharly/layer-agent-forwarding:v2026.274.0608'
-            # layer-cuda now arrives through podcdi.pod-cdi -> layer-cdi, at v2026.321.1520,
-            # NOT at the v2026.320.2103 that pod-marimo and pod-airflow still require below.
-            # So this box resolves layer-cuda at two refs, which the resolver tolerates on
-            # `charly box validate` (0 warnings) but which is not what the former hold note
-            # claimed. Resolving it needs pod-marimo's own require moved
-            # (opencharly/pod-marimo#12) and the CDI base's layer-cdi pin moved
-            # (opencharly/pod-cdi#5); opencharly/pod-airflow#13 already moved pod-airflow's
-            # pod-marimo pin and is merged. Until then this comment states the condition
-            # instead of asserting it away. Deleting it was wrong: the collision did not
-            # disappear.
+            # The base (podcdi) is the REQUIRE-FREE contract — layer-cuda no longer arrives
+            # through it. This box still CARRIES the toolkit: pod-marimo/pod-airflow COMPOSE
+            # layer-cuda themselves, so the built image has it (opencharly/opencharly#1291 is
+            # the per-pod cutover that removes it). Until that lands this box is NOT a
+            # toolkit-free class-1 box; the double resolution's producer half is
+            # opencharly/pod-marimo#12 and opencharly/opencharly#1172.
             - '@github.com/opencharly/pod-marimo:v2026.320.2210' # marimo notebook + MCP server (--mcp), Polars-GPU/cuDF, geospatial, marimo-team/skills
             - '@github.com/opencharly/pod-airflow:v2026.320.2222' # Airflow 3.x LocalExecutor (no upstream MCP wrapper supports /api/v2 — removed 2026-05; consumers drive Airflow via direct REST /api/v2 calls)
             - '@github.com/opencharly/pod-osm-tools:v2026.274.0631' # tippecanoe + gdal + martin (PMTiles tile server) + pmtiles CLI
