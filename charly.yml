@@ -1569,7 +1569,6 @@ check-krun-host-vm:
 # by dnf/rpmkeys/rpm -E %fedora with no Arch analogue, so it keeps its own minimal
 # Fedora bed instead of a doomed CachyOS one.
 # =============================================================================
-
 check-cachyos-coder-tools-pod:
     pod:
         image: cachyos-coder-tools
