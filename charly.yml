@@ -1435,9 +1435,6 @@ check-instrument-cachyos-vm:
               # "never changes PATH and never downgrades a target package". Probe
               # the actual delivery path (the glob expands to the versioned binary).
               command: 'ls /tmp/charly-*'
-# check-openwebui-pod — the disposable witness for the CachyOS openwebui box: the same
-# candy composition as the Fedora box, on the x86_64_v3 base, with the served version
-# asserted from the app itself so a base or pin regression cannot pass silently.
 cachyos-bootstrap-vm-skill:
   skill:
     name: cachyos-bootstrap-vm
@@ -1552,14 +1549,33 @@ check-krun-host-vm:
                   exit 1
                 }
 
-# check-qwen3-tts-pod — the DISPOSABLE proof of the qwen3-tts image (RDD + R10).
+# =============================================================================
+# check-cachyos-coder-tools-pod — the R10 bed for `cachyos-coder-tools`, and the COMPENSATING
+# gate for FOUR of the six layer candies the retired non-CachyOS coder boxes were the
+# only live proof of (opencharly/opencharly#1068): layer-pixi, layer-language-runtimes,
+# layer-typst, layer-github-actions. The other two cannot be compensated here:
+# - layer-google-cloud-npm -> its required layer-google-cloud cannot complete install.sh
+#   inside a buildkit build container (opencharly/layer-google-cloud#5), measured A/B
+#   against a plain container of the same base image;
+# - layer-grafana-tools -> its plan needs unzip and the candy declares no distro: section,
+#   so nothing installs it on pac (opencharly/layer-grafana-tools#4).
 #
-# The candy's contract is the ONE HTTP route Open WebUI's `openai` TTS engine calls, so this
-# bed proves that contract rather than the process: /health answers, the preset voice list is
-# published (the consumer's picker reads it), and a synthesis POST returns REAL audio bytes —
-# asserted on the RIFF magic in the body and an audio/* content type, so an empty 200 cannot
-# pass. The first synthesis downloads the 0.6B checkpoint into the pod's models volume and
-# loads it, so every probe is readiness-bounded (eventually), never a fixed sleep.
+# The coder trio in distro-fedora / distro-debian / distro-ubuntu was the single
+# gate for those six — no other bed in the org composes any of them, and each of
+# their own repos declares no pod:/vm: entity. Retiring the boxes without this bed
+# would leave six layer repos with no live proof at all (R7).
+#
+# WHY BINARY ASSERTIONS AND NOT JUST THE CANDY CHECKS: a candy whose per-distro
+# section silently no-ops on a distro still builds clean (sdk#453 — a layer's
+# `distro:` package section applies nothing and nothing reports it). The candy
+# checks run per-candy and would each pass in isolation; only a COMPOSITION-level
+# assert on the finished CachyOS container catches the silent no-op.
+#
+# layer-rpmfusion is deliberately absent: RPM Fusion is a Fedora repository driven
+# by dnf/rpmkeys/rpm -E %fedora with no Arch analogue, so it keeps its own minimal
+# Fedora bed instead of a doomed CachyOS one.
+# =============================================================================
+
 check-cachyos-coder-tools-pod:
     pod:
         image: cachyos-coder-tools
