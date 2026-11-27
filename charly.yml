@@ -47,6 +47,9 @@ import:
     # / arch.cuda-arch-builder. Candy layers resolve via @github refs (not this
     # namespace). One-directional import — arch imports nothing back.
     - arch: '@github.com/opencharly/distro-arch:v2026.326.1455'
+    # The whisper image + its two beds moved to their owner repo (a bed lives with the
+    # thing it tests); imported so this project still selects them in the umbrella roster.
+    - pod-whisper: '@github.com/opencharly/pod-whisper:v2026.331.0121'
     # The CDI POD base box. A pod takes its GPU driver from the HOST through the CDI
     # spec, so its image must bake NO driver user-space and carry NO nvidia-ctk.
     # v2026.329.2115 is the REQUIRE-FREE contract: the base composes layer-cdi, the
@@ -2521,87 +2524,3 @@ check-clawsweeper-review-pod:
             round-trip needs a key, which a check bed cannot supply — that leg is the advisory
             workflow's job (opencharly/.github `clawsweeper-review.yml`).
 
-# =============================================================================
-# Whisper on CachyOS — the same engine, the same two beds, moved off Fedora.
-# The model cache is the shared host store, and the candy pins HOME so a
-# bound deployment uses it.
-#
-# NOTE — there is deliberately NO joint `check-whisper-*-pod` bed (whisper +
-# Open WebUI in one venue). A bed that drives the Open WebUI container through
-# the whisper container cannot currently be expressed: a sibling member gets its
-# own network (container DNS does not resolve across the two, and
-# ${HOST:<bed>:<port>} is host loopback, unreachable from inside a container),
-# and nesting the two makes the `command:` verb panic in the check-env path.
-# All three shapes are measured and filed as opencharly/charly#1153. The
-# integration is instead carried by the two beds below (the engine's own
-# behaviour, keyless and keyed), the consumer candy's committed projection
-# stubs, and a live round-trip at deploy time.
-# =============================================================================
-check-whisper-pod:
-    pod:
-        image: whisper
-        disposable: true
-        lifecycle: dev
-        volume:
-            - name: whisper-models
-              type: bind
-              host: ~/.local/share/charly/models/whisper
-        description: >-
-                Sole proof of the whisper image on the CachyOS base — the OpenAI-compatible ASR
-                engine. Builds the image from layer-whisper, deploys it as a disposable pod, and
-                runs the candy's baked checks — the service answers /health, it advertises an
-                OpenAI-shaped model list, it transcribes the committed fixture, and a model it does
-                not serve is refused with a 400 naming both. The keyed posture is proven separately
-                by check-whisper-auth, because a baked check cannot assert 401 on a keyless
-                deployment.
-
-# check-whisper-auth — the KEYED posture. A baked candy check cannot assert 401 (the default
-# deployment is keyless, where 401 would be wrong), so the keyed arm needs a deployment that
-# configures a key. This bed asserts BOTH directions, which is what proves the forwarding
-# branch is not dead code.
-check-whisper-auth:
-    pod:
-        image: whisper
-        disposable: true
-        lifecycle: dev
-        volume:
-            - name: whisper-models
-              type: bind
-              host: ~/.local/share/charly/models/whisper
-        env:
-            WHISPER_API_KEY: check-bed-probe-key
-        description: >-
-                Sole proof of the whisper image's KEYED auth posture on the CachyOS base — a
-                disposable pod deployed with WHISPER_API_KEY set. Asserts both directions — an
-                unauthenticated transcription request is refused with 401, and the same request
-                carrying the correct bearer is served the fixture's transcript. Without this bed
-                the 401 branch has no check that fails when it is removed.
-        plan:
-            - check: a keyed deployment refuses an unauthenticated request
-              id: auth-refuses-anonymous
-              context:
-                - runtime
-              timeout: 300s
-              eventually: 5m
-              retry_interval: 5s
-              exit_status: 0
-              stdout:
-                - contains: "401"
-              command: |
-                curl -s -o /dev/null -w '%{http_code}' \
-                     -F file=@"${HOME}/whisper-asr/fixtures/jfk.flac" \
-                     http://127.0.0.1:9000/v1/audio/transcriptions
-            - check: a keyed deployment serves the request that carries the correct bearer
-              id: auth-accepts-bearer
-              context:
-                - runtime
-              timeout: 300s
-              eventually: 5m
-              retry_interval: 5s
-              exit_status: 0
-              stdout:
-                - contains: "fellow Americans"
-              command: |
-                curl -sf -H "Authorization: Bearer check-bed-probe-key" \
-                     -F file=@"${HOME}/whisper-asr/fixtures/jfk.flac" \
-                     http://127.0.0.1:9000/v1/audio/transcriptions
