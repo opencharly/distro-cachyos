@@ -57,7 +57,6 @@ import:
     # (wheel or bundled runtime) pays nothing; a class-2/3 consumer composes
     # `layer-cuda` itself (opencharly/opencharly#1287).
     - podcdi: '@github.com/opencharly/pod-cdi:v2026.329.2115'
-    # The `charly openwebui` command, imported so the R10 bed can drive the plugin against
 discover:
     - path: box
       recursive: true
@@ -67,11 +66,6 @@ discover:
 # 2026-05 deploy→check unification moved repo-shipped disposable beds out of
 # deploy.yml). disposable: true is the sole authorization for the unattended
 # destroy+rebuild driven by `charly check run check-cachyos-vm`.
-# Disposable R10 bed for the ComfyUI POD, and the only proof that the CDI base
-# actually yields a runnable GPU container. This exists because the pod image
-# changed base from the VM contract (baked driver + nvidia-ctk) to the CDI
-# contract (host-injected driver): "the box builds" is not "the pod runs with a
-# GPU", and nothing in this repo asserted the second thing.
 check-cachyos-vm:
     # HOST REQUIREMENT: the bootstrap VM disk build stages a 25 GiB disk (the
     # cachyos-vm entity's disk_size) and the preflight requires disk + overhead —
