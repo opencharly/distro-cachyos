@@ -50,17 +50,6 @@ import:
     # The whisper image + its two beds moved to their owner repo (a bed lives with the
     # thing it tests); imported so this project still selects them in the umbrella roster.
     - pod-whisper: '@github.com/opencharly/pod-whisper:v2026.331.0121'
-    # The CDI service images and their beds now live in the repos that own the services (a bed
-    # lives with the thing it tests). Imported so this project's roster (check-all-beds) still
-    # selects them and a run rooted here resolves each box from its owner, at the tag its merge
-    # minted. The PAIR bed (ComfyUI <-> Open Web UI) is not among them: building an imported box
-    # is broken (opencharly/charly#1294) and its copy is deleted rather than left unable to build.
-    - pod-ollama: '@github.com/opencharly/pod-ollama:v2026.331.0253'
-    - pod-qwen3-tts: '@github.com/opencharly/pod-qwen3-tts:v2026.331.0410'
-    - pod-comfyui: '@github.com/opencharly/pod-comfyui:v2026.331.0610'
-    - pod-immich: '@github.com/opencharly/pod-immich:v2026.331.0448'
-    - pod-ai-toolkit: '@github.com/opencharly/pod-ai-toolkit:v2026.331.0512'
-    - pod-openwebui: '@github.com/opencharly/pod-openwebui:v2026.331.0627'
     # The CDI POD base box. A pod takes its GPU driver from the HOST through the CDI
     # spec, so its image must bake NO driver user-space and carry NO nvidia-ctk.
     # v2026.329.2115 is the REQUIRE-FREE contract: the base composes layer-cdi, the
