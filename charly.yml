@@ -1692,3 +1692,59 @@ check-clawsweeper-review-pod:
             round-trip needs a key, which a check bed cannot supply — that leg is the advisory
             workflow's job (opencharly/.github `clawsweeper-review.yml`).
 
+
+# ---------------------------------------------------------------------------
+# THE R10 BED for opencharly/charly#1295 / opencharly/distro-cachyos#270.
+#
+# WHY THIS BED EXISTS: this project IMPORTS owner repos and can address their
+# boxes by namespace, but until opencharly/sdk#654 a box reached that way lost
+# the import BACK-EDGE its `base:` names (`pod-whisper`'s `whisper` bases on
+# `cachyos.cachyos`, and `cachyos` is the project this one is imported by), so
+# rendering failed with `build: field required` and, one stage later,
+# `DistroDef == nil`. Nothing here exercised "render an IMPORTED box": the beds
+# build this project's OWN boxes.
+#
+# THE CHECK IS A HOST RENDER, not a deploy: `charly box generate <ns.box>`
+# writes .build/<ns.box>/Containerfile without building or running anything, so
+# the bed needs no venue — `local:` with `host: local` — and it fails on any sdk
+# whose wire drops the back-edge.
+# ---------------------------------------------------------------------------
+cachyos-render-host-template:
+    local:
+        description: |-
+            Host-only template for the imported-box RENDER bed. Nothing is deployed
+            and no candy is composed: the check renders a Containerfile with the
+            charly binary under test and asserts what it wrote.
+        candy: []
+
+check-cachyos-imported-box-render:
+    local:
+        from: cachyos-render-host-template
+        host: local
+        disposable: true
+        lifecycle: test
+        plan:
+            - check: a box reached through an IMPORT namespace RENDERS — its Containerfile is
+                  written with a real FROM, so the base its `base:` names resolved across the
+                  import back-edge instead of dangling
+              id: imported-box-renders
+              context: [runtime]
+              timeout: 600s
+              exit_status: 0
+              stdout:
+                contains: IMPORTED-BOX-RENDER-OK
+              command:
+                in_container: false
+                command: |
+                    set -eu
+                    echo "== the binary under test is ${CHARLY_BIN} ($(${CHARLY_BIN} version 2>/dev/null | tail -1))"
+                    rm -rf .build/pod-whisper.whisper
+                    ${CHARLY_BIN} box generate pod-whisper.whisper
+                    CF=.build/pod-whisper.whisper/Containerfile
+                    [ -f "$CF" ] || { echo "the imported box rendered NO Containerfile"; exit 1; }
+                    echo "== the rendered stages"
+                    grep -nE '^FROM ' "$CF" || { echo "the Containerfile carries no FROM"; exit 1; }
+                    # THE BASE RESOLVED, which is the defect this asserts away: a dangling
+                    # `base:` leaves BASE_IMAGE unset rather than naming the base's image.
+                    grep -q 'BASE_IMAGE' "$CF" || { echo "the base did not resolve to a build argument"; exit 1; }
+                    echo IMPORTED-BOX-RENDER-OK
