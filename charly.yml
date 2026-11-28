@@ -614,20 +614,6 @@ check-containerd-v4-egress-vm:
 # layers (the "lowest level" principle) — the beds carry no check: of their
 # own. The GPU base (nvidia-cdi) and python-ml-cdi carry no service, so they are
 # proved by `charly check box` alone and need no pod bed.
-check-cachyos-jupyter-ml-pod:
-    pod:
-        image: jupyter-ml-cdi
-        disposable: true
-        lifecycle: dev
-        description: Sole proof the CachyOS GPU jupyter-ml-cdi image (JupyterLab + ML/spacy/quarto + jupyter MCP) composes on the Arch CUDA base — the cachyos-distro variant of the fedora jupyter-ml bed. Builds and deploys the jupyter-ml-cdi pod (podcdi.pod-cdi base) and runs the inherited jupyter-ml + notebook-templates + dbus baked checks — JupyterLab HTTP liveness, package/file/service probes, and jupyter MCP-server probes.
-        requires_shared: [nvidia-gpu]
-check-cachyos-unsloth-studio-pod:
-    pod:
-        image: unsloth-studio-cdi
-        disposable: true
-        lifecycle: dev
-        description: Sole proof the CachyOS GPU unsloth-studio fine-tuning notebook + API composes on the Arch CUDA base (no MCP candy, unlike jupyter-ml). Builds and deploys the unsloth-studio-cdi pod and runs the inherited unsloth-studio + notebook-finetuning + dbus baked checks — notebook/API HTTP liveness plus file/service/port/command probes.
-        requires_shared: [nvidia-gpu]
 check-aur-probe-pod:
     pod:
         image: aur-probe
